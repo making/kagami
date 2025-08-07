@@ -2,6 +2,10 @@
 
 A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, meaning "mirror" in Japanese) provides efficient caching and proxying of Maven artifacts from multiple remote repositories.
 
+<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/a1dc0529-2d26-4b30-8742-107593ee37ee" />
+
+<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/1c519009-9e6c-4c40-bca0-7998d8f89ce7" />
+
 ## Features
 
 - **Local Caching**: Automatically caches artifacts from remote repositories to reduce download times
@@ -79,37 +83,7 @@ export HTTP_PROXY=http://proxy.company.com:8080
 
 ## API Usage
 
-### Retrieve Artifacts
-
-Access artifacts using the standard Maven repository path structure:
-
-```
-GET /artifacts/{repositoryId}/{groupId}/{artifactId}/{version}/{filename}
-```
-
-Examples:
-```bash
-# Get a JAR file
-curl http://localhost:8080/artifacts/central/junit/junit/4.13.2/junit-4.13.2.jar
-
-# Get a POM file
-curl http://localhost:8080/artifacts/central/junit/junit/4.13.2/junit-4.13.2.pom
-
-# Get metadata
-curl http://localhost:8080/artifacts/central/junit/junit/maven-metadata.xml
-```
-
-### Delete Cached Artifacts
-
-Remove artifacts from local cache:
-
-```bash
-# Delete specific artifact
-curl -X DELETE http://localhost:8080/artifacts/central/junit/junit/4.13.2/junit-4.13.2.jar
-
-# Delete directory (recursive)
-curl -X DELETE http://localhost:8080/artifacts/central/junit/junit/4.13.2/
-```
+See the [API documentation](docs/api.md) for details on available endpoints.
 
 ## Maven Client Configuration
 
@@ -174,7 +148,6 @@ The following features are planned for future releases:
 
 ### Storage Backends
 - **S3 Storage**: Amazon S3 and S3-compatible storage backends (MinIO, etc.)
-- **Multi-tier Storage**: Automatic migration of cold artifacts to cheaper storage
 
 ## License
 
