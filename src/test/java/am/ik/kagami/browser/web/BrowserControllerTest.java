@@ -36,7 +36,7 @@ class BrowserControllerTest {
 
 	@Test
 	void getRepositories_shouldReturnConfiguredRepositories() throws Exception {
-		this.mockMvc.perform(get("/api/repositories"))
+		this.mockMvc.perform(get("/repositories"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.repositories").isArray())
 			.andExpect(jsonPath("$.repositories[?(@.id == 'test-repo')]").exists())
@@ -53,7 +53,7 @@ class BrowserControllerTest {
 		Files.createDirectories(springDir);
 		Files.writeString(springDir.resolve("test-file.jar"), "dummy jar content");
 
-		var result = this.mockMvc.perform(get("/api/repositories/test-repo/browse").param("path", "org"))
+		var result = this.mockMvc.perform(get("/repositories/test-repo/browse").param("path", "org"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.repositoryId").value("test-repo"))
 			.andExpect(jsonPath("$.currentPath").value("org"))
@@ -66,7 +66,7 @@ class BrowserControllerTest {
 
 		// Also browse into springframework to see file entries
 		var fileResult = this.mockMvc
-			.perform(get("/api/repositories/test-repo/browse").param("path", "org/springframework"))
+			.perform(get("/repositories/test-repo/browse").param("path", "org/springframework"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.entries[0].name").value("test-file.jar"))
 			.andExpect(jsonPath("$.entries[0].type").value("file"))
@@ -77,7 +77,7 @@ class BrowserControllerTest {
 
 	@Test
 	void browseRepository_whenRepositoryNotExists_shouldReturn400() throws Exception {
-		this.mockMvc.perform(get("/api/repositories/unknown-repo/browse")).andExpect(status().isBadRequest());
+		this.mockMvc.perform(get("/repositories/unknown-repo/browse")).andExpect(status().isBadRequest());
 	}
 
 	@Test
@@ -89,7 +89,7 @@ class BrowserControllerTest {
 		Files.writeString(testFile, "test content");
 		Files.writeString(repoDir.resolve("test.jar.sha1"), "abc123");
 
-		this.mockMvc.perform(get("/api/repositories/test-repo/info").param("path", "test.jar"))
+		this.mockMvc.perform(get("/repositories/test-repo/info").param("path", "test.jar"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.name").value("test.jar"))
 			.andExpect(jsonPath("$.type").value("file"))
@@ -99,7 +99,7 @@ class BrowserControllerTest {
 
 	@Test
 	void getFileInfo_whenFileNotExists_shouldReturn400() throws Exception {
-		this.mockMvc.perform(get("/api/repositories/test-repo/info").param("path", "nonexistent.jar"))
+		this.mockMvc.perform(get("/repositories/test-repo/info").param("path", "nonexistent.jar"))
 			.andExpect(status().isBadRequest());
 	}
 

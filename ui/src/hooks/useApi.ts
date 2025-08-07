@@ -11,7 +11,7 @@ const fetcher = async (url: string) => {
 
 export function useRepositories() {
   const { data, error, isLoading } = useSWR<RepositoryListResponse>(
-    '/api/repositories',
+    '/repositories',
     fetcher
   );
 
@@ -24,7 +24,7 @@ export function useRepositories() {
 
 export function useBrowseRepository(repositoryId: string | null, path?: string) {
   const url = repositoryId 
-    ? `/api/repositories/${encodeURIComponent(repositoryId)}/browse${path ? `?path=${encodeURIComponent(path)}` : ''}`
+    ? `/repositories/${encodeURIComponent(repositoryId)}/browse${path ? `?path=${encodeURIComponent(path)}` : ''}`
     : null;
 
   const { data, error, isLoading } = useSWR<BrowseResult>(url, fetcher);
@@ -38,7 +38,7 @@ export function useBrowseRepository(repositoryId: string | null, path?: string) 
 
 export function useFileInfo(repositoryId: string | null, path: string | null) {
   const url = repositoryId && path 
-    ? `/api/repositories/${encodeURIComponent(repositoryId)}/info?path=${encodeURIComponent(path)}`
+    ? `/repositories/${encodeURIComponent(repositoryId)}/info?path=${encodeURIComponent(path)}`
     : null;
 
   const { data, error, isLoading } = useSWR<FileInfo>(url, fetcher);

@@ -4,7 +4,7 @@ Kagami is a mirror server for Maven repositories. This document describes the RE
 
 ## Base URL
 
-All API endpoints are prefixed with `/api`.
+Repository browsing endpoints are available at `/repositories` and artifact operations at `/artifacts`.
 
 ## Authentication
 
@@ -19,7 +19,7 @@ Currently, no authentication is required for the API endpoints.
 
 ### Repository Management
 
-#### GET /api/repositories
+#### GET /repositories
 
 Get a list of all configured repositories with their statistics.
 
@@ -53,7 +53,7 @@ Get a list of all configured repositories with their statistics.
 
 ### Repository Browsing
 
-#### GET /api/repositories/{repositoryId}/browse
+#### GET /repositories/{repositoryId}/browse
 
 Browse the contents of a repository at a specific path.
 
@@ -63,7 +63,7 @@ Browse the contents of a repository at a specific path.
 
 **Example Request:**
 ```
-GET /api/repositories/central/browse?path=org/springframework
+GET /repositories/central/browse?path=org/springframework
 ```
 
 **Response:**
@@ -108,7 +108,7 @@ GET /api/repositories/central/browse?path=org/springframework
 
 ---
 
-#### GET /api/repositories/{repositoryId}/info
+#### GET /repositories/{repositoryId}/info
 
 Get detailed information about a specific file.
 
@@ -118,7 +118,7 @@ Get detailed information about a specific file.
 
 **Example Request:**
 ```
-GET /api/repositories/central/info?path=org/springframework/spring-core/5.3.21/spring-core-5.3.21.jar
+GET /repositories/central/info?path=org/springframework/spring-core/5.3.21/spring-core-5.3.21.jar
 ```
 
 **Response:**
@@ -217,11 +217,11 @@ API endpoints return appropriate HTTP status codes. For client errors (4xx) and 
 
 ### Frontend Implementation Guidelines
 
-1. **Repository List**: Use `GET /api/repositories` to populate a repository selector.
+1. **Repository List**: Use `GET /repositories` to populate a repository selector.
 
-2. **Directory Navigation**: Use `GET /api/repositories/{id}/browse` with the `path` parameter to implement breadcrumb navigation and directory browsing.
+2. **Directory Navigation**: Use `GET /repositories/{id}/browse` with the `path` parameter to implement breadcrumb navigation and directory browsing.
 
-3. **File Information**: Use `GET /api/repositories/{id}/info` to display detailed file information in a sidebar or modal.
+3. **File Information**: Use `GET /repositories/{id}/info` to display detailed file information in a sidebar or modal.
 
 4. **File Download**: Use `GET /artifacts/{repositoryId}/{artifactPath}` to provide direct download links.
 

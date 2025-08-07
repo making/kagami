@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
  * REST controller for browsing repository contents
  */
 @RestController
-@RequestMapping("/api")
 public class BrowserController {
 
 	private final BrowserService browserService;
