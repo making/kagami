@@ -2,7 +2,6 @@ package am.ik.kagami.repository;
 
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.storage.StorageService;
-import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -12,11 +11,9 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
@@ -48,13 +45,11 @@ public class RemoteRepositoryService {
 
 	private final RepositorySystem repositorySystem;
 
-	private final RepositorySystemSession session;
-
 	private final StorageService storageService;
 
 	private final Map<String, RemoteRepository> repositories;
 
-	private final Path tempDir;
+	private final Map<String, RepositorySystemSession> sessions;
 
 	private final RestClient restClient;
 
@@ -64,6 +59,7 @@ public class RemoteRepositoryService {
 			RestClient.Builder restClientBuilder) {
 		this.storageService = storageService;
 		this.repositories = new ConcurrentHashMap<>();
+		this.sessions = new ConcurrentHashMap<>();
 
 		// Store properties for later use in RestClient requests
 		this.kagamiProperties = properties;
@@ -74,16 +70,6 @@ public class RemoteRepositoryService {
 
 		// Initialize Maven Resolver components
 		this.repositorySystem = new RepositorySystemSupplier().get();
-
-		// Create temporary directory for Maven Resolver
-		try {
-			this.tempDir = Files.createTempDirectory("kagami-resolver-");
-		}
-		catch (IOException e) {
-			throw new IllegalStateException("Failed to create temp directory", e);
-		}
-
-		this.session = createSession(this.repositorySystem);
 
 		// Initialize remote repositories from configuration
 		if (properties.repositories() != null) {
@@ -114,6 +100,9 @@ public class RemoteRepositoryService {
 
 					RemoteRepository remoteRepo = repoBuilder.build();
 					this.repositories.put(repoId, remoteRepo);
+
+					// Create repository-specific session
+					this.sessions.put(repoId, createSession(repoId));
 				}
 			});
 		}
@@ -127,7 +116,8 @@ public class RemoteRepositoryService {
 	 */
 	public boolean fetchArtifact(String repositoryId, String artifactPath) {
 		RemoteRepository repository = this.repositories.get(repositoryId);
-		if (repository == null) {
+		RepositorySystemSession session = this.sessions.get(repositoryId);
+		if (repository == null || session == null) {
 			return false;
 		}
 
@@ -150,16 +140,14 @@ public class RemoteRepositoryService {
 			artifactRequest.setRepositories(List.of(repository));
 
 			// Resolve artifact
-			ArtifactResult result = this.repositorySystem.resolveArtifact(this.session, artifactRequest);
+			ArtifactResult result = this.repositorySystem.resolveArtifact(session, artifactRequest);
 
 			if (result.isResolved() && result.getArtifact() != null) {
 				File resolvedFile = result.getArtifact().getFile();
 				if (resolvedFile != null && resolvedFile.exists()) {
-					// Store the resolved artifact in our storage
-					try (InputStream is = Files.newInputStream(resolvedFile.toPath())) {
-						this.storageService.store(repositoryId, artifactPath, is);
-						return true;
-					}
+					// Maven Resolver has already stored the artifact in
+					// repository-specific directory
+					return true;
 				}
 			}
 		}
@@ -215,13 +203,21 @@ public class RemoteRepositoryService {
 		return this.repositories.containsKey(repositoryId);
 	}
 
-	private RepositorySystemSession createSession(RepositorySystem system) {
+	private RepositorySystemSession createSession(String repositoryId) {
 		DefaultRepositorySystemSession session = MavenRepositorySystemUtils.newSession();
 
-		// Use temporary directory for Maven Resolver's local repository
-		// This is separate from Kagami's own storage
-		LocalRepository localRepo = new LocalRepository(this.tempDir.toFile());
-		session.setLocalRepositoryManager(system.newLocalRepositoryManager(session, localRepo));
+		// Use repository-specific directory within Kagami's storage path
+		// This eliminates duplicate storage while keeping repositories separate
+		Path storagePath = Path.of(this.kagamiProperties.storage().path()).resolve(repositoryId);
+		try {
+			Files.createDirectories(storagePath);
+		}
+		catch (IOException e) {
+			throw new IllegalStateException("Failed to create storage directory: " + storagePath, e);
+		}
+
+		LocalRepository localRepo = new LocalRepository(storagePath.toFile());
+		session.setLocalRepositoryManager(this.repositorySystem.newLocalRepositoryManager(session, localRepo));
 
 		return session;
 	}
@@ -319,30 +315,6 @@ public class RemoteRepositoryService {
 
 	private record ArtifactCoordinates(String groupId, String artifactId, String version, String classifier,
 			String extension) {
-	}
-
-	/**
-	 * Clean up temporary directory when the service is destroyed
-	 */
-	@PreDestroy
-	public void cleanup() {
-		if (this.tempDir != null && Files.exists(this.tempDir)) {
-			try (Stream<Path> walk = Files.walk(this.tempDir)) {
-				walk.sorted(Comparator.reverseOrder()) // Delete files before directories
-					.forEach(path -> {
-						try {
-							Files.delete(path);
-						}
-						catch (IOException e) {
-							logger.debug("Failed to delete temp file: {}", path, e);
-						}
-					});
-				logger.debug("Cleaned up Maven Resolver temp directory: {}", this.tempDir);
-			}
-			catch (IOException e) {
-				logger.warn("Failed to clean up Maven Resolver temp directory: {}", this.tempDir, e);
-			}
-		}
 	}
 
 }
