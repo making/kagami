@@ -127,7 +127,11 @@ public class RemoteRepositoryService {
 			if (coords == null) {
 				// If it's not a standard artifact path, fall back to direct HTTP download
 				logger.debug("Path is not a standard artifact, using HTTP for: {}", artifactPath);
-				return fetchNonStandardFile(repositoryId, artifactPath, repository);
+				boolean success = fetchNonStandardFile(repositoryId, artifactPath, repository);
+				if (!success) {
+					cleanupEmptyDirectories(repositoryId, artifactPath);
+				}
+				return success;
 			}
 
 			// Create artifact
@@ -154,6 +158,7 @@ public class RemoteRepositoryService {
 		catch (Exception e) {
 			// Log error but don't throw - return false to indicate failure
 			logger.debug("Failed to fetch artifact via Maven Resolver: {}", artifactPath, e);
+			cleanupEmptyDirectories(repositoryId, artifactPath);
 		}
 
 		return false;
@@ -311,6 +316,37 @@ public class RemoteRepositoryService {
 		}
 
 		return new ArtifactCoordinates(groupId.toString(), artifactId, version, classifier, extension);
+	}
+
+	/**
+	 * Clean up empty directories that may have been created during failed fetch attempts
+	 */
+	private void cleanupEmptyDirectories(String repositoryId, String artifactPath) {
+		try {
+			Path storagePath = Path.of(this.kagamiProperties.storage().path()).resolve(repositoryId);
+			Path artifactDir = storagePath.resolve(artifactPath).getParent();
+
+			// Walk up the directory tree and remove empty directories
+			while (artifactDir != null && artifactDir.startsWith(storagePath) && !artifactDir.equals(storagePath)) {
+				if (Files.exists(artifactDir) && Files.isDirectory(artifactDir)) {
+					try (var stream = Files.list(artifactDir)) {
+						if (stream.findFirst().isEmpty()) {
+							// Directory is empty, remove it
+							Files.delete(artifactDir);
+							logger.debug("Removed empty directory: {}", artifactDir);
+						}
+						else {
+							// Directory is not empty, stop cleanup
+							break;
+						}
+					}
+				}
+				artifactDir = artifactDir.getParent();
+			}
+		}
+		catch (Exception e) {
+			logger.debug("Failed to cleanup empty directories for {}: {}", artifactPath, e.getMessage());
+		}
 	}
 
 	private record ArtifactCoordinates(String groupId, String artifactId, String version, String classifier,
