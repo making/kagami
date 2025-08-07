@@ -3,7 +3,7 @@ import { LoadingSpinner } from './ui/LoadingSpinner';
 import { Alert, AlertDescription } from './ui/Alert';
 import { Button } from './ui/Button';
 import { FileIcon } from './ui/FileIcon';
-import { ArrowUp, Download, Info } from 'lucide-react';
+import { ArrowUp, Download, Info, Trash2 } from 'lucide-react';
 import { formatFileSize, formatRelativeTime } from '../utils/format';
 import type { RepositoryEntry } from '../types/api';
 
@@ -54,6 +54,32 @@ export function DirectoryBrowser({
     if (entry.type === 'file') {
       const downloadUrl = `/artifacts/${repositoryId}/${entry.path}`;
       window.open(downloadUrl, '_blank');
+    }
+  };
+
+  const handleDelete = async (entry: RepositoryEntry) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${entry.type === 'directory' ? 'directory' : 'file'} "${entry.name}"?${
+        entry.type === 'directory' ? ' This will delete all contents recursively.' : ''
+      }`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      const deletePath = entry.type === 'directory' ? `${entry.path}/` : entry.path;
+      const response = await fetch(`/artifacts/${repositoryId}/${deletePath}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete: ${response.status} ${response.statusText}`);
+      }
+      
+      // Refresh the current directory
+      window.location.reload();
+    } catch (error) {
+      alert(`Failed to delete ${entry.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -141,6 +167,18 @@ export function DirectoryBrowser({
                         </Button>
                       </>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(entry);
+                      }}
+                      className="flex items-center space-x-1 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="text-xs">Delete</span>
+                    </Button>
                   </div>
                 </div>
               </div>
