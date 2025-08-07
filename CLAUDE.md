@@ -12,6 +12,33 @@ Kagami is a mirror server of Maven repositories.
 ./mvnw spring-javaformat:apply test                             # Run all tests
 ```
 
+## System Architecture
+
+### Core Components
+
+1. **Storage Layer** (`am.ik.kagami.storage`)
+   - `StorageService` interface with minimal methods: `store()`, `retrieve()`, `delete()`
+   - `LocalStorageService` implementation using filesystem
+   - Designed for future S3 storage implementation
+   - Maven Resolver stores artifacts directly in `kagami.storage.path/{repositoryId}/`
+
+2. **Repository Management** (`am.ik.kagami.repository`)
+   - `RemoteRepositoryService` uses Maven Resolver API for standard artifacts
+   - Separate `RepositorySystemSession` per repository ID to maintain isolation
+   - Falls back to `RestClient` for non-standard files (e.g., maven-metadata.xml)
+   - Supports Basic authentication and HTTP proxy configuration
+
+3. **Web Layer** (`am.ik.kagami.artifact.web`)
+   - `ArtifactController` handles GET and DELETE operations
+   - URL pattern: `/{repositoryId}/**` for flexible path matching
+   - Returns proper content types based on file extensions
+
+### Configuration
+
+- Properties use Map structure for repositories: `kagami.repositories.{id}.url`
+- Supports username/password for Basic auth per repository
+- HTTP proxy configurable via properties or environment variables (http_proxy, HTTP_PROXY)
+
 ## Design Requirements
 
 - **Package**: `am.ik.kagami` - Main package
@@ -50,13 +77,15 @@ Kagami is a mirror server of Maven repositories.
 Package structure should follow the "package by feature" principle, grouping related classes
 together. Not by technical layers.
 
+Current package structure:
 - `am.ik.kagami`
-    - `feature-x` - package for feature X
-        - domain objects and services related to feature X
-        - `web` - Web controllers and request / response objects for feature X
-    - `feature-y` - package for feature Y
-        - domain objects and services related to feature Y
-        - `web` - Web controllers and request / response objects for feature Y
+    - `artifact.web` - Artifact handling web layer
+        - `ArtifactController` - REST endpoints for artifact operations
+    - `repository` - Remote repository management
+        - `RemoteRepositoryService` - Maven Resolver integration
+    - `storage` - Storage abstraction layer
+        - `StorageService` - Minimal interface (store/retrieve/delete)
+        - `LocalStorageService` - Filesystem implementation
     - `config` - Configuration classes (e.g., security, cross-cutting concerns)
 
 For DTOs, use inner record classes in the appropriate classes. For example, if you have a
@@ -86,6 +115,24 @@ domain objects should be clean and not contain external layers like web or datab
 ```
 osascript -e 'display notification "<Message Body>" with title "<Message Title>"'
 ```
+
+## Important Architecture Decisions
+
+1. **Maven Resolver Integration**
+   - Each repository has its own `RepositorySystemSession` to maintain isolation
+   - Maven Resolver's local repository is set to `kagami.storage.path/{repositoryId}/`
+   - This eliminates duplicate storage between Maven Resolver and Kagami
+   - Non-standard files (like maven-metadata.xml) are fetched via RestClient
+
+2. **Storage Abstraction**
+   - Minimal interface design for easy S3 migration
+   - No path-specific return values that would be meaningless for cloud storage
+   - Resource-based retrieval allows flexible implementation
+
+3. **Configuration Design**
+   - Map-based repository configuration for better organization
+   - Per-repository authentication support
+   - Flexible proxy configuration (properties + environment variables)
 
 ## important-instruction-reminders
 
