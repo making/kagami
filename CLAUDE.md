@@ -28,10 +28,19 @@ Kagami is a mirror server of Maven repositories.
    - Falls back to `RestClient` for non-standard files (e.g., maven-metadata.xml)
    - Supports Basic authentication and HTTP proxy configuration
 
-3. **Web Layer** (`am.ik.kagami.artifact.web`)
-   - `ArtifactController` handles GET and DELETE operations
-   - URL pattern: `/{repositoryId}/**` for flexible path matching
+3. **Web Layer** 
+   - `ArtifactController` (`am.ik.kagami.artifact.web`) handles artifact GET and DELETE operations
+   - `BrowserController` (`am.ik.kagami.browser.web`) provides repository browsing REST API
+   - URL pattern: `/{repositoryId}/**` for artifact downloads
+   - API endpoints: `/api/repositories/**` for repository browsing
    - Returns proper content types based on file extensions
+
+4. **Browser Feature** (`am.ik.kagami.browser`)
+   - `BrowserService` provides repository exploration and statistics
+   - Repository listing with artifact count, size, and last update timestamps
+   - Directory navigation with breadcrumb support
+   - File information with checksums and content types
+   - Uses `@JsonInclude(NON_NULL)` to exclude null values from JSON responses
 
 ### Configuration
 
@@ -81,6 +90,9 @@ Current package structure:
 - `am.ik.kagami`
     - `artifact.web` - Artifact handling web layer
         - `ArtifactController` - REST endpoints for artifact operations
+    - `browser` - Repository browsing feature
+        - `BrowserService` - Repository exploration and statistics
+        - `web.BrowserController` - REST API for repository browsing
     - `repository` - Remote repository management
         - `RemoteRepositoryService` - Maven Resolver integration
     - `storage` - Storage abstraction layer
@@ -97,14 +109,11 @@ domain objects should be clean and not contain external layers like web or datab
 ### Testing Strategy
 
 - **Unit Tests**: JUnit 5 with AssertJ for service layer testing
-- **Integration Tests**: `@SpringBootTest` + Testcontainers
-- **E2E Tests**: Playwright with Testcontainers for full user journey testing
-- **Test Data Management**: Database cleanup after each test using `JdbcClient` to maintain test
-  independence
-- **Test Stability**: All tests must pass consistently; use specific Playwright selectors
+- **Integration Tests**: `@SpringBootTest` + Testcontainers for full application context
+- **Test Data Management**: Use `@TempDir` for filesystem testing, maintain test independence
+- **Test Stability**: All tests must pass consistently; use specific MockMvc expectations
 - All tests must pass before completing tasks
-- Test coverage includes email management, user registration/activation, admin operations, and soft
-  delete functionality
+- Test coverage includes artifact operations, repository browsing, and API endpoints
 
 ### After Task completion
 
@@ -133,6 +142,13 @@ osascript -e 'display notification "<Message Body>" with title "<Message Title>"
    - Map-based repository configuration for better organization
    - Per-repository authentication support
    - Flexible proxy configuration (properties + environment variables)
+
+4. **Browser API Design**
+   - REST API follows standard conventions with `/api` prefix
+   - JSON responses exclude null values using `@JsonInclude(NON_NULL)`
+   - Directory navigation uses breadcrumb pattern with `parentPath`
+   - File information includes size, timestamps, and checksums
+   - Comprehensive API documentation provided for frontend implementation
 
 ## important-instruction-reminders
 
