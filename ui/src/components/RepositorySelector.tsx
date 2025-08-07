@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { useRepositories } from '../hooks/useApi';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { Alert, AlertDescription } from './ui/Alert';
-import { Database, Calendar, HardDrive, Package } from 'lucide-react';
+import { Button } from './ui/Button';
+import { Database, Calendar, HardDrive, Package, Settings } from 'lucide-react';
 import { formatFileSize, formatRelativeTime } from '../utils/format';
+import { RepositoryConfigDialog } from './RepositoryConfigDialog';
+import type { RepositoryInfo } from '../types/api';
 
 interface RepositorySelectorProps {
   onSelectRepository: (repositoryId: string) => void;
@@ -11,6 +15,28 @@ interface RepositorySelectorProps {
 
 export function RepositorySelector({ onSelectRepository, selectedRepository }: RepositorySelectorProps) {
   const { repositories, isLoading, error } = useRepositories();
+  const [configDialog, setConfigDialog] = useState<{
+    open: boolean;
+    repository: RepositoryInfo | null;
+  }>({
+    open: false,
+    repository: null,
+  });
+
+  const handleShowConfig = (repo: RepositoryInfo, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent repository selection
+    setConfigDialog({
+      open: true,
+      repository: repo,
+    });
+  };
+
+  const handleCloseConfig = () => {
+    setConfigDialog({
+      open: false,
+      repository: null,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -74,7 +100,7 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
                   </div>
                 </div>
                 
-                <div className="flex items-center space-x-8 text-sm text-gray-600">
+                <div className="flex items-center space-x-4 text-sm text-gray-600">
                   <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors">
                     <Package className="h-4 w-4 text-orange-500" />
                     <span className="font-medium">{repo.artifactCount.toLocaleString()}</span>
@@ -92,6 +118,16 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
                       <span className="font-medium">{formatRelativeTime(repo.lastUpdated)}</span>
                     </div>
                   )}
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleShowConfig(repo, e)}
+                    className="flex items-center space-x-1 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors text-gray-600 hover:text-red-700"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span className="text-xs">Config</span>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -101,6 +137,12 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
           </div>
         ))}
       </div>
+
+      <RepositoryConfigDialog
+        open={configDialog.open}
+        onOpenChange={handleCloseConfig}
+        repository={configDialog.repository}
+      />
     </div>
   );
 }
