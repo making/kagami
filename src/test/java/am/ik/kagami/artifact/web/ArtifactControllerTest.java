@@ -40,7 +40,7 @@ class ArtifactControllerTest {
 	@Test
 	void getArtifact_whenNotInCache_shouldFetchFromRemoteAndCache() throws Exception {
 		// First request - artifact not in cache
-		this.mockMvc.perform(get("/test-central/junit/junit/4.13.2/junit-4.13.2.pom"))
+		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/4.13.2/junit-4.13.2.pom"))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType("application/xml"))
 			.andExpect(header().string("Cache-Control", "max-age=31536000, public"));
@@ -51,14 +51,15 @@ class ArtifactControllerTest {
 		assertThat(Files.size(cachedFile)).isGreaterThan(0);
 
 		// Second request - should serve from cache without hitting remote
-		this.mockMvc.perform(get("/test-central/junit/junit/4.13.2/junit-4.13.2.pom"))
+		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/4.13.2/junit-4.13.2.pom"))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType("application/xml"));
 	}
 
 	@Test
 	void getArtifact_whenRepositoryNotConfigured_shouldReturn404() throws Exception {
-		this.mockMvc.perform(get("/unknown-repo/some/artifact/1.0/artifact-1.0.jar")).andExpect(status().isNotFound());
+		this.mockMvc.perform(get("/artifacts/unknown-repo/some/artifact/1.0/artifact-1.0.jar"))
+			.andExpect(status().isNotFound());
 	}
 
 	@Test
@@ -69,7 +70,7 @@ class ArtifactControllerTest {
 		Files.writeString(testFile, "test content");
 
 		// Delete the file
-		this.mockMvc.perform(delete("/test-central/test/artifact/1.0/artifact-1.0.jar"))
+		this.mockMvc.perform(delete("/artifacts/test-central/test/artifact/1.0/artifact-1.0.jar"))
 			.andExpect(status().isNoContent());
 
 		// Verify file was deleted
@@ -85,7 +86,7 @@ class ArtifactControllerTest {
 		Files.writeString(testDir.resolve("artifact-1.0.pom"), "pom content");
 
 		// Delete the directory
-		this.mockMvc.perform(delete("/test-central/test/artifact/1.0/")).andExpect(status().isNoContent());
+		this.mockMvc.perform(delete("/artifacts/test-central/test/artifact/1.0/")).andExpect(status().isNoContent());
 
 		// Verify directory was deleted
 		assertThat(testDir).doesNotExist();
@@ -93,23 +94,24 @@ class ArtifactControllerTest {
 
 	@Test
 	void deleteArtifact_whenNotExists_shouldReturn404() throws Exception {
-		this.mockMvc.perform(delete("/test-central/non/existent/artifact.jar")).andExpect(status().isNotFound());
+		this.mockMvc.perform(delete("/artifacts/test-central/non/existent/artifact.jar"))
+			.andExpect(status().isNotFound());
 	}
 
 	@Test
 	void getArtifact_withDifferentContentTypes() throws Exception {
 		// JAR file
-		this.mockMvc.perform(get("/test-central/junit/junit/4.13.2/junit-4.13.2.jar"))
+		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/4.13.2/junit-4.13.2.jar"))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType("application/java-archive"));
 
 		// SHA1 checksum
-		this.mockMvc.perform(get("/test-central/junit/junit/4.13.2/junit-4.13.2.jar.sha1"))
+		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/4.13.2/junit-4.13.2.jar.sha1"))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType("text/plain"));
 
 		// Maven metadata
-		this.mockMvc.perform(get("/test-central/junit/junit/maven-metadata.xml"))
+		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/maven-metadata.xml"))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType("application/xml"));
 	}

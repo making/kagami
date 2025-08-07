@@ -163,7 +163,7 @@ GET /api/repositories/central/info?path=org/springframework/spring-core/5.3.21/s
 
 ### Artifact Download
 
-#### GET /{repositoryId}/{artifactPath}
+#### GET /artifacts/{repositoryId}/{artifactPath}
 
 Download an artifact from the repository. This endpoint serves the actual file content.
 
@@ -173,7 +173,7 @@ Download an artifact from the repository. This endpoint serves the actual file c
 
 **Example Request:**
 ```
-GET /central/org/springframework/spring-core/5.3.21/spring-core-5.3.21.jar
+GET /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3.21.jar
 ```
 
 **Response:**
@@ -189,7 +189,7 @@ GET /central/org/springframework/spring-core/5.3.21/spring-core-5.3.21.jar
 
 ---
 
-#### DELETE /{repositoryId}/{artifactPath}
+#### DELETE /artifacts/{repositoryId}/{artifactPath}
 
 Delete an artifact or directory from the repository.
 
@@ -199,7 +199,7 @@ Delete an artifact or directory from the repository.
 
 **Example Request:**
 ```
-DELETE /central/org/springframework/spring-core/5.3.21/spring-core-5.3.21.jar
+DELETE /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3.21.jar
 ```
 
 **Response:**
@@ -223,7 +223,7 @@ API endpoints return appropriate HTTP status codes. For client errors (4xx) and 
 
 3. **File Information**: Use `GET /api/repositories/{id}/info` to display detailed file information in a sidebar or modal.
 
-4. **File Download**: Use `GET /{repositoryId}/{artifactPath}` to provide direct download links.
+4. **File Download**: Use `GET /artifacts/{repositoryId}/{artifactPath}` to provide direct download links.
 
 5. **Path Handling**: 
    - Use `parentPath` for "up" navigation

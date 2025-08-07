@@ -7,9 +7,17 @@ Kagami is a mirror server of Maven repositories.
 
 **Build Commands:**
 
+Backend (Spring Boot):
 ```bash
 ./mvnw clean spring-javaformat:apply compile                    # Compile application
 ./mvnw spring-javaformat:apply test                             # Run all tests
+./mvnw spring-boot:run                                          # Start backend server (port 8080)
+```
+
+Frontend (React):
+```bash
+cd ui && npm install                                            # Install dependencies
+cd ui && npm run dev                                            # Start development server (port 5173)
 ```
 
 ## System Architecture
@@ -31,7 +39,7 @@ Kagami is a mirror server of Maven repositories.
 3. **Web Layer** 
    - `ArtifactController` (`am.ik.kagami.artifact.web`) handles artifact GET and DELETE operations
    - `BrowserController` (`am.ik.kagami.browser.web`) provides repository browsing REST API
-   - URL pattern: `/{repositoryId}/**` for artifact downloads
+   - URL pattern: `/artifacts/{repositoryId}/**` for artifact downloads
    - API endpoints: `/api/repositories/**` for repository browsing
    - Returns proper content types based on file extensions
 
@@ -42,11 +50,20 @@ Kagami is a mirror server of Maven repositories.
    - File information with checksums and content types
    - Uses `@JsonInclude(NON_NULL)` to exclude null values from JSON responses
 
+5. **Frontend UI** (`ui/`)
+   - React 18 + TypeScript + Vite for modern development experience
+   - Tailwind CSS for utility-first styling with component-based architecture
+   - SWR for data fetching and caching
+   - React Router v6 for client-side routing
+   - Lucide React for consistent iconography
+   - Modern, stylish design with hover effects and transitions
+
 ### Configuration
 
 - Properties use Map structure for repositories: `kagami.repositories.{id}.url`
 - Supports username/password for Basic auth per repository
 - HTTP proxy configurable via properties or environment variables (http_proxy, HTTP_PROXY)
+- Frontend development server proxies `/api` requests to backend at `http://localhost:8080`
 
 ## Design Requirements
 
@@ -87,7 +104,7 @@ Package structure should follow the "package by feature" principle, grouping rel
 together. Not by technical layers.
 
 Current package structure:
-- `am.ik.kagami`
+- `am.ik.kagami` (Backend - Spring Boot)
     - `artifact.web` - Artifact handling web layer
         - `ArtifactController` - REST endpoints for artifact operations
     - `browser` - Repository browsing feature
@@ -99,6 +116,17 @@ Current package structure:
         - `StorageService` - Minimal interface (store/retrieve/delete)
         - `LocalStorageService` - Filesystem implementation
     - `config` - Configuration classes (e.g., security, cross-cutting concerns)
+- `ui/` (Frontend - React)
+    - `src/components/` - Reusable UI components
+        - `ui/` - Basic UI primitives (Button, Card, Alert, etc.)
+        - `RepositorySelector` - Repository selection interface
+        - `DirectoryBrowser` - File and folder navigation
+        - `Breadcrumb` - Navigation breadcrumb
+        - `FileInfoModal` - File details modal
+    - `src/hooks/` - Custom React hooks for API integration
+    - `src/pages/` - Top-level page components
+    - `src/types/` - TypeScript type definitions
+    - `src/utils/` - Utility functions (formatting, styling)
 
 For DTOs, use inner record classes in the appropriate classes. For example, if you have a
 `UserController`, define the request/response class inside that controller class.
@@ -108,12 +136,19 @@ domain objects should be clean and not contain external layers like web or datab
 
 ### Testing Strategy
 
+Backend:
 - **Unit Tests**: JUnit 5 with AssertJ for service layer testing
 - **Integration Tests**: `@SpringBootTest` + Testcontainers for full application context
 - **Test Data Management**: Use `@TempDir` for filesystem testing, maintain test independence
 - **Test Stability**: All tests must pass consistently; use specific MockMvc expectations
 - All tests must pass before completing tasks
 - Test coverage includes artifact operations, repository browsing, and API endpoints
+
+Frontend:
+- Component-based development with TypeScript for compile-time error detection
+- SWR provides built-in error handling and loading states
+- Manual testing through development server with backend integration
+- Production builds validated through Vite's build process
 
 ### After Task completion
 
@@ -149,6 +184,14 @@ osascript -e 'display notification "<Message Body>" with title "<Message Title>"
    - Directory navigation uses breadcrumb pattern with `parentPath`
    - File information includes size, timestamps, and checksums
    - Comprehensive API documentation provided for frontend implementation
+
+5. **Frontend Architecture**
+   - Component-based architecture with reusable UI primitives
+   - TypeScript for type safety and better developer experience
+   - SWR for efficient data fetching, caching, and synchronization
+   - Tailwind CSS utility classes organized into maintainable components
+   - Modern design with gradient accents, subtle shadows, and smooth transitions
+   - Responsive design supporting desktop and mobile interfaces
 
 ## important-instruction-reminders
 

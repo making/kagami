@@ -12,12 +12,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST controller for Maven artifact operations
  */
 @RestController
+@RequestMapping("/artifacts")
 public class ArtifactController {
 
 	private final StorageService storageService;
@@ -90,8 +92,8 @@ public class ArtifactController {
 
 	private String extractArtifactPath(HttpServletRequest request, String repositoryId) {
 		String fullPath = request.getRequestURI();
-		// Remove the leading "/" and repository ID to get the artifact path
-		String prefix = "/" + repositoryId + "/";
+		// Remove the leading "/artifacts/" and repository ID to get the artifact path
+		String prefix = "/artifacts/" + repositoryId + "/";
 		if (fullPath.startsWith(prefix)) {
 			return fullPath.substring(prefix.length());
 		}
