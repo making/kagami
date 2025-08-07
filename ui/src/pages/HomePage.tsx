@@ -13,7 +13,7 @@ export function HomePage() {
       <div className="max-w-6xl mx-auto">
         <header className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Kagami Repository Browser
+            Kagami 🪞 Repository Browser
           </h1>
           <p className="text-gray-600">
             Browse and explore Maven repositories

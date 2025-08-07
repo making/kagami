@@ -16,7 +16,7 @@ interface FileIconProps {
 
 export function FileIcon({ fileName, type, className = "h-4 w-4" }: FileIconProps) {
   if (type === 'directory') {
-    return <Folder className={`${className} text-blue-500`} />;
+    return <Folder className={`${className} text-red-500`} />;
   }
 
   // Determine icon based on file extension

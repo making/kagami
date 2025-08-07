@@ -43,7 +43,7 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
           Select Repository
         </h2>
         <p className="text-gray-500 text-sm">Choose a repository to explore</p>
@@ -53,19 +53,19 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
         {repositories.map((repo) => (
           <div
             key={repo.id}
-            className={`group relative overflow-hidden rounded-xl border border-gray-200 bg-white cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 hover:border-blue-300 ${
-              selectedRepository === repo.id ? 'ring-2 ring-blue-500 shadow-lg' : ''
+            className={`group relative overflow-hidden rounded-xl border border-gray-200 bg-white cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-red-500/10 hover:border-red-300 ${
+              selectedRepository === repo.id ? 'ring-2 ring-red-500 shadow-lg' : ''
             }`}
             onClick={() => onSelectRepository(repo.id)}
           >            
             <div className="px-6 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
                     <Database className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 text-lg group-hover:text-blue-700 transition-colors">
+                    <h3 className="font-semibold text-gray-900 text-lg group-hover:text-red-700 transition-colors">
                       {repo.id}
                     </h3>
                     <div className="text-sm text-gray-500 truncate mt-1 font-mono">
@@ -88,7 +88,7 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
                   
                   {repo.lastUpdated && (
                     <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors">
-                      <Calendar className="h-4 w-4 text-blue-500" />
+                      <Calendar className="h-4 w-4 text-red-500" />
                       <span className="font-medium">{formatRelativeTime(repo.lastUpdated)}</span>
                     </div>
                   )}
@@ -97,7 +97,7 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
             </div>
             
             {/* Bottom border gradient */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-pink-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
           </div>
         ))}
       </div>

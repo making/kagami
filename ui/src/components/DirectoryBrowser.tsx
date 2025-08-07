@@ -86,7 +86,7 @@ export function DirectoryBrowser({
           {result.entries.map((entry) => (
             <div
               key={entry.path}
-              className={`group relative overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10 hover:border-blue-300 ${
+              className={`group relative overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-300 hover:shadow-xl hover:shadow-red-500/10 hover:border-red-300 ${
                 entry.type === 'directory' ? 'cursor-pointer' : ''
               }`}
               onClick={() => entry.type === 'directory' ? handleEntryClick(entry) : undefined}
@@ -96,7 +96,7 @@ export function DirectoryBrowser({
                   <div className="flex items-center space-x-4">
                     <FileIcon fileName={entry.name} type={entry.type} className="h-6 w-6" />
                     <div className="flex-1 min-w-0">
-                      <h3 className={`font-semibold text-gray-900 group-hover:text-blue-700 transition-colors truncate ${
+                      <h3 className={`font-semibold text-gray-900 group-hover:text-red-700 transition-colors truncate ${
                         entry.type === 'directory' ? 'text-base' : 'text-sm'
                       }`}>
                         {entry.name}
@@ -146,7 +146,7 @@ export function DirectoryBrowser({
               </div>
               
               {/* Bottom border gradient */}
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-purple-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-pink-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
             </div>
           ))}
         </div>
