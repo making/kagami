@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.time.Duration;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -57,6 +58,7 @@ public class ArtifactController {
 					.contentType(determineContentType(artifactPath))
 					.contentLength(resource.contentLength())
 					.cacheControl(CacheControl.maxAge(Duration.ofSeconds(31536000)).cachePublic())
+					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=%s".formatted(resource.getFilename()))
 					.body(resource);
 			}
 			catch (IOException e) {
