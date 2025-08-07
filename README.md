@@ -9,6 +9,7 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **Basic Authentication**: Support for repositories requiring username/password authentication
 - **HTTP Proxy Support**: Configure HTTP proxy for outbound connections
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
+- **Web Dashboard**: Modern React-based UI for repository browsing and management
 
 ## Quick Start
 
@@ -29,9 +30,14 @@ cd kagami
 ./mvnw spring-boot:run
 ```
 
-3. Access artifacts via HTTP:
+3. Access the web dashboard:
 ```bash
-curl http://localhost:8080/central/org/springframework/spring-core/6.0.0/spring-core-6.0.0.jar
+open http://localhost:8080
+```
+
+4. Access artifacts via HTTP:
+```bash
+curl http://localhost:8080/artifacts/central/org/springframework/spring-core/6.0.0/spring-core-6.0.0.jar
 ```
 
 ## Configuration
@@ -78,19 +84,19 @@ export HTTP_PROXY=http://proxy.company.com:8080
 Access artifacts using the standard Maven repository path structure:
 
 ```
-GET /{repositoryId}/{groupId}/{artifactId}/{version}/{filename}
+GET /artifacts/{repositoryId}/{groupId}/{artifactId}/{version}/{filename}
 ```
 
 Examples:
 ```bash
 # Get a JAR file
-curl http://localhost:8080/central/junit/junit/4.13.2/junit-4.13.2.jar
+curl http://localhost:8080/artifacts/central/junit/junit/4.13.2/junit-4.13.2.jar
 
 # Get a POM file
-curl http://localhost:8080/central/junit/junit/4.13.2/junit-4.13.2.pom
+curl http://localhost:8080/artifacts/central/junit/junit/4.13.2/junit-4.13.2.pom
 
 # Get metadata
-curl http://localhost:8080/central/junit/junit/maven-metadata.xml
+curl http://localhost:8080/artifacts/central/junit/junit/maven-metadata.xml
 ```
 
 ### Delete Cached Artifacts
@@ -99,10 +105,10 @@ Remove artifacts from local cache:
 
 ```bash
 # Delete specific artifact
-curl -X DELETE http://localhost:8080/central/junit/junit/4.13.2/junit-4.13.2.jar
+curl -X DELETE http://localhost:8080/artifacts/central/junit/junit/4.13.2/junit-4.13.2.jar
 
 # Delete directory (recursive)
-curl -X DELETE http://localhost:8080/central/junit/junit/4.13.2/
+curl -X DELETE http://localhost:8080/artifacts/central/junit/junit/4.13.2/
 ```
 
 ## Maven Client Configuration
@@ -118,7 +124,7 @@ Configure your Maven settings to use Kagami as a mirror:
       <id>kagami</id>
       <mirrorOf>*</mirrorOf>
       <name>Kagami Mirror</name>
-      <url>http://localhost:8080/central</url>
+      <url>http://localhost:8080/artifacts/central</url>
     </mirror>
   </mirrors>
 </settings>
@@ -129,7 +135,7 @@ Configure your Maven settings to use Kagami as a mirror:
 ```gradle
 repositories {
     maven {
-        url 'http://localhost:8080/central'
+        url 'http://localhost:8080/artifacts/central'
     }
 }
 ```
@@ -159,12 +165,6 @@ logging.level.org.eclipse.aether=DEBUG
 ## Roadmap
 
 The following features are planned for future releases:
-
-### Web Dashboard
-- Web-based management interface for repository configuration
-- Real-time monitoring of cache statistics and repository health
-- Visual representation of storage usage and artifact download metrics
-- Cache management operations (view, search, delete artifacts)
 
 ### Authentication & Security
 - **OIDC Authentication**: OpenID Connect integration for dashboard access
