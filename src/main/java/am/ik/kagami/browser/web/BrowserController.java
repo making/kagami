@@ -6,11 +6,9 @@ import am.ik.kagami.browser.BrowserService.FileInfo;
 import am.ik.kagami.browser.BrowserService.RepositoryInfo;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -64,8 +62,7 @@ public class BrowserController {
 	 * @return file information
 	 */
 	@GetMapping("/repositories/{repositoryId}/info")
-	public ResponseEntity<FileInfo> getFileInfo(@PathVariable String repositoryId,
-			@RequestParam(required = true) String path) {
+	public ResponseEntity<FileInfo> getFileInfo(@PathVariable String repositoryId, @RequestParam String path) {
 		try {
 			FileInfo info = this.browserService.getFileInfo(repositoryId, path);
 			return ResponseEntity.ok(info);
