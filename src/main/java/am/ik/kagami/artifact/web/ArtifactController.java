@@ -31,13 +31,12 @@ public class ArtifactController {
 
 	@GetMapping("/{repositoryId}/**")
 	public ResponseEntity<Resource> getArtifact(@PathVariable String repositoryId, HttpServletRequest request) {
-		// Extract artifact path from request
-		String artifactPath = extractArtifactPath(request, repositoryId);
-
 		// Validate repository
 		if (!this.remoteRepositoryService.isRepositoryConfigured(repositoryId)) {
 			return ResponseEntity.notFound().build();
 		}
+		// Extract artifact path from request
+		String artifactPath = extractArtifactPath(request, repositoryId);
 
 		// Try to retrieve from local storage first
 		Resource resource = this.storageService.retrieve(repositoryId, artifactPath);
@@ -68,13 +67,12 @@ public class ArtifactController {
 
 	@DeleteMapping("/{repositoryId}/**")
 	public ResponseEntity<Void> deleteArtifact(@PathVariable String repositoryId, HttpServletRequest request) {
-		// Extract artifact path from request
-		String artifactPath = extractArtifactPath(request, repositoryId);
-
 		// Validate repository
 		if (!this.remoteRepositoryService.isRepositoryConfigured(repositoryId)) {
 			return ResponseEntity.notFound().build();
 		}
+		// Extract artifact path from request
+		String artifactPath = extractArtifactPath(request, repositoryId);
 
 		try {
 			boolean deleted = this.storageService.delete(repositoryId, artifactPath);
