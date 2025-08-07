@@ -3,7 +3,6 @@ package am.ik.kagami.storage;
 import am.ik.kagami.KagamiProperties;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -33,12 +32,11 @@ public class LocalStorageService implements StorageService {
 	}
 
 	@Override
-	public Path store(String repositoryId, String artifactPath, InputStream inputStream) throws IOException {
+	public void store(String repositoryId, String artifactPath, InputStream inputStream) throws IOException {
 		validatePath(artifactPath);
 		Path targetPath = resolvePath(repositoryId, artifactPath);
 		Files.createDirectories(targetPath.getParent());
 		Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
-		return targetPath;
 	}
 
 	@Override
@@ -49,13 +47,6 @@ public class LocalStorageService implements StorageService {
 			return new PathResource(targetPath);
 		}
 		return null;
-	}
-
-	@Override
-	public boolean exists(String repositoryId, String artifactPath) {
-		validatePath(artifactPath);
-		Path targetPath = resolvePath(repositoryId, artifactPath);
-		return Files.exists(targetPath);
 	}
 
 	@Override
@@ -86,16 +77,6 @@ public class LocalStorageService implements StorageService {
 		}
 
 		return true;
-	}
-
-	@Override
-	public void streamTo(String repositoryId, String artifactPath, OutputStream outputStream) throws IOException {
-		validatePath(artifactPath);
-		Path targetPath = resolvePath(repositoryId, artifactPath);
-		if (!Files.exists(targetPath) || !Files.isRegularFile(targetPath)) {
-			throw new IOException("Artifact not found: " + targetPath);
-		}
-		Files.copy(targetPath, outputStream);
 	}
 
 	private Path resolvePath(String repositoryId, String artifactPath) {
