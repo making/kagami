@@ -36,7 +36,16 @@ Get a list of all configured repositories with their statistics.
       "url": "https://repo.maven.apache.org/maven2",
       "artifactCount": 1234567,
       "totalSize": 98765432100,
-      "lastUpdated": "2025-08-07T10:30:00Z"
+      "lastUpdated": "2025-08-07T10:30:00Z",
+      "isPrivate": false
+    },
+    {
+      "id": "private-repo",
+      "url": "https://internal.repo.com/maven2",
+      "artifactCount": 52341,
+      "totalSize": 1048576000,
+      "lastUpdated": "2025-08-07T12:15:30Z",
+      "isPrivate": true
     }
   ]
 }
@@ -49,6 +58,7 @@ Get a list of all configured repositories with their statistics.
   - `artifactCount` (number): Number of artifacts in the repository
   - `totalSize` (number): Total size in bytes
   - `lastUpdated` (string, nullable): Last update timestamp in ISO 8601 format
+  - `isPrivate` (boolean): Whether the repository requires authentication
 
 **Status Codes:**
 - `200 OK`: Success

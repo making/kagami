@@ -3,6 +3,7 @@ import { useRepositories } from '../hooks/useApi';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { Alert, AlertDescription } from './ui/Alert';
 import { Button } from './ui/Button';
+import { LockIcon } from './ui/LockIcon';
 import { Database, Calendar, HardDrive, Package, Settings } from 'lucide-react';
 import { formatFileSize, formatRelativeTime } from '../utils/format';
 import { RepositoryConfigDialog } from './RepositoryConfigDialog';
@@ -91,9 +92,14 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
                     <Database className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 text-lg group-hover:text-red-700 transition-colors">
-                      {repo.id}
-                    </h3>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-semibold text-gray-900 text-lg group-hover:text-red-700 transition-colors">
+                        {repo.id}
+                      </h3>
+                      {repo.isPrivate && (
+                        <LockIcon className="h-4 w-4" />
+                      )}
+                    </div>
                     <div className="text-sm text-gray-500 truncate mt-1 font-mono">
                       {repo.url}
                     </div>

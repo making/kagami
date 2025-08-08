@@ -6,6 +6,7 @@ export interface RepositoryInfo {
   artifactCount: number;
   totalSize: number;
   lastUpdated: string | null;
+  isPrivate: boolean;
 }
 
 export interface RepositoryListResponse {

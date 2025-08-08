@@ -39,7 +39,9 @@ public class BrowserService {
 		if (properties.repositories() != null) {
 			for (Map.Entry<String, KagamiProperties.Repository> entry : properties.repositories().entrySet()) {
 				String repoId = entry.getKey();
-				String url = entry.getValue().url();
+				KagamiProperties.Repository repository = entry.getValue();
+				String url = repository.url();
+				boolean isPrivate = repository.isPrivate();
 
 				// Calculate repository statistics
 				Path repoPath = basePath.resolve(repoId);
@@ -59,7 +61,7 @@ public class BrowserService {
 					}
 				}
 
-				repositories.add(new RepositoryInfo(repoId, url, artifactCount, totalSize, lastUpdated));
+				repositories.add(new RepositoryInfo(repoId, url, artifactCount, totalSize, lastUpdated, isPrivate));
 			}
 		}
 
@@ -251,7 +253,8 @@ public class BrowserService {
 	}
 
 	// Response DTOs
-	public record RepositoryInfo(String id, String url, long artifactCount, long totalSize, Instant lastUpdated) {
+	public record RepositoryInfo(String id, String url, long artifactCount, long totalSize, Instant lastUpdated,
+			boolean isPrivate) {
 	}
 
 	public record BrowseResult(String repositoryId, String currentPath, String parentPath,
