@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { SWRConfig } from 'swr';
 import { HomePage } from './pages/HomePage';
 import { BrowserPage } from './pages/BrowserPage';
+import { TokenPage } from './pages/TokenPage';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <div className="min-h-screen bg-gray-50">
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/token" element={<TokenPage />} />
             <Route path="/browse/:repositoryId" element={<BrowserPage />} />
             <Route path="/browse/:repositoryId/*" element={<BrowserPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
