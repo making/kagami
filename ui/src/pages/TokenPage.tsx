@@ -25,7 +25,7 @@ export function TokenPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copySuccess, setCopySuccess] = useState(false);
+  const [copySuccess, setCopySuccess] = useState<{ [key: string]: boolean }>({});
 
   const availableScopes = [
     { value: 'artifacts:read', label: 'Read Artifacts', description: 'Download and view repository contents' },
@@ -103,13 +103,11 @@ export function TokenPage() {
     }
   };
 
-  const copyToClipboard = async () => {
-    if (!generatedToken) return;
-    
+  const copyToClipboard = async (text: string, key: string) => {
     try {
-      await navigator.clipboard.writeText(generatedToken);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopySuccess(prev => ({ ...prev, [key]: true }));
+      setTimeout(() => setCopySuccess(prev => ({ ...prev, [key]: false })), 2000);
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
     }
@@ -118,12 +116,113 @@ export function TokenPage() {
   const reset = () => {
     setGeneratedToken(null);
     setError(null);
+    setCopySuccess({});
     setFormData({
       repositories: [],
       scopes: [],
       duration: 6,
       unit: 'months',
     });
+  };
+
+  const generateConfigExamples = () => {
+    if (!generatedToken) return { maven: '', gradleGroovy: '', gradleKotlin: '' };
+    
+    const baseUrl = window.location.origin;
+    const selectedRepoIds = formData.repositories;
+    
+    // Use first repository for single repo examples, or show multiple for multi-repo setup
+    const primaryRepo = selectedRepoIds[0];
+    
+    const maven = selectedRepoIds.length === 1 
+      ? `<!-- settings.xml -->
+<settings>
+  <servers>
+    <server>
+      <id>kagami-${primaryRepo}</id>
+      <username>kagami</username>
+      <password>${generatedToken}</password>
+    </server>
+  </servers>
+  
+  <!-- OPTIONAL: Mirror configuration -->
+  <!-- Use mirrors only if you want to redirect ALL repository requests to Kagami -->
+  <!-- This replaces Maven Central and other public repositories with this private repo -->
+  <!-- Remove this section if you want to use this repo alongside other repositories -->
+  <mirrors>
+    <mirror>
+      <id>kagami-${primaryRepo}</id>
+      <mirrorOf>*</mirrorOf>
+      <name>Kagami Private Mirror</name>
+      <url>${baseUrl}/artifacts/${primaryRepo}</url>
+    </mirror>
+  </mirrors>
+</settings>`
+      : `<!-- settings.xml -->
+<settings>
+  <servers>
+${selectedRepoIds.map(repo => `    <server>
+      <id>kagami-${repo}</id>
+      <username>kagami</username>
+      <password>${generatedToken}</password>
+    </server>`).join('\n')}
+  </servers>
+  
+  <!-- Add these repositories to your project's pom.xml or profiles section -->
+  <!-- These repositories will be used alongside Maven Central and other configured repos -->
+  <repositories>
+${selectedRepoIds.map(repo => `    <repository>
+      <id>kagami-${repo}</id>
+      <url>${baseUrl}/artifacts/${repo}</url>
+    </repository>`).join('\n')}
+  </repositories>
+</settings>`;
+
+    const gradleGroovy = selectedRepoIds.length === 1
+      ? `// build.gradle
+repositories {
+    maven {
+        url '${baseUrl}/artifacts/${primaryRepo}'
+        credentials {
+            username = 'kagami'
+            password = '${generatedToken}'
+        }
+    }
+}`
+      : `// build.gradle
+repositories {
+${selectedRepoIds.map(repo => `    maven {
+        url '${baseUrl}/artifacts/${repo}'
+        credentials {
+            username = 'kagami'
+            password = '${generatedToken}'
+        }
+    }`).join('\n')}
+}`;
+
+    const gradleKotlin = selectedRepoIds.length === 1
+      ? `// build.gradle.kts
+repositories {
+    maven {
+        url = uri("${baseUrl}/artifacts/${primaryRepo}")
+        credentials {
+            username = "kagami"
+            password = "${generatedToken}"
+        }
+    }
+}`
+      : `// build.gradle.kts
+repositories {
+${selectedRepoIds.map(repo => `    maven {
+        url = uri("${baseUrl}/artifacts/${repo}")
+        credentials {
+            username = "kagami"
+            password = "${generatedToken}"
+        }
+    }`).join('\n')}
+}`;
+
+    return { maven, gradleGroovy, gradleKotlin };
   };
 
   if (reposLoading) {
@@ -314,17 +413,60 @@ export function TokenPage() {
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-medium text-gray-700">JWT Token:</label>
                 <Button
-                  onClick={copyToClipboard}
+                  onClick={() => copyToClipboard(generatedToken!, 'token')}
                   variant="ghost"
                   size="sm"
                   className="flex items-center space-x-1"
                 >
                   <Copy className="h-4 w-4" />
-                  <span>{copySuccess ? 'Copied!' : 'Copy'}</span>
+                  <span>{copySuccess.token ? 'Copied!' : 'Copy'}</span>
                 </Button>
               </div>
               <div className="bg-white border rounded p-3 font-mono text-sm break-all select-all">
                 {generatedToken}
+              </div>
+            </div>
+
+            {/* Configuration Examples */}
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                Build Tool Configuration
+              </h4>
+              <p className="text-sm text-gray-600 mb-4">
+                Use these configurations in your build tools to access the selected repositories with the generated token.
+              </p>
+              
+              <div className="space-y-6">
+                {(() => {
+                  const configs = generateConfigExamples();
+                  const examples = [
+                    { key: 'maven', title: 'Maven (settings.xml)', content: configs.maven },
+                    { key: 'gradleGroovy', title: 'Gradle Groovy (build.gradle)', content: configs.gradleGroovy },
+                    { key: 'gradleKotlin', title: 'Gradle Kotlin (build.gradle.kts)', content: configs.gradleKotlin },
+                  ];
+
+                  return examples.map(({ key, title, content }) => (
+                    <div key={key} className="border border-gray-200 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-gray-50 border-b border-gray-200">
+                        <h5 className="font-medium text-gray-900">{title}</h5>
+                        <Button
+                          onClick={() => copyToClipboard(content, key)}
+                          variant="ghost"
+                          size="sm"
+                          className="flex items-center space-x-1"
+                        >
+                          <Copy className="h-4 w-4" />
+                          <span>{copySuccess[key] ? 'Copied!' : 'Copy'}</span>
+                        </Button>
+                      </div>
+                      <div className="p-3">
+                        <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
+                          <code>{content}</code>
+                        </pre>
+                      </div>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
 
