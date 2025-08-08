@@ -15,6 +15,7 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **HTTP Proxy Support**: Configure HTTP proxy for outbound connections
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
 - **Web Dashboard**: Modern React-based UI for repository browsing and management
+- **Token Management**: Web-based JWT token generation with configurable expiration and permissions
 - **Security Features**: OAuth2 Resource Server with JWT tokens, repository-specific access control
 
 ## Quick Start
@@ -120,7 +121,7 @@ Configure your Maven settings to use Kagami as a mirror:
 
 ### Private Repository Access
 
-For private repositories, first generate a JWT token:
+For private repositories, generate a JWT token using the web interface at `http://localhost:8080/token` or via API:
 
 ```bash
 curl -X POST http://localhost:8080/token \
@@ -203,7 +204,6 @@ The following features are planned for future releases:
 
 ### Authentication & Security
 - **OIDC Authentication**: OpenID Connect integration for dashboard access
-- **API Token Management**: Generate and manage API tokens for programmatic access
 - **Enhanced Repository Authentication**: Support for JWT tokens in addition to Basic auth
 - **Role-based Access Control**: Fine-grained permissions for different user roles
 
