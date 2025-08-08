@@ -28,7 +28,7 @@ class SecurityConfig {
 						.access(anyOf(hasScope("artifacts:delete"), hasRole("USER")));
 				}
 			});
-			authz.requestMatchers(GET, "/token").authenticated().anyRequest().permitAll();
+			authz.anyRequest().permitAll();
 		}).oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {
 		}))
 			.csrf(csrf -> csrf.disable())
