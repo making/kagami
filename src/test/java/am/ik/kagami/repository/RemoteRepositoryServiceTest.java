@@ -24,8 +24,8 @@ class RemoteRepositoryServiceTest {
 	void testProxyConfigurationPrecedence() {
 		// Test property-based proxy configuration
 		var properties = new KagamiProperties(new KagamiProperties.Storage("/tmp"),
-				Map.of("test", new KagamiProperties.Repository("http://example.com", "", "")),
-				new KagamiProperties.Proxy("http://config-proxy:8080"));
+				Map.of("test", new KagamiProperties.Repository("http://example.com", "", "", true)),
+				new KagamiProperties.Proxy("http://config-proxy:8080"), new KagamiProperties.Jwt(null, null));
 
 		var service = new RemoteRepositoryService(properties, storageService, RestClient.builder());
 
@@ -37,8 +37,8 @@ class RemoteRepositoryServiceTest {
 	void testEmptyProxyConfiguration() {
 		// Test with no proxy configuration
 		var properties = new KagamiProperties(new KagamiProperties.Storage("/tmp"),
-				Map.of("test", new KagamiProperties.Repository("http://example.com", "", "")),
-				new KagamiProperties.Proxy(""));
+				Map.of("test", new KagamiProperties.Repository("http://example.com", "", "", true)),
+				new KagamiProperties.Proxy(""), new KagamiProperties.Jwt(null, null));
 
 		var service = new RemoteRepositoryService(properties, storageService, RestClient.builder());
 
@@ -51,8 +51,8 @@ class RemoteRepositoryServiceTest {
 		// Test Basic authentication configuration
 		var properties = new KagamiProperties(new KagamiProperties.Storage("/tmp"),
 				Map.of("authenticated-repo",
-						new KagamiProperties.Repository("http://private.example.com", "user", "pass")),
-				new KagamiProperties.Proxy(""));
+						new KagamiProperties.Repository("http://private.example.com", "user", "pass", true)),
+				new KagamiProperties.Proxy(""), new KagamiProperties.Jwt(null, null));
 
 		var service = new RemoteRepositoryService(properties, storageService, RestClient.builder());
 

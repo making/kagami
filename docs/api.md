@@ -8,7 +8,11 @@ Repository browsing endpoints are available at `/repositories` and artifact oper
 
 ## Authentication
 
-Currently, no authentication is required for the API endpoints.
+Public repositories require no authentication. Private repositories require JWT-based authentication using either:
+- Bearer token in Authorization header: `Authorization: Bearer <jwt>`
+- Basic authentication with JWT as password: `Authorization: Basic <base64(username:jwt)>`
+
+See the [Token Management](#token-management) section for details on obtaining JWTs.
 
 ## Content Types
 
@@ -184,6 +188,8 @@ GET /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3.21
 
 **Status Codes:**
 - `200 OK`: File found and returned
+- `401 Unauthorized`: Authentication required for private repository
+- `403 Forbidden`: Token lacks required scope
 - `404 Not Found`: Repository or file not found
 - `500 Internal Server Error`: Server error
 
@@ -204,14 +210,74 @@ DELETE /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3
 
 **Response:**
 - `204 No Content`: Successful deletion
+- `401 Unauthorized`: Authentication required for private repository
+- `403 Forbidden`: Token lacks required scope
 - `404 Not Found`: Repository or file not found
 - `500 Internal Server Error`: Server error
+
+---
+
+### Token Management
+
+#### POST /token
+
+Generate a JWT token for accessing private repositories.
+
+**Parameters (form-urlencoded):**
+- `expires_in` (optional): Token expiration time in hours (default: 3)
+- `repositories` (optional): Comma-separated list of repository IDs to access
+- `scope` (optional): Comma-separated list of scopes (`artifacts:read`, `artifacts:delete`)
+
+**Example Request:**
+```
+POST /token
+Content-Type: application/x-www-form-urlencoded
+
+repositories=spring-enterprise,gemfire&scope=artifacts:read,artifacts:delete&expires_in=24
+```
+
+**Response:**
+```
+eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvIiwiYXVkIjoia2FnYW1pIiwiaWF0IjoxNzIzMDE2...
+```
+
+**Status Codes:**
+- `200 OK`: Token generated successfully
+
+---
+
+#### GET /token
+
+Verify and inspect the current JWT token (requires authentication).
+
+**Headers:**
+- `Authorization: Bearer <jwt>` or `Authorization: Basic <base64(username:jwt)>`
+
+**Response:**
+```json
+{
+  "iss": "http://localhost:8080/",
+  "aud": "kagami",
+  "iat": 1723016400,
+  "scope": ["artifacts:read", "artifacts:delete"],
+  "kagami:repositories": ["spring-enterprise", "gemfire"]
+}
+```
+
+**Status Codes:**
+- `200 OK`: Token is valid
+- `401 Unauthorized`: Invalid or missing token
 
 ---
 
 ## Error Responses
 
 API endpoints return appropriate HTTP status codes. For client errors (4xx) and server errors (5xx), the response body may be empty or contain error details.
+
+For authentication errors (401), the response includes a `WWW-Authenticate` header:
+- `WWW-Authenticate: Bearer` - for missing authentication
+- `WWW-Authenticate: Bearer error="invalid_token", error_description="..."` - for invalid tokens
+- `WWW-Authenticate: Bearer error="insufficient_scope", error_description="..."` - for insufficient permissions
 
 ## Examples
 

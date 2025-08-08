@@ -10,10 +10,12 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 
 - **Local Caching**: Automatically caches artifacts from remote repositories to reduce download times
 - **Multiple Repository Support**: Configure multiple remote repositories with individual settings
+- **Private Repository Support**: JWT-based authentication for secure repository access
 - **Basic Authentication**: Support for repositories requiring username/password authentication
 - **HTTP Proxy Support**: Configure HTTP proxy for outbound connections
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
 - **Web Dashboard**: Modern React-based UI for repository browsing and management
+- **Security Features**: OAuth2 Resource Server with JWT tokens, repository-specific access control
 
 ## Quick Start
 
@@ -68,6 +70,18 @@ kagami.repositories.private.username=your-username
 kagami.repositories.private.password=your-password
 ```
 
+### Private Repository Configuration
+
+```properties
+# Mark repository as private (requires JWT authentication)
+kagami.repositories.private-repo.url=https://internal.repo.com/maven2
+kagami.repositories.private-repo.is-private=true
+
+# JWT key pair configuration
+kagami.jwt.private-key=classpath:kagami-private.pem
+kagami.jwt.public-key=classpath:kagami-public.pem
+```
+
 ### HTTP Proxy Configuration
 
 ```properties
@@ -89,7 +103,7 @@ See the [API documentation](docs/api.md) for details on available endpoints.
 
 Configure your Maven settings to use Kagami as a mirror:
 
-### settings.xml
+### Public Repository Access
 
 ```xml
 <settings>
@@ -104,12 +118,59 @@ Configure your Maven settings to use Kagami as a mirror:
 </settings>
 ```
 
+### Private Repository Access
+
+For private repositories, first generate a JWT token:
+
+```bash
+curl -X POST http://localhost:8080/token \
+  -d "repositories=private-repo&scope=artifacts:read&expires_in=24"
+```
+
+Then configure Maven with the JWT token:
+
+```xml
+<settings>
+  <servers>
+    <server>
+      <id>kagami-private</id>
+      <username>kagami</username>
+      <password>YOUR_JWT_TOKEN</password>
+    </server>
+  </servers>
+  <mirrors>
+    <mirror>
+      <id>kagami-private</id>
+      <mirrorOf>*</mirrorOf>
+      <name>Kagami Private Mirror</name>
+      <url>http://localhost:8080/artifacts/private-repo</url>
+    </mirror>
+  </mirrors>
+</settings>
+```
+
 ### Gradle Configuration
+
+#### Public Repository
 
 ```gradle
 repositories {
     maven {
         url 'http://localhost:8080/artifacts/central'
+    }
+}
+```
+
+#### Private Repository
+
+```gradle
+repositories {
+    maven {
+        url 'http://localhost:8080/artifacts/private-repo'
+        credentials {
+            username = 'kagami'
+            password = 'YOUR_JWT_TOKEN'
+        }
     }
 }
 ```
