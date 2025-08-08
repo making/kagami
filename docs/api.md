@@ -256,30 +256,6 @@ eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvIiwiYXVkIjoia2FnYW1
 
 ---
 
-#### GET /token
-
-Verify and inspect the current JWT token (requires authentication).
-
-**Headers:**
-- `Authorization: Bearer <jwt>` or `Authorization: Basic <base64(username:jwt)>`
-
-**Response:**
-```json
-{
-  "iss": "http://localhost:8080/",
-  "aud": "kagami",
-  "iat": 1723016400,
-  "scope": ["artifacts:read", "artifacts:delete"],
-  "kagami:repositories": ["spring-enterprise", "gemfire"]
-}
-```
-
-**Status Codes:**
-- `200 OK`: Token is valid
-- `401 Unauthorized`: Invalid or missing token
-
----
-
 ## Error Responses
 
 API endpoints return appropriate HTTP status codes. For client errors (4xx) and server errors (5xx), the response body may be empty or contain error details.
