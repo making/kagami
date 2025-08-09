@@ -100,16 +100,16 @@ To generate the JWT key pair, run the following commands:
 openssl genrsa -out private.pem 2048
 
 # Extract public key
-openssl rsa -in private.pem -outform PEM -pubout -out public.pem
+openssl rsa -in private.pem -outform PEM -pubout -out kagami-public.pem
 
-# Convert private key to PKCS#8 format (required by Spring Security)
-openssl pkcs8 -topk8 -inform PEM -in private.pem -out private_key.pem -nocrypt
+# Convert private key to PKCS#8 format
+openssl pkcs8 -topk8 -inform PEM -in private.pem -out kagami-private.pem -nocrypt
 
 # Clean up temporary file
 rm -f private.pem
 ```
 
-Then place the generated `private_key.pem` and `public.pem` files in your `src/main/resources` directory as `kagami-private.pem` and `kagami-public.pem` respectively.
+Place the generated `kagami-private.pem` and `kagami-public.pem` files in your `src/main/resources` directory.
 
 ### Web UI Authentication
 
