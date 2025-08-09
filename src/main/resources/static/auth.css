@@ -1,4 +1,4 @@
-/* Login page styles matching Tailwind CSS design */
+/* Authentication pages styles matching Tailwind CSS design */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -20,7 +20,7 @@ body {
   padding: 1rem;
 }
 
-.login-wrapper {
+.auth-wrapper {
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -28,7 +28,7 @@ body {
   padding-top: 5vh;
 }
 
-.login-card {
+.auth-card {
   background-color: #ffffff;
   border-radius: 0.75rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
@@ -54,7 +54,7 @@ body {
   padding: 2rem;
 }
 
-.login-title {
+.auth-title {
   font-size: 1.5rem;
   font-weight: 600;
   color: #111827;
@@ -158,6 +158,48 @@ body {
 
 .error-alert.visible {
   display: block;
+}
+
+.success-alert {
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  color: #065f46;
+  font-size: 0.875rem;
+}
+
+/* Logout specific styles */
+.logout-message {
+  font-size: 1.125rem;
+  color: #374151;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.cancel-link {
+  background-color: #f3f4f6;
+  color: #374151;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+}
+
+.cancel-link:hover {
+  background-color: #e5e7eb;
 }
 
 /* Responsive design */

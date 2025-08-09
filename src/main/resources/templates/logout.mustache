@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logout - Kagami 🪞 Repository Browser</title>
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body>
+<div class="container">
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <!-- Header -->
+      <div class="card-header">
+        <span class="app-name">Kagami 🪞 Repository Browser</span>
+      </div>
+
+      <!-- Logout Form -->
+      <div class="card-body">
+        <h2 class="auth-title">Logout</h2>
+        
+        {{#springMacroRequestContext.request.parameterMap.error}}
+          <div id="error-message" class="error-alert visible">
+            <span>{{SPRING_SECURITY_LAST_EXCEPTION}}</span>
+          </div>
+        {{/springMacroRequestContext.request.parameterMap.error}}
+
+        <form id="logout-form" method="post" action="/logout">
+          <p class="logout-message">
+            Are you sure you want to log out?
+          </p>
+          
+          {{#_csrf}}
+            <input type="hidden" name="_csrf" value="{{_csrf.token}}"/>
+          {{/_csrf}}
+          
+          <div class="button-group">
+            <a href="/" class="cancel-link">Cancel</a>
+            <button class="submit-button" type="submit">
+              Logout
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

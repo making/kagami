@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Kagami 🪞 Repository Browser</title>
-  <link rel="stylesheet" href="/login.css">
+  <link rel="stylesheet" href="/auth.css">
 </head>
 <body>
 <div class="container">
-  <div class="login-wrapper">
-    <div class="login-card">
+  <div class="auth-wrapper">
+    <div class="auth-card">
       <!-- Header -->
       <div class="card-header">
         <span class="app-name">Kagami 🪞 Repository Browser</span>
@@ -17,9 +17,15 @@
 
       <!-- Login Form -->
       <div class="card-body">
-        <h2 class="login-title">Login</h2>
+        <h2 class="auth-title">Login</h2>
 
         <form action="/login" method="POST" class="form-container">
+          {{#springMacroRequestContext.request.parameterMap.logout}}
+            <div class="success-alert">
+              <span>You have been successfully logged out.</span>
+            </div>
+          {{/springMacroRequestContext.request.parameterMap.logout}}
+          
           {{#springMacroRequestContext.request.parameterMap.error}}
             <div id="error-message" class="error-alert visible">
               <span>{{SPRING_SECURITY_LAST_EXCEPTION}}</span>
