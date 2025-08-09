@@ -1,6 +1,5 @@
 package am.ik.kagami.token.web;
 
-import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.token.KagamiJwtClaims;
 import am.ik.kagami.token.TokenSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -10,8 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,14 +19,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RestController
 public class TokenController {
 
-	private final KagamiProperties properties;
-
 	private final TokenSigner tokenSigner;
 
 	private final InstantSource instantSource;
 
-	public TokenController(KagamiProperties properties, TokenSigner tokenSigner, InstantSource instantSource) {
-		this.properties = properties;
+	public TokenController(TokenSigner tokenSigner, InstantSource instantSource) {
 		this.tokenSigner = tokenSigner;
 		this.instantSource = instantSource;
 	}
@@ -36,13 +31,13 @@ public class TokenController {
 	@PostMapping(path = "/token")
 	public String generateToken(@RequestParam(name = "expires_in", defaultValue = "3") long expiresIn,
 			@RequestParam(defaultValue = "") List<String> repositories,
-			@RequestParam(defaultValue = "") Set<String> scope, @AuthenticationPrincipal UserDetails userDetails,
+			@RequestParam(defaultValue = "") Set<String> scope, Authentication authentication,
 			UriComponentsBuilder builder) {
 		String issuer = builder.path("").build().toString();
 		Instant issueAt = this.instantSource.instant();
 		Instant expiresAt = issueAt.plus(expiresIn, ChronoUnit.HOURS);
 		JWTClaimsSet claimsSet = new JWTClaimsSet.Builder().expirationTime(Date.from(expiresAt))
-			.subject(userDetails.getUsername())
+			.subject(authentication.getName())
 			.issuer(issuer)
 			.audience("kagami")
 			.issueTime(Date.from(issueAt))

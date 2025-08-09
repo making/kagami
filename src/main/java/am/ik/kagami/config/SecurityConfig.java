@@ -19,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.security.authorization.AuthorityAuthorizationManager.hasRole;
 import static org.springframework.security.authorization.AuthorizationManagers.anyOf;
 import static org.springframework.security.oauth2.core.authorization.OAuth2AuthorizationManagers.hasScope;
@@ -41,13 +42,18 @@ class SecurityConfig {
 				.permitAll()
 				.requestMatchers("/login", "/*.css", "/error")
 				.permitAll()
+				.requestMatchers(POST, "/token")
+				.hasRole("USER")
+				.requestMatchers("/me")
+				.hasRole("USER")
 				.anyRequest()
 				.authenticated();
 		}).oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {
 		}))
 			.formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/", true))
+			.logout(logout -> logout.logoutUrl("/logout").logoutSuccessUrl("/login?logout").deleteCookies("JSESSIONID"))
 			.rememberMe(Customizer.withDefaults())
-			.csrf(csrf -> csrf.disable())
+			.csrf(csrf -> csrf.ignoringRequestMatchers("/artifacts/**", "/token"))
 			.addFilterBefore(new BasicToJwtAuthorizationExchangeFilter(), BearerTokenAuthenticationFilter.class)
 			.build();
 	}

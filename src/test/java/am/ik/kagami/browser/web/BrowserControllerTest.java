@@ -7,6 +7,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,8 +20,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for BrowserController
  */
 @SpringBootTest(properties = { "kagami.repositories.test-repo.url=https://repo.maven.apache.org/maven2",
-		"logging.level.am.ik.kagami=DEBUG" })
+		"logging.level.am.ik.kagami=DEBUG", "spring.security.user.name=test-user",
+		"spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
+@WithMockUser(username = "test-user", password = "test-password", roles = "USER")
 class BrowserControllerTest {
 
 	@TempDir

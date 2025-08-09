@@ -56,7 +56,8 @@ cd ui && npm run dev                                            # Start developm
    - Form-based authentication for web UI access
    - JWT token-based authentication for private repository access
    - `BasicToJwtAuthorizationExchangeFilter` converts Basic auth to JWT bearer tokens
-   - CSRF disabled for API usage, Remember-me enabled for web UI
+   - TOKEN generation requires USER role (JWT tokens cannot generate new tokens)
+   - CSRF partially disabled for `/artifacts/**` and `/token`, Remember-me enabled for web UI
    - Default user configurable via `spring.security.user.*` properties
 
 6. **Frontend UI** (`ui/`)
@@ -214,7 +215,8 @@ osascript -e 'display notification "<Message Body>" with title "<Message Title>"
    - JWT tokens for programmatic access to private repositories
    - Tokens include username (subject claim) for audit trails
    - Basic auth automatically converted to JWT bearer tokens
-   - CSRF protection disabled to support REST API usage
+   - Token generation requires USER role - JWT tokens cannot generate new tokens
+   - CSRF protection partially disabled (`/artifacts/**`, `/token`) to support REST API usage
    - Remember-me functionality for user convenience
 
 6. **Frontend Architecture**
