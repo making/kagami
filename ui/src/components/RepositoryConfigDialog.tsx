@@ -26,16 +26,45 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
         return {
           title: 'Maven Configuration',
           filename: 'pom.xml or settings.xml',
-          content: `<!-- Add to your pom.xml -->
-<repositories>
-  <repository>
-    <id>${repository.id}</id>
-    <name>${repository.id.charAt(0).toUpperCase() + repository.id.slice(1)} Repository</name>
-    <url>${baseUrl}</url>
-  </repository>
-</repositories>
+          content: `<!-- RECOMMENDED: Add to your settings.xml as a profile -->
+<settings>
+  <profiles>
+    <profile>
+      <id>kagami-${repository.id}</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>kagami-${repository.id}</id>
+          <name>Kagami Repository - ${repository.id}</name>
+          <url>${baseUrl}</url>
+          <snapshots>
+            <enabled>${repository.id.includes('snapshot') ? 'true' : 'false'}</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>kagami-${repository.id}</id>
+          <name>Kagami Repository - ${repository.id}</name>
+          <url>${baseUrl}</url>
+          <snapshots>
+            <enabled>${repository.id.includes('snapshot') ? 'true' : 'false'}</enabled>
+          </snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+</settings>
 
-<!-- Or add to your settings.xml as a mirror -->
+<!-- ALTERNATIVE: Mirror configuration -->
+<!-- Use mirrors when you want to redirect ALL Maven repository requests through Kagami -->
+<!-- This is useful for: -->
+<!-- - Corporate environments where all external access must go through a proxy -->
+<!-- - Offline environments where only Kagami has access to external repositories -->
+<!-- - Performance optimization when Kagami has better network access to upstream repos -->
+<!--
 <settings>
   <mirrors>
     <mirror>
@@ -45,7 +74,19 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
       <url>${baseUrl}</url>
     </mirror>
   </mirrors>
-</settings>`
+</settings>
+-->
+
+<!-- SIMPLE: Add directly to your pom.xml (project-specific) -->
+<!--
+<repositories>
+  <repository>
+    <id>${repository.id}</id>
+    <name>${repository.id.charAt(0).toUpperCase() + repository.id.slice(1)} Repository</name>
+    <url>${baseUrl}</url>
+  </repository>
+</repositories>
+-->`
         };
 
       case 'gradle-groovy':

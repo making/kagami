@@ -15,6 +15,8 @@ interface TokenFormData {
   unit: 'hours' | 'days' | 'months';
 }
 
+type BuildTool = 'maven' | 'gradleGroovy' | 'gradleKotlin';
+
 export function TokenPage() {
   const { repositories, isLoading: reposLoading, error: reposError } = useRepositories();
   const [formData, setFormData] = useState<TokenFormData>({
@@ -27,6 +29,7 @@ export function TokenPage() {
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<{ [key: string]: boolean }>({});
+  const [selectedTool, setSelectedTool] = useState<BuildTool>('maven');
 
   const availableScopes = [
     { value: 'artifacts:read', label: 'Read Artifacts', description: 'Download and view repository contents' },
@@ -118,6 +121,7 @@ export function TokenPage() {
     setGeneratedToken(null);
     setError(null);
     setCopySuccess({});
+    setSelectedTool('maven');
     setFormData({
       repositories: [],
       scopes: [],
@@ -518,37 +522,73 @@ ${selectedRepoIds.map(repo => `    maven {
               <p className="text-sm text-gray-600 mb-4">
                 Use these configurations in your build tools to access the selected repositories with the generated token.
               </p>
-              
-              <div className="space-y-6">
+
+              {/* Build Tool Tabs */}
+              <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
+                <button
+                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
+                    selectedTool === 'maven'
+                      ? 'bg-white text-red-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  onClick={() => setSelectedTool('maven')}
+                >
+                  Maven
+                </button>
+                <button
+                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
+                    selectedTool === 'gradleGroovy'
+                      ? 'bg-white text-red-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  onClick={() => setSelectedTool('gradleGroovy')}
+                >
+                  Gradle (Groovy)
+                </button>
+                <button
+                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
+                    selectedTool === 'gradleKotlin'
+                      ? 'bg-white text-red-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  onClick={() => setSelectedTool('gradleKotlin')}
+                >
+                  Gradle (Kotlin)
+                </button>
+              </div>
+
+              {/* Selected Configuration */}
+              <div className="border border-gray-200 rounded-lg">
                 {(() => {
                   const configs = generateConfigExamples();
-                  const examples = [
-                    { key: 'maven', title: 'Maven (settings.xml)', content: configs.maven },
-                    { key: 'gradleGroovy', title: 'Gradle Groovy (build.gradle)', content: configs.gradleGroovy },
-                    { key: 'gradleKotlin', title: 'Gradle Kotlin (build.gradle.kts)', content: configs.gradleKotlin },
-                  ];
+                  const configMap = {
+                    maven: { title: 'Maven (settings.xml)', content: configs.maven },
+                    gradleGroovy: { title: 'Gradle Groovy (build.gradle)', content: configs.gradleGroovy },
+                    gradleKotlin: { title: 'Gradle Kotlin (build.gradle.kts)', content: configs.gradleKotlin },
+                  };
+                  const config = configMap[selectedTool];
 
-                  return examples.map(({ key, title, content }) => (
-                    <div key={key} className="border border-gray-200 rounded-lg">
+                  return (
+                    <>
                       <div className="flex items-center justify-between p-3 bg-gray-50 border-b border-gray-200">
-                        <h5 className="font-medium text-gray-900">{title}</h5>
+                        <h5 className="font-medium text-gray-900">{config.title}</h5>
                         <Button
-                          onClick={() => copyToClipboard(content, key)}
+                          onClick={() => copyToClipboard(config.content, selectedTool)}
                           variant="ghost"
                           size="sm"
                           className="flex items-center space-x-1"
                         >
                           <Copy className="h-4 w-4" />
-                          <span>{copySuccess[key] ? 'Copied!' : 'Copy'}</span>
+                          <span>{copySuccess[selectedTool] ? 'Copied!' : 'Copy'}</span>
                         </Button>
                       </div>
                       <div className="p-3">
                         <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
-                          <code>{content}</code>
+                          <code>{config.content}</code>
                         </pre>
                       </div>
-                    </div>
-                  ));
+                    </>
+                  );
                 })()}
               </div>
             </div>
