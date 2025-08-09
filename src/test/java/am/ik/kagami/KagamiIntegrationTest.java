@@ -111,25 +111,11 @@ public class KagamiIntegrationTest {
 	}
 
 	@Test
-	void getArtifactsShouldBeOkWithBasicAuth() {
-		this.mockServer.GET("/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom", req -> Response.ok("<project></project>"))
-			.GET("/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom.sha1",
-					req -> Response.ok("147ddc4bbee044878ea3f8341a40e770e4b92f4e"));
-		String token = issueToken(List.of("mock"), List.of("artifacts:read"));
-		var response = this.restClient.get()
-			.uri("/artifacts/mock/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom")
-			.headers(httpHeaders -> httpHeaders.setBasicAuth("", Objects.requireNonNull(token)))
-			.retrieve()
-			.toBodilessEntity();
-		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-	}
-
-	@Test
 	void getArtifactsShouldBeUnAuthorizedWithoutValidRepositories() {
 		String token = issueToken(List.of("another"), List.of("artifacts:read"));
 		var response = this.restClient.get()
 			.uri("/artifacts/mock/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom")
-			.headers(httpHeaders -> httpHeaders.setBasicAuth("", Objects.requireNonNull(token)))
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -145,7 +131,7 @@ public class KagamiIntegrationTest {
 		String token = issueToken(List.of("mock"), List.of("artifacts:delete"));
 		var response = this.restClient.get()
 			.uri("/artifacts/mock/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom")
-			.headers(httpHeaders -> httpHeaders.setBasicAuth("", Objects.requireNonNull(token)))
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
@@ -174,12 +160,12 @@ public class KagamiIntegrationTest {
 		String token = issueToken(List.of("mock"), List.of("artifacts:read", "artifacts:delete"));
 		this.restClient.get()
 			.uri("/artifacts/mock/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom")
-			.headers(httpHeaders -> httpHeaders.setBasicAuth("", Objects.requireNonNull(token)))
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
 			.retrieve()
 			.toBodilessEntity();
 		var response = this.restClient.delete()
 			.uri("/artifacts/mock/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom")
-			.headers(httpHeaders -> httpHeaders.setBasicAuth("", Objects.requireNonNull(token)))
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
@@ -190,7 +176,7 @@ public class KagamiIntegrationTest {
 		String token = issueToken(List.of("another"), List.of("artifacts:read", "artifacts:delete"));
 		var response = this.restClient.delete()
 			.uri("/artifacts/mock/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom")
-			.headers(httpHeaders -> httpHeaders.setBasicAuth("", Objects.requireNonNull(token)))
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -206,7 +192,7 @@ public class KagamiIntegrationTest {
 		String token = issueToken(List.of("mock"), List.of("artifacts:read"));
 		var response = this.restClient.delete()
 			.uri("/artifacts/mock/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom")
-			.headers(httpHeaders -> httpHeaders.setBasicAuth("", Objects.requireNonNull(token)))
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
