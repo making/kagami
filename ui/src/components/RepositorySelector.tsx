@@ -48,10 +48,21 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
   }
 
   if (error) {
+    const is401Error = error.message.includes('401');
     return (
       <Alert variant="error">
         <AlertDescription>
           Failed to load repositories: {error.message}
+          {is401Error && (
+            <div className="mt-3">
+              <a 
+                href="/login" 
+                className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Go to Login
+              </a>
+            </div>
+          )}
         </AlertDescription>
       </Alert>
     );

@@ -262,6 +262,16 @@ ${selectedRepoIds.map(repo => `    maven {
           <Alert variant="error" className="mb-6">
             <AlertDescription>
               Failed to load repositories: {reposError.message}
+              {reposError.message.includes('401') && (
+                <div className="mt-3">
+                  <a 
+                    href="/login" 
+                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    Go to Login
+                  </a>
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         )}

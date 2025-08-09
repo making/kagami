@@ -10,6 +10,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -34,11 +36,13 @@ public class TokenController {
 	@PostMapping(path = "/token")
 	public String generateToken(@RequestParam(name = "expires_in", defaultValue = "3") long expiresIn,
 			@RequestParam(defaultValue = "") List<String> repositories,
-			@RequestParam(defaultValue = "") Set<String> scope, UriComponentsBuilder builder) {
+			@RequestParam(defaultValue = "") Set<String> scope, @AuthenticationPrincipal UserDetails userDetails,
+			UriComponentsBuilder builder) {
 		String issuer = builder.path("").build().toString();
 		Instant issueAt = this.instantSource.instant();
 		Instant expiresAt = issueAt.plus(expiresIn, ChronoUnit.HOURS);
 		JWTClaimsSet claimsSet = new JWTClaimsSet.Builder().expirationTime(Date.from(expiresAt))
+			.subject(userDetails.getUsername())
 			.issuer(issuer)
 			.audience("kagami")
 			.issueTime(Date.from(issueAt))

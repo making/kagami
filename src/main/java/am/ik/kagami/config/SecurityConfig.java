@@ -2,10 +2,19 @@ package am.ik.kagami.config;
 
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.token.web.BasicToJwtAuthorizationExchangeFilter;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 import static org.springframework.http.HttpMethod.DELETE;
@@ -28,12 +37,34 @@ class SecurityConfig {
 						.access(anyOf(hasScope("artifacts:delete"), hasRole("USER")));
 				}
 			});
-			authz.anyRequest().permitAll();
+			authz.requestMatchers(EndpointRequest.toAnyEndpoint())
+				.permitAll()
+				.requestMatchers("/login", "/*.css", "/error")
+				.permitAll()
+				.anyRequest()
+				.authenticated();
 		}).oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {
 		}))
+			.formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/", true))
+			.rememberMe(Customizer.withDefaults())
 			.csrf(csrf -> csrf.disable())
 			.addFilterBefore(new BasicToJwtAuthorizationExchangeFilter(), BearerTokenAuthenticationFilter.class)
 			.build();
+	}
+
+	@Bean
+	UserDetailsService userDetailsService(SecurityProperties properties) {
+		SecurityProperties.User user = properties.getUser();
+		UserDetails userDetails = User.withUsername(user.getName())
+			.password(user.getPassword())
+			.roles(user.getRoles().toArray(String[]::new))
+			.build();
+		return new InMemoryUserDetailsManager(userDetails);
+	}
+
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
 	}
 
 }

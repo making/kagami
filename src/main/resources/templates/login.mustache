@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Kagami 🪞 Repository Browser</title>
+  <link rel="stylesheet" href="/login.css">
+</head>
+<body>
+<div class="container">
+  <div class="login-wrapper">
+    <div class="login-card">
+      <!-- Header -->
+      <div class="card-header">
+        <span class="app-name">Kagami 🪞 Repository Browser</span>
+      </div>
+
+      <!-- Login Form -->
+      <div class="card-body">
+        <h2 class="login-title">Login</h2>
+
+        <form action="/login" method="POST" class="form-container">
+          {{#springMacroRequestContext.request.parameterMap.error}}
+            <div id="error-message" class="error-alert visible">
+              <span>{{SPRING_SECURITY_LAST_EXCEPTION}}</span>
+            </div>
+          {{/springMacroRequestContext.request.parameterMap.error}}
+
+          <div class="form-group">
+            <label for="username" class="form-label">Username</label>
+            <input
+                type="text"
+                id="username"
+                name="username"
+                required
+                class="form-input"
+                placeholder="Enter your username"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password" class="form-label">Password</label>
+            <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                class="form-input"
+                placeholder="Enter your password"
+            />
+          </div>
+
+          <div class="checkbox-group">
+            <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                class="checkbox-input"
+            />
+            <label for="remember-me" class="checkbox-label">
+              Remember me
+            </label>
+          </div>
+
+          <div>
+            {{#_csrf}}
+              <input type="hidden" name="_csrf" value="{{_csrf.token}}"/>
+            {{/_csrf}}
+            <button
+                type="submit"
+                class="submit-button"
+            >
+              Login
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
