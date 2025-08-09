@@ -12,7 +12,13 @@ Repository browsing endpoints are available at `/repositories` and artifact oper
 
 The web UI requires form-based authentication. Users must log in with username and password configured in the application properties:
 - Username: `spring.security.user.name` (default: `demo`)
-- Password: `spring.security.user.password` (default: `demo`)
+- Password: `spring.security.user.password` (default: `{noop}demo`)
+
+The web interface features:
+- Styled login and logout pages matching the application design
+- Unified header navigation across all pages showing logged-in username
+- Easy access to logout functionality and token generation from the header
+- 401 error handling with login page redirection for unauthenticated requests
 
 ### API Authentication
 
@@ -257,9 +263,17 @@ DELETE /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3
 
 #### POST /token
 
-Generate a JWT token for accessing private repositories. **This endpoint requires authentication**.
+Generate a JWT token for accessing private repositories. **This endpoint requires USER role authentication**.
 
-**Authentication Required**: Yes - Users must be logged in to the web UI to generate tokens.
+**Authentication Required**: Yes - Users must be logged in to the web UI with USER role to generate tokens. JWT tokens cannot be used to generate new tokens.
+
+**Web Interface**: The recommended approach is to use the web-based token generation interface at `/token` which provides:
+- Repository selection with checkboxes
+- Permission scope selection (artifacts:read, artifacts:delete)
+- Human-friendly expiration time input (hours, days, months) with 6-month default
+- Warning for long-duration tokens (>6 months)
+- Copy functionality for generated tokens
+- Build tool configuration examples (Maven, Gradle Groovy, Gradle Kotlin) with copy buttons
 
 **Parameters (form-urlencoded):**
 - `expires_in` (optional): Token expiration time in hours (default: 3)
@@ -270,7 +284,7 @@ Generate a JWT token for accessing private repositories. **This endpoint require
 ```
 POST /token
 Content-Type: application/x-www-form-urlencoded
-Authorization: <session-based authentication from web UI>
+Cookie: JSESSION=<jsession-id>
 
 repositories=spring-enterprise,gemfire&scope=artifacts:read,artifacts:delete&expires_in=24
 ```
@@ -292,8 +306,43 @@ The generated JWT token includes:
 **Status Codes:**
 - `200 OK`: Token generated successfully
 - `401 Unauthorized`: Authentication required
+- `403 Forbidden`: USER role required
 
-**Note**: It is recommended to use the web UI at `/token` to generate tokens rather than calling this API directly.
+**Important Notes**: 
+- This endpoint requires USER role authentication (not just any authentication)
+- JWT tokens cannot be used to generate new JWT tokens - only session-based authentication is accepted
+- It is recommended to use the web UI at `/token` to generate tokens rather than calling this API directly
+
+---
+
+### User Information
+
+#### GET /me
+
+Get current authenticated user information and CSRF token.
+
+**Authentication Required**: Yes - Users must be logged in to the web UI to access this endpoint.
+
+**Example Request:**
+```
+GET /me
+```
+
+**Response:**
+```json
+{
+  "name": "demo",
+  "csrfToken": "6YQJCxbXwBv2go7txEqBpZYoDpyK0L626pzy48nQtxwH3U_1j7Q4M3Dh-X3b4--O8me1kqERI_67so6b3quT1vvh1iQ-v37C"
+}
+```
+
+**Response Fields:**
+- `name` (string): The authenticated username
+- `csrfToken` (string): CSRF token for form submissions
+
+**Status Codes:**
+- `200 OK`: Success
+- `401 Unauthorized`: Authentication required
 
 ---
 

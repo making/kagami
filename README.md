@@ -14,10 +14,11 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **Basic Authentication**: Support for repositories requiring username/password authentication
 - **HTTP Proxy Support**: Configure HTTP proxy for outbound connections
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
-- **Web Dashboard**: Modern React-based UI for repository browsing and management
-- **Authentication**: Form-based authentication for web UI access
-- **Token Management**: Web-based JWT token generation with configurable expiration and permissions
-- **Security Features**: OAuth2 Resource Server with JWT tokens, repository-specific access control, CSRF protection disabled for API usage
+- **Web Dashboard**: Modern React-based UI for repository browsing and management with unified header navigation
+- **Authentication**: Form-based authentication for web UI access with styled login/logout pages
+- **Token Management**: Web-based JWT token generation with configurable expiration, permissions, and build tool configuration examples
+- **User Interface**: Consistent header across all pages showing logged-in username, logout functionality, and token generation access
+- **Security Features**: OAuth2 Resource Server with JWT tokens, repository-specific access control, role-based token generation, CSRF protection partially disabled for API usage
 
 ## Quick Start
 
@@ -93,11 +94,9 @@ kagami.jwt.public-key=classpath:kagami-public.pem
 ```properties
 # Configure web UI authentication (default: demo/demo)
 spring.security.user.name=your-username
-spring.security.user.password=your-password
+spring.security.user.password={noop}plainpassword
 # For production, use encoded password:
 # spring.security.user.password={bcrypt}$2a$10$...
-# Plain text passwords require {noop} prefix:
-# spring.security.user.password={noop}plainpassword
 ```
 
 ### HTTP Proxy Configuration
@@ -141,10 +140,13 @@ Configure your Maven settings to use Kagami as a mirror:
 For private repositories, generate a JWT token using the web interface:
 
 1. Log in to the web dashboard at `http://localhost:8080`
-2. Click "Generate Token" in the top right
-3. Select repositories and permissions
-4. Set token expiration (default: 6 months)
+2. Click "Generate Token" in the header navigation
+3. Select repositories and permissions using checkboxes
+4. Set token expiration with human-friendly units (default: 6 months)
 5. Click "Generate Token" and copy the generated JWT
+6. Use the provided Maven, Gradle Groovy, or Gradle Kotlin configuration examples
+
+**Note**: JWT tokens cannot be used to generate new tokens. You must use the web interface with your username/password credentials.
 
 Then configure Maven with the JWT token:
 
@@ -236,8 +238,6 @@ The following features are planned for future releases:
 
 ### Authentication & Security
 - **OIDC Authentication**: OpenID Connect integration for dashboard access (in addition to current form-based auth)
-- **Enhanced Repository Authentication**: Support for JWT tokens in addition to Basic auth
-- **Role-based Access Control**: Fine-grained permissions for different user roles
 
 ### Storage Backends
 - **S3 Storage**: Amazon S3 and S3-compatible storage backends (MinIO, etc.)

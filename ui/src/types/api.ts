@@ -40,6 +40,11 @@ export interface FileInfo {
   sha256?: string;
 }
 
+export interface UserInfo {
+  name: string;
+  csrfToken: string;
+}
+
 export interface ApiError {
   message?: string;
   status: number;

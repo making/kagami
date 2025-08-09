@@ -5,6 +5,7 @@ import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { Alert, AlertDescription } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
 import { LockIcon } from '../components/ui/LockIcon';
+import { Header } from '../components/Header';
 import { ArrowLeft, Copy, Key, Shield, Clock, AlertTriangle } from 'lucide-react';
 
 interface TokenFormData {
@@ -236,27 +237,29 @@ ${selectedRepoIds.map(repo => `    maven {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <header className="mb-8">
-          <Link 
-            to="/" 
-            className="inline-flex items-center text-red-600 hover:text-red-700 mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Repositories
-          </Link>
-          <div className="flex items-center space-x-3 mb-2">
-            <Key className="h-8 w-8 text-red-600" />
-            <h1 className="text-3xl font-bold text-gray-900">
-              Generate Access Token
-            </h1>
-          </div>
-          <p className="text-gray-600">
-            Create JWT tokens for accessing private repositories
-          </p>
-        </header>
+    <div>
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <header className="mb-8">
+            <Link 
+              to="/" 
+              className="inline-flex items-center text-red-600 hover:text-red-700 mb-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Repositories
+            </Link>
+            <div className="flex items-center space-x-3 mb-2">
+              <Key className="h-8 w-8 text-red-600" />
+              <h1 className="text-3xl font-bold text-gray-900">
+                Generate Access Token
+              </h1>
+            </div>
+            <p className="text-gray-600">
+              Create JWT tokens for accessing private repositories
+            </p>
+          </header>
 
         {reposError && (
           <Alert variant="error" className="mb-6">
@@ -487,6 +490,7 @@ ${selectedRepoIds.map(repo => `    maven {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

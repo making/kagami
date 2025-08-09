@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import type { RepositoryListResponse, BrowseResult, FileInfo } from '../types/api';
+import type { RepositoryListResponse, BrowseResult, FileInfo, UserInfo } from '../types/api';
 
 const fetcher = async (url: string) => {
   const response = await fetch(url);
@@ -45,6 +45,16 @@ export function useFileInfo(repositoryId: string | null, path: string | null) {
 
   return {
     fileInfo: data,
+    isLoading,
+    error,
+  };
+}
+
+export function useCurrentUser() {
+  const { data, error, isLoading } = useSWR<UserInfo>('/me', fetcher);
+
+  return {
+    user: data,
     isLoading,
     error,
   };

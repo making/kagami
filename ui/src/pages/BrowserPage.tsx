@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Breadcrumb } from '../components/Breadcrumb';
 import { DirectoryBrowser } from '../components/DirectoryBrowser';
 import { FileInfoModal } from '../components/FileInfoModal';
+import { Header } from '../components/Header';
 import { ArrowLeft } from 'lucide-react';
 import type { RepositoryEntry } from '../types/api';
 
@@ -40,24 +41,26 @@ export function BrowserPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <header className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/')}
-              className="flex items-center space-x-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to Repositories</span>
-            </Button>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Repository Browser
-            </h1>
-          </div>
-        </header>
+    <div>
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <header className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/')}
+                className="flex items-center space-x-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Repositories</span>
+              </Button>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Repository Browser
+              </h1>
+            </div>
+          </header>
 
         {/* Main Content */}
         <Card>
@@ -88,6 +91,7 @@ export function BrowserPage() {
             onClose={handleCloseFileInfo}
           />
         )}
+        </div>
       </div>
     </div>
   );
