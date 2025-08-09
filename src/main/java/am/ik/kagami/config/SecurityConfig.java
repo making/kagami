@@ -31,33 +31,29 @@ class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, KagamiProperties properties) throws Exception {
-		return http.authorizeHttpRequests(authz -> {
-			properties.repositories().forEach((repositoryId, repository) -> {
-				if (repository.isPrivate()) {
-					authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId))
-						.access(anyOf(hasScope("artifacts:read"), hasRole("USER")));
-					authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId))
-						.access(anyOf(hasScope("artifacts:read"), hasRole("USER")));
-				}
-				else {
-					authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
-					authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
-				}
-				authz.requestMatchers(DELETE, "/artifacts/%s/**".formatted(repositoryId))
-					.access(anyOf(hasScope("artifacts:delete"), hasRole("USER")));
-			});
-			authz.requestMatchers(EndpointRequest.toAnyEndpoint())
-				.permitAll()
-				.requestMatchers("/login", "/*.css", "/error")
-				.permitAll()
-				.requestMatchers(POST, "/token")
-				.hasRole("USER")
-				.requestMatchers("/me")
-				.hasRole("USER")
-				.anyRequest()
-				.authenticated();
-		}).oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {
-		}))
+		return http
+		// @formatter:off
+			.authorizeHttpRequests(authz -> {
+				properties.repositories().forEach((repositoryId, repository) -> {
+					if (repository.isPrivate()) {
+						authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope("artifacts:read"), hasRole("USER")));
+						authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope("artifacts:read"), hasRole("USER")));
+					}
+					else {
+						authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
+						authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
+					}
+					authz.requestMatchers(DELETE, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope("artifacts:delete"), hasRole("USER")));
+				});
+				authz.requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
+					.requestMatchers("/login", "/*.css", "/error").permitAll()
+					.requestMatchers(POST, "/token").hasRole("USER")
+					.requestMatchers("/me").hasRole("USER")
+					.anyRequest().authenticated();
+			})
+				// @formatter:on
+			.oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {
+			}))
 			.formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/", true))
 			.logout(logout -> logout.logoutUrl("/logout").logoutSuccessUrl("/login?logout").deleteCookies("JSESSIONID"))
 			.rememberMe(Customizer.withDefaults())
