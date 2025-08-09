@@ -104,7 +104,7 @@ const DialogContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('p-6 overflow-y-auto', className)}
+      className={cn('p-6 overflow-y-auto max-h-[calc(90vh-8rem)]', className)}
       {...props}
     />
   )
