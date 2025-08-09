@@ -25,8 +25,14 @@ export function generateMavenConfig({ repositoryIds, token, baseUrl, isPrivate =
 ${isPrivate ? `  <servers>
     <server>
       <id>kagami-${primaryRepo}</id>
-      <username>kagami</username>
-      <password>${token}</password>
+      <configuration>
+        <httpHeaders>
+          <property>
+            <name>Authorization</name>
+            <value>Bearer ${token}</value>
+          </property>
+        </httpHeaders>
+      </configuration>
     </server>
   </servers>
 ` : ''}  <profiles>
@@ -96,8 +102,14 @@ ${isPrivate ? `  <servers>
 ${isPrivate ? `  <servers>
 ${repositoryIds.map(repo => `    <server>
       <id>kagami-${repo}</id>
-      <username>kagami</username>
-      <password>${token}</password>
+      <configuration>
+        <httpHeaders>
+          <property>
+            <name>Authorization</name>
+            <value>Bearer ${token}</value>
+          </property>
+        </httpHeaders>
+      </configuration>
     </server>`).join('\n')}
   </servers>
 ` : ''}  <profiles>
@@ -163,18 +175,28 @@ export function generateGradleGroovyConfig({ repositoryIds, token, baseUrl, isPr
     maven {
         name = "${primaryRepo}"
         url = "${baseUrl}/artifacts/${primaryRepo}"${isPrivate ? `
-        credentials {
-            username = "kagami"
-            password = "${token}"
+        metadataSources {
+            mavenPom()
+            artifact()
+        }
+        authentication {
+            header(HttpHeaderAuthentication)
+        }
+        credentials(HttpHeaderCredentials) {
+            name = "Authorization"
+            value = "Bearer ${token}"
         }` : ''}
     }
     
     // You can also add it as the first repository for priority
     // maven { 
     //     url "${baseUrl}/artifacts/${primaryRepo}"${isPrivate ? `
-    //     credentials {
-    //         username = "kagami"
-    //         password = "${token}"
+    //     authentication {
+    //         header(HttpHeaderAuthentication)
+    //     }
+    //     credentials(HttpHeaderCredentials) {
+    //         name = "Authorization"
+    //         value = "Bearer ${token}"
     //     }` : ''}
     // }
     // mavenCentral() // fallback
@@ -188,9 +210,16 @@ export function generateGradleGroovyConfig({ repositoryIds, token, baseUrl, isPr
 ${repositoryIds.map(repo => `    maven {
         name = "${repo}"
         url = "${baseUrl}/artifacts/${repo}"${isPrivate ? `
-        credentials {
-            username = "kagami"
-            password = "${token}"
+        metadataSources {
+            mavenPom()
+            artifact()
+        }
+        authentication {
+            header(HttpHeaderAuthentication)
+        }
+        credentials(HttpHeaderCredentials) {
+            name = "Authorization"
+            value = "Bearer ${token}"
         }` : ''}
     }`).join('\n')}
 }`
@@ -209,18 +238,28 @@ export function generateGradleKotlinConfig({ repositoryIds, token, baseUrl, isPr
     maven {
         name = "${primaryRepo}"
         url = uri("${baseUrl}/artifacts/${primaryRepo}")${isPrivate ? `
-        credentials {
-            username = "kagami"
-            password = "${token}"
+        metadataSources {
+            mavenPom()
+            artifact()
+        }
+        authentication {
+            create<HttpHeaderAuthentication>("header")
+        }
+        credentials<HttpHeaderCredentials>("header") {
+            name = "Authorization"
+            value = "Bearer ${token}"
         }` : ''}
     }
     
     // You can also add it as the first repository for priority
     // maven { 
     //     url = uri("${baseUrl}/artifacts/${primaryRepo}")${isPrivate ? `
-    //     credentials {
-    //         username = "kagami"
-    //         password = "${token}"
+    //     authentication {
+    //         create<HttpHeaderAuthentication>("header")
+    //     }
+    //     credentials<HttpHeaderCredentials>("header") {
+    //         name = "Authorization"
+    //         value = "Bearer ${token}"
     //     }` : ''}
     // }
     // mavenCentral() // fallback
@@ -234,9 +273,16 @@ export function generateGradleKotlinConfig({ repositoryIds, token, baseUrl, isPr
 ${repositoryIds.map(repo => `    maven {
         name = "${repo}"
         url = uri("${baseUrl}/artifacts/${repo}")${isPrivate ? `
-        credentials {
-            username = "kagami"
-            password = "${token}"
+        metadataSources {
+            mavenPom()
+            artifact()
+        }
+        authentication {
+            create<HttpHeaderAuthentication>("header")
+        }
+        credentials<HttpHeaderCredentials>("header") {
+            name = "Authorization"
+            value = "Bearer ${token}"
         }` : ''}
     }`).join('\n')}
 }`

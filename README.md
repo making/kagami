@@ -214,8 +214,14 @@ Then configure Maven with the JWT token:
   <servers>
     <server>
       <id>kagami-private</id>
-      <username>kagami</username>
-      <password>YOUR_JWT_TOKEN</password>
+      <configuration>
+        <httpHeaders>
+          <property>
+            <name>Authorization</name>
+            <value>Bearer YOUR_JWT_TOKEN</value>
+          </property>
+        </httpHeaders>
+      </configuration>
     </server>
   </servers>
   <profiles>
@@ -284,9 +290,16 @@ repositories {
 repositories {
     maven {
         url 'http://localhost:8080/artifacts/private-repo'
-        credentials {
-            username = 'kagami'
-            password = 'YOUR_JWT_TOKEN'
+        metadataSources {
+            mavenPom()
+            artifact()
+        }
+        authentication {
+            header(HttpHeaderAuthentication)
+        }
+        credentials(HttpHeaderCredentials) {
+            name = "Authorization"
+            value = "Bearer YOUR_JWT_TOKEN"
         }
     }
 }

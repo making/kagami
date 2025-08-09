@@ -22,9 +22,8 @@ The web interface features:
 
 ### API Authentication
 
-Public repositories require no authentication. Private repositories require JWT-based authentication using either:
+Public repositories require no authentication. Private repositories require JWT-based authentication using:
 - Bearer token in Authorization header: `Authorization: Bearer <jwt>`
-- Basic authentication with JWT as password: `Authorization: Basic <base64(username:jwt)>`
 
 JWT tokens must be generated through the authenticated web UI. See the [Token Management](#token-management) section for details.
 
