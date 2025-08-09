@@ -26,9 +26,16 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
         return {
           title: 'Maven Configuration',
           filename: 'pom.xml or settings.xml',
-          content: `<!-- RECOMMENDED: Add to your settings.xml as a profile -->
+          content: `<!-- RECOMMENDED: Add to your settings.xml -->
 <settings>
-  <profiles>
+${repository.isPrivate ? `  <servers>
+    <server>
+      <id>kagami-${repository.id}</id>
+      <username>kagami</username>
+      <password>YOUR_JWT_TOKEN_HERE</password>
+    </server>
+  </servers>
+` : ''}  <profiles>
     <profile>
       <id>kagami-${repository.id}</id>
       <activation>
@@ -66,7 +73,14 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
 <!-- - Performance optimization when Kagami has better network access to upstream repos -->
 <!--
 <settings>
-  <mirrors>
+${repository.isPrivate ? `  <servers>
+    <server>
+      <id>kagami-${repository.id}</id>
+      <username>kagami</username>
+      <password>YOUR_JWT_TOKEN_HERE</password>
+    </server>
+  </servers>
+` : ''}  <mirrors>
     <mirror>
       <id>kagami-${repository.id}</id>
       <mirrorOf>${repository.id === 'central' ? 'central' : '*'}</mirrorOf>
@@ -96,11 +110,21 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
           content: `repositories {
     maven {
         name = "${repository.id}"
-        url = "${baseUrl}"
+        url = "${baseUrl}"${repository.isPrivate ? `
+        credentials {
+            username = "kagami"
+            password = "YOUR_JWT_TOKEN_HERE"
+        }` : ''}
     }
     
     // You can also add it as the first repository for priority
-    // maven { url "${baseUrl}" }
+    // maven { 
+    //     url "${baseUrl}"${repository.isPrivate ? `
+    //     credentials {
+    //         username = "kagami"
+    //         password = "YOUR_JWT_TOKEN_HERE"
+    //     }` : ''}
+    // }
     // mavenCentral() // fallback
 }`
         };
@@ -112,11 +136,21 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
           content: `repositories {
     maven {
         name = "${repository.id}"
-        url = uri("${baseUrl}")
+        url = uri("${baseUrl}")${repository.isPrivate ? `
+        credentials {
+            username = "kagami"
+            password = "YOUR_JWT_TOKEN_HERE"
+        }` : ''}
     }
     
     // You can also add it as the first repository for priority
-    // maven { url = uri("${baseUrl}") }
+    // maven { 
+    //     url = uri("${baseUrl}")${repository.isPrivate ? `
+    //     credentials {
+    //         username = "kagami"
+    //         password = "YOUR_JWT_TOKEN_HERE"
+    //     }` : ''}
+    // }
     // mavenCentral() // fallback
 }`
         };
@@ -225,6 +259,26 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
             </div>
           </div>
 
+          {/* Authentication Notice for Private Repositories */}
+          {repository.isPrivate && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+              <h4 className="font-medium text-amber-900 mb-2">🔒 Authentication Required</h4>
+              <div className="text-sm text-amber-800 space-y-2">
+                <p>This is a private repository that requires JWT token authentication.</p>
+                <p>
+                  <strong>To generate a JWT token:</strong>
+                </p>
+                <ol className="list-decimal list-inside space-y-1 ml-2">
+                  <li>Go to the <a href="/token" className="font-medium text-amber-900 underline hover:text-amber-700">Generate Token</a> page</li>
+                  <li>Select this repository ({repository.id})</li>
+                  <li>Choose your required permissions (artifacts:read for downloads)</li>
+                  <li>Set token expiration (recommended: 6 months or less)</li>
+                  <li>Generate the token and replace <code className="bg-amber-100 px-1 rounded">YOUR_JWT_TOKEN_HERE</code> in the configuration above</li>
+                </ol>
+              </div>
+            </div>
+          )}
+
           {/* Usage Notes */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h4 className="font-medium text-blue-900 mb-2">Usage Notes</h4>
@@ -234,6 +288,9 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
               <li>• You can use this as a primary repository or as a mirror for faster downloads</li>
               {repository.id === 'central' && (
                 <li>• This mirrors Maven Central - you can use it as a drop-in replacement</li>
+              )}
+              {repository.isPrivate && (
+                <li>• JWT tokens cannot be revoked - use appropriate expiration times for security</li>
               )}
             </ul>
           </div>
