@@ -19,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.HEAD;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.security.authorization.AuthorityAuthorizationManager.hasRole;
 import static org.springframework.security.authorization.AuthorizationManagers.anyOf;
@@ -34,9 +35,15 @@ class SecurityConfig {
 				if (repository.isPrivate()) {
 					authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId))
 						.access(anyOf(hasScope("artifacts:read"), hasRole("USER")));
-					authz.requestMatchers(DELETE, "/artifacts/%s/**".formatted(repositoryId))
-						.access(anyOf(hasScope("artifacts:delete"), hasRole("USER")));
+					authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId))
+						.access(anyOf(hasScope("artifacts:read"), hasRole("USER")));
 				}
+				else {
+					authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
+					authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
+				}
+				authz.requestMatchers(DELETE, "/artifacts/%s/**".formatted(repositoryId))
+					.access(anyOf(hasScope("artifacts:delete"), hasRole("USER")));
 			});
 			authz.requestMatchers(EndpointRequest.toAnyEndpoint())
 				.permitAll()
