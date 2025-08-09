@@ -287,20 +287,41 @@ repositories {
 #### Private Repository
 
 ```gradle
-repositories {
-    maven {
-        url 'http://localhost:8080/artifacts/private-repo'
-        metadataSources {
-            mavenPom()
-            artifact()
+// Add to your settings.gradle file
+pluginManagement {
+    repositories {
+        maven {
+            name = "private-repo"
+            url = "http://localhost:8080/artifacts/private-repo"
+            allowInsecureProtocol = true
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+            credentials(HttpHeaderCredentials) {
+                name = "Authorization"
+                value = "Bearer YOUR_JWT_TOKEN"
+            }
         }
-        authentication {
-            header(HttpHeaderAuthentication)
+        gradlePluginPortal() // fallback
+        mavenCentral() // fallback
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        maven {
+            name = "private-repo"
+            url = "http://localhost:8080/artifacts/private-repo"
+            allowInsecureProtocol = true
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+            credentials(HttpHeaderCredentials) {
+                name = "Authorization"
+                value = "Bearer YOUR_JWT_TOKEN"
+            }
         }
-        credentials(HttpHeaderCredentials) {
-            name = "Authorization"
-            value = "Bearer YOUR_JWT_TOKEN"
-        }
+        mavenCentral() // fallback
     }
 }
 ```

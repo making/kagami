@@ -166,62 +166,90 @@ ${repositoryIds.map(repo => `        <pluginRepository>
 
 export function generateGradleGroovyConfig({ repositoryIds, token, baseUrl, isPrivate = true }: ConfigExamplesParams): ConfigExample {
   const primaryRepo = repositoryIds[0];
+  const isHttpUrl = baseUrl.startsWith('http://');
   
   if (repositoryIds.length === 1) {
     return {
       title: 'Gradle Configuration (Groovy DSL)',
-      filename: 'build.gradle',
-      content: `repositories {
-    maven {
-        name = "${primaryRepo}"
-        url = "${baseUrl}/artifacts/${primaryRepo}"${isPrivate ? `
-        metadataSources {
-            mavenPom()
-            artifact()
+      filename: 'settings.gradle',
+      content: `// Add to your settings.gradle file
+pluginManagement {
+    repositories {
+        maven {
+            name = "${primaryRepo}"
+            url = "${baseUrl}/artifacts/${primaryRepo}"${isHttpUrl ? `
+            allowInsecureProtocol = true` : ''}${isPrivate ? `
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+            credentials(HttpHeaderCredentials) {
+                name = "Authorization"
+                value = "Bearer ${token}"
+            }` : ''}
         }
-        authentication {
-            header(HttpHeaderAuthentication)
-        }
-        credentials(HttpHeaderCredentials) {
-            name = "Authorization"
-            value = "Bearer ${token}"
-        }` : ''}
+        gradlePluginPortal() // fallback
+        mavenCentral() // fallback
     }
-    
-    // You can also add it as the first repository for priority
-    // maven { 
-    //     url "${baseUrl}/artifacts/${primaryRepo}"${isPrivate ? `
-    //     authentication {
-    //         header(HttpHeaderAuthentication)
-    //     }
-    //     credentials(HttpHeaderCredentials) {
-    //         name = "Authorization"
-    //         value = "Bearer ${token}"
-    //     }` : ''}
-    // }
-    // mavenCentral() // fallback
+}
+
+dependencyResolutionManagement {
+    repositories {
+        maven {
+            name = "${primaryRepo}"
+            url = "${baseUrl}/artifacts/${primaryRepo}"${isHttpUrl ? `
+            allowInsecureProtocol = true` : ''}${isPrivate ? `
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+            credentials(HttpHeaderCredentials) {
+                name = "Authorization"
+                value = "Bearer ${token}"
+            }` : ''}
+        }
+        mavenCentral() // fallback
+    }
 }`
     };
   } else {
     return {
       title: 'Gradle Configuration (Groovy DSL)',
-      filename: 'build.gradle',
-      content: `repositories {
-${repositoryIds.map(repo => `    maven {
-        name = "${repo}"
-        url = "${baseUrl}/artifacts/${repo}"${isPrivate ? `
-        metadataSources {
-            mavenPom()
-            artifact()
-        }
-        authentication {
-            header(HttpHeaderAuthentication)
-        }
-        credentials(HttpHeaderCredentials) {
-            name = "Authorization"
-            value = "Bearer ${token}"
-        }` : ''}
-    }`).join('\n')}
+      filename: 'settings.gradle',
+      content: `// Add to your settings.gradle file
+pluginManagement {
+    repositories {
+${repositoryIds.map(repo => `        maven {
+            name = "${repo}"
+            url = "${baseUrl}/artifacts/${repo}"${isHttpUrl ? `
+            allowInsecureProtocol = true` : ''}${isPrivate ? `
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+            credentials(HttpHeaderCredentials) {
+                name = "Authorization"
+                value = "Bearer ${token}"
+            }` : ''}
+        }`).join('\n')}
+        gradlePluginPortal() // fallback
+        mavenCentral() // fallback
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+${repositoryIds.map(repo => `        maven {
+            name = "${repo}"
+            url = "${baseUrl}/artifacts/${repo}"${isHttpUrl ? `
+            allowInsecureProtocol = true` : ''}${isPrivate ? `
+            authentication {
+                header(HttpHeaderAuthentication)
+            }
+            credentials(HttpHeaderCredentials) {
+                name = "Authorization"
+                value = "Bearer ${token}"
+            }` : ''}
+        }`).join('\n')}
+        mavenCentral() // fallback
+    }
 }`
     };
   }
@@ -229,62 +257,90 @@ ${repositoryIds.map(repo => `    maven {
 
 export function generateGradleKotlinConfig({ repositoryIds, token, baseUrl, isPrivate = true }: ConfigExamplesParams): ConfigExample {
   const primaryRepo = repositoryIds[0];
+  const isHttpUrl = baseUrl.startsWith('http://');
   
   if (repositoryIds.length === 1) {
     return {
       title: 'Gradle Configuration (Kotlin DSL)',
-      filename: 'build.gradle.kts',
-      content: `repositories {
-    maven {
-        name = "${primaryRepo}"
-        url = uri("${baseUrl}/artifacts/${primaryRepo}")${isPrivate ? `
-        metadataSources {
-            mavenPom()
-            artifact()
+      filename: 'settings.gradle.kts',
+      content: `// Add to your settings.gradle.kts file
+pluginManagement {
+    repositories {
+        maven {
+            name = "${primaryRepo}"
+            url = uri("${baseUrl}/artifacts/${primaryRepo}")${isHttpUrl ? `
+            isAllowInsecureProtocol = true` : ''}${isPrivate ? `
+            authentication {
+                create<HttpHeaderAuthentication>("header")
+            }
+            credentials(HttpHeaderCredentials::class) {
+                name = "Authorization"
+                value = "Bearer ${token}"
+            }` : ''}
         }
-        authentication {
-            create<HttpHeaderAuthentication>("header")
-        }
-        credentials<HttpHeaderCredentials>("header") {
-            name = "Authorization"
-            value = "Bearer ${token}"
-        }` : ''}
+        gradlePluginPortal() // fallback
+        mavenCentral() // fallback
     }
-    
-    // You can also add it as the first repository for priority
-    // maven { 
-    //     url = uri("${baseUrl}/artifacts/${primaryRepo}")${isPrivate ? `
-    //     authentication {
-    //         create<HttpHeaderAuthentication>("header")
-    //     }
-    //     credentials<HttpHeaderCredentials>("header") {
-    //         name = "Authorization"
-    //         value = "Bearer ${token}"
-    //     }` : ''}
-    // }
-    // mavenCentral() // fallback
+}
+
+dependencyResolutionManagement {
+    repositories {
+        maven {
+            name = "${primaryRepo}"
+            url = uri("${baseUrl}/artifacts/${primaryRepo}")${isHttpUrl ? `
+            isAllowInsecureProtocol = true` : ''}${isPrivate ? `
+            authentication {
+                create<HttpHeaderAuthentication>("header")
+            }
+            credentials(HttpHeaderCredentials::class) {
+                name = "Authorization"
+                value = "Bearer ${token}"
+            }` : ''}
+        }
+        mavenCentral() // fallback
+    }
 }`
     };
   } else {
     return {
       title: 'Gradle Configuration (Kotlin DSL)',
-      filename: 'build.gradle.kts',
-      content: `repositories {
-${repositoryIds.map(repo => `    maven {
-        name = "${repo}"
-        url = uri("${baseUrl}/artifacts/${repo}")${isPrivate ? `
-        metadataSources {
-            mavenPom()
-            artifact()
-        }
-        authentication {
-            create<HttpHeaderAuthentication>("header")
-        }
-        credentials<HttpHeaderCredentials>("header") {
-            name = "Authorization"
-            value = "Bearer ${token}"
-        }` : ''}
-    }`).join('\n')}
+      filename: 'settings.gradle.kts',
+      content: `// Add to your settings.gradle.kts file
+pluginManagement {
+    repositories {
+${repositoryIds.map(repo => `        maven {
+            name = "${repo}"
+            url = uri("${baseUrl}/artifacts/${repo}")${isHttpUrl ? `
+            isAllowInsecureProtocol = true` : ''}${isPrivate ? `
+            authentication {
+                create<HttpHeaderAuthentication>("header")
+            }
+            credentials(HttpHeaderCredentials::class) {
+                name = "Authorization"
+                value = "Bearer ${token}"
+            }` : ''}
+        }`).join('\n')}
+        gradlePluginPortal() // fallback
+        mavenCentral() // fallback
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+${repositoryIds.map(repo => `        maven {
+            name = "${repo}"
+            url = uri("${baseUrl}/artifacts/${repo}")${isHttpUrl ? `
+            isAllowInsecureProtocol = true` : ''}${isPrivate ? `
+            authentication {
+                create<HttpHeaderAuthentication>("header")
+            }
+            credentials(HttpHeaderCredentials::class) {
+                name = "Authorization"
+                value = "Bearer ${token}"
+            }` : ''}
+        }`).join('\n')}
+        mavenCentral() // fallback
+    }
 }`
     };
   }
