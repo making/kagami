@@ -124,14 +124,34 @@ Configure your Maven settings to use Kagami as a mirror:
 
 ```xml
 <settings>
-  <mirrors>
-    <mirror>
-      <id>kagami</id>
-      <mirrorOf>*</mirrorOf>
-      <name>Kagami Mirror</name>
-      <url>http://localhost:8080/artifacts/central</url>
-    </mirror>
-  </mirrors>
+  <profiles>
+    <profile>
+      <id>kagami-public</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>kagami-central</id>
+          <name>Kagami Public Repository</name>
+          <url>http://localhost:8080/artifacts/central</url>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>kagami-central</id>
+          <name>Kagami Public Repository</name>
+          <url>http://localhost:8080/artifacts/central</url>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
 </settings>
 ```
 
@@ -159,14 +179,34 @@ Then configure Maven with the JWT token:
       <password>YOUR_JWT_TOKEN</password>
     </server>
   </servers>
-  <mirrors>
-    <mirror>
+  <profiles>
+    <profile>
       <id>kagami-private</id>
-      <mirrorOf>*</mirrorOf>
-      <name>Kagami Private Mirror</name>
-      <url>http://localhost:8080/artifacts/private-repo</url>
-    </mirror>
-  </mirrors>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>kagami-private</id>
+          <name>Kagami Private Repository</name>
+          <url>http://localhost:8080/artifacts/private-repo</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>kagami-private</id>
+          <name>Kagami Private Repository</name>
+          <url>http://localhost:8080/artifacts/private-repo</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
 </settings>
 ```
 

@@ -145,19 +145,34 @@ export function TokenPage() {
       <password>${generatedToken}</password>
     </server>
   </servers>
-  
-  <!-- OPTIONAL: Mirror configuration -->
-  <!-- Use mirrors only if you want to redirect ALL repository requests to Kagami -->
-  <!-- This replaces Maven Central and other public repositories with this private repo -->
-  <!-- Remove this section if you want to use this repo alongside other repositories -->
-  <mirrors>
-    <mirror>
+  <profiles>
+    <profile>
       <id>kagami-${primaryRepo}</id>
-      <mirrorOf>*</mirrorOf>
-      <name>Kagami Private Mirror</name>
-      <url>${baseUrl}/artifacts/${primaryRepo}</url>
-    </mirror>
-  </mirrors>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>kagami-${primaryRepo}</id>
+          <name>Kagami Repository - ${primaryRepo}</name>
+          <url>${baseUrl}/artifacts/${primaryRepo}</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>kagami-${primaryRepo}</id>
+          <name>Kagami Repository - ${primaryRepo}</name>
+          <url>${baseUrl}/artifacts/${primaryRepo}</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
 </settings>`
       : `<!-- settings.xml -->
 <settings>
@@ -168,15 +183,34 @@ ${selectedRepoIds.map(repo => `    <server>
       <password>${generatedToken}</password>
     </server>`).join('\n')}
   </servers>
-  
-  <!-- Add these repositories to your project's pom.xml or profiles section -->
-  <!-- These repositories will be used alongside Maven Central and other configured repos -->
-  <repositories>
-${selectedRepoIds.map(repo => `    <repository>
-      <id>kagami-${repo}</id>
-      <url>${baseUrl}/artifacts/${repo}</url>
-    </repository>`).join('\n')}
-  </repositories>
+  <profiles>
+    <profile>
+      <id>kagami-multiple</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+${selectedRepoIds.map(repo => `        <repository>
+          <id>kagami-${repo}</id>
+          <name>Kagami Repository - ${repo}</name>
+          <url>${baseUrl}/artifacts/${repo}</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </repository>`).join('\n')}
+      </repositories>
+      <pluginRepositories>
+${selectedRepoIds.map(repo => `        <pluginRepository>
+          <id>kagami-${repo}</id>
+          <name>Kagami Repository - ${repo}</name>
+          <url>${baseUrl}/artifacts/${repo}</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+        </pluginRepository>`).join('\n')}
+      </pluginRepositories>
+    </profile>
+  </profiles>
 </settings>`;
 
     const gradleGroovy = selectedRepoIds.length === 1
