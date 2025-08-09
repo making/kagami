@@ -15,8 +15,9 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **HTTP Proxy Support**: Configure HTTP proxy for outbound connections
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
 - **Web Dashboard**: Modern React-based UI for repository browsing and management
+- **Authentication**: Form-based authentication for web UI access
 - **Token Management**: Web-based JWT token generation with configurable expiration and permissions
-- **Security Features**: OAuth2 Resource Server with JWT tokens, repository-specific access control
+- **Security Features**: OAuth2 Resource Server with JWT tokens, repository-specific access control, CSRF protection disabled for API usage
 
 ## Quick Start
 
@@ -42,7 +43,11 @@ cd kagami
 open http://localhost:8080
 ```
 
-4. Access artifacts via HTTP:
+4. Log in to the web dashboard:
+   - Default username: `demo`
+   - Default password: `demo`
+
+5. Access artifacts via HTTP:
 ```bash
 curl http://localhost:8080/artifacts/central/org/springframework/spring-core/6.0.0/spring-core-6.0.0.jar
 ```
@@ -83,6 +88,18 @@ kagami.jwt.private-key=classpath:kagami-private.pem
 kagami.jwt.public-key=classpath:kagami-public.pem
 ```
 
+### Web UI Authentication
+
+```properties
+# Configure web UI authentication (default: demo/demo)
+spring.security.user.name=your-username
+spring.security.user.password=your-password
+# For production, use encoded password:
+# spring.security.user.password={bcrypt}$2a$10$...
+# Plain text passwords require {noop} prefix:
+# spring.security.user.password={noop}plainpassword
+```
+
 ### HTTP Proxy Configuration
 
 ```properties
@@ -121,12 +138,13 @@ Configure your Maven settings to use Kagami as a mirror:
 
 ### Private Repository Access
 
-For private repositories, generate a JWT token using the web interface at `http://localhost:8080/token` or via API:
+For private repositories, generate a JWT token using the web interface:
 
-```bash
-curl -X POST http://localhost:8080/token \
-  -d "repositories=private-repo&scope=artifacts:read&expires_in=24"
-```
+1. Log in to the web dashboard at `http://localhost:8080`
+2. Click "Generate Token" in the top right
+3. Select repositories and permissions
+4. Set token expiration (default: 6 months)
+5. Click "Generate Token" and copy the generated JWT
 
 Then configure Maven with the JWT token:
 
@@ -196,6 +214,20 @@ Enable debug logging for troubleshooting:
 ```properties
 logging.level.am.ik.kagami=DEBUG
 logging.level.org.eclipse.aether=DEBUG
+# For security troubleshooting:
+logging.level.org.springframework.security=DEBUG
+```
+
+### Health Check
+
+The application provides health check endpoints via Spring Actuator:
+
+```bash
+# Health status
+curl http://localhost:8080/actuator/health
+
+# Prometheus metrics
+curl http://localhost:8080/actuator/prometheus
 ```
 
 ## Roadmap
@@ -203,7 +235,7 @@ logging.level.org.eclipse.aether=DEBUG
 The following features are planned for future releases:
 
 ### Authentication & Security
-- **OIDC Authentication**: OpenID Connect integration for dashboard access
+- **OIDC Authentication**: OpenID Connect integration for dashboard access (in addition to current form-based auth)
 - **Enhanced Repository Authentication**: Support for JWT tokens in addition to Basic auth
 - **Role-based Access Control**: Fine-grained permissions for different user roles
 

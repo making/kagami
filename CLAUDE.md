@@ -39,8 +39,10 @@ cd ui && npm run dev                                            # Start developm
 3. **Web Layer** 
    - `ArtifactController` (`am.ik.kagami.artifact.web`) handles artifact GET and DELETE operations
    - `BrowserController` (`am.ik.kagami.browser.web`) provides repository browsing REST API
+   - `LoginController` (`am.ik.kagami.browser.web`) serves login page via Mustache template
+   - `TokenController` (`am.ik.kagami.token.web`) generates JWT tokens (requires authentication)
    - URL pattern: `/artifacts/{repositoryId}/**` for artifact downloads
-   - API endpoints: `/api/repositories/**` for repository browsing
+   - API endpoints: `/repositories/**` for repository browsing (requires authentication)
    - Returns proper content types based on file extensions
 
 4. **Browser Feature** (`am.ik.kagami.browser`)
@@ -50,20 +52,31 @@ cd ui && npm run dev                                            # Start developm
    - File information with checksums and content types
    - Uses `@JsonInclude(NON_NULL)` to exclude null values from JSON responses
 
-5. **Frontend UI** (`ui/`)
+5. **Security Layer** (`am.ik.kagami.config.SecurityConfig`, `am.ik.kagami.token`)
+   - Form-based authentication for web UI access
+   - JWT token-based authentication for private repository access
+   - `BasicToJwtAuthorizationExchangeFilter` converts Basic auth to JWT bearer tokens
+   - CSRF disabled for API usage, Remember-me enabled for web UI
+   - Default user configurable via `spring.security.user.*` properties
+
+6. **Frontend UI** (`ui/`)
    - React 18 + TypeScript + Vite for modern development experience
    - Tailwind CSS for utility-first styling with component-based architecture
    - SWR for data fetching and caching
    - React Router v6 for client-side routing
    - Lucide React for consistent iconography
    - Modern, stylish design with hover effects and transitions
+   - 401 error handling with login redirection links
+   - Token generation page with repository/scope selection
 
 ### Configuration
 
 - Properties use Map structure for repositories: `kagami.repositories.{id}.url`
 - Supports username/password for Basic auth per repository
 - HTTP proxy configurable via properties or environment variables (http_proxy, HTTP_PROXY)
-- Frontend development server proxies `/api` requests to backend at `http://localhost:8080`
+- Frontend development server proxies `/repositories`, `/artifacts`, `/login` requests to backend at `http://localhost:8080`
+- Web UI authentication: `spring.security.user.name/password` (default: demo/demo)
+- JWT keys: `kagami.jwt.private-key/public-key` for token signing/verification
 
 ## Design Requirements
 
@@ -116,6 +129,11 @@ Current package structure:
         - `StorageService` - Minimal interface (store/retrieve/delete)
         - `LocalStorageService` - Filesystem implementation
     - `config` - Configuration classes (e.g., security, cross-cutting concerns)
+        - `SecurityConfig` - Spring Security configuration with form login
+    - `token` - JWT token generation and verification
+        - `TokenSigner` - JWT signing service
+        - `web.TokenController` - Token generation endpoint
+        - `web.BasicToJwtAuthorizationExchangeFilter` - Basic to Bearer token conversion
 - `ui/` (Frontend - React)
     - `src/components/` - Reusable UI components
         - `ui/` - Basic UI primitives (Button, Card, Alert, etc.)
@@ -125,8 +143,13 @@ Current package structure:
         - `FileInfoModal` - File details modal
     - `src/hooks/` - Custom React hooks for API integration
     - `src/pages/` - Top-level page components
+        - `HomePage` - Repository browser main page
+        - `TokenPage` - JWT token generation page
     - `src/types/` - TypeScript type definitions
     - `src/utils/` - Utility functions (formatting, styling)
+- `src/main/resources/`
+    - `templates/login.mustache` - Server-side rendered login page
+    - `static/login.css` - Login page styling to match UI design
 
 For DTOs, use inner record classes in the appropriate classes. For example, if you have a
 `UserController`, define the request/response class inside that controller class.
@@ -179,19 +202,29 @@ osascript -e 'display notification "<Message Body>" with title "<Message Title>"
    - Flexible proxy configuration (properties + environment variables)
 
 4. **Browser API Design**
-   - REST API follows standard conventions with `/api` prefix
+   - REST API follows standard conventions
    - JSON responses exclude null values using `@JsonInclude(NON_NULL)`
    - Directory navigation uses breadcrumb pattern with `parentPath`
    - File information includes size, timestamps, and checksums
    - Comprehensive API documentation provided for frontend implementation
+   - All UI endpoints require authentication except `/login`, `/*.css`, `/error`, `/actuator/**`
 
-5. **Frontend Architecture**
+5. **Security Architecture**
+   - Form-based authentication for web UI with session management
+   - JWT tokens for programmatic access to private repositories
+   - Tokens include username (subject claim) for audit trails
+   - Basic auth automatically converted to JWT bearer tokens
+   - CSRF protection disabled to support REST API usage
+   - Remember-me functionality for user convenience
+
+6. **Frontend Architecture**
    - Component-based architecture with reusable UI primitives
    - TypeScript for type safety and better developer experience
    - SWR for efficient data fetching, caching, and synchronization
    - Tailwind CSS utility classes organized into maintainable components
    - Modern design with gradient accents, subtle shadows, and smooth transitions
    - Responsive design supporting desktop and mobile interfaces
+   - 401 error handling with user-friendly login redirection
 
 ## important-instruction-reminders
 

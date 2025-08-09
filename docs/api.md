@@ -8,11 +8,28 @@ Repository browsing endpoints are available at `/repositories` and artifact oper
 
 ## Authentication
 
+### Web UI Authentication
+
+The web UI requires form-based authentication. Users must log in with username and password configured in the application properties:
+- Username: `spring.security.user.name` (default: `demo`)
+- Password: `spring.security.user.password` (default: `demo`)
+
+### API Authentication
+
 Public repositories require no authentication. Private repositories require JWT-based authentication using either:
 - Bearer token in Authorization header: `Authorization: Bearer <jwt>`
 - Basic authentication with JWT as password: `Authorization: Basic <base64(username:jwt)>`
 
-See the [Token Management](#token-management) section for details on obtaining JWTs.
+JWT tokens must be generated through the authenticated web UI. See the [Token Management](#token-management) section for details.
+
+### Endpoints Without Authentication
+
+The following endpoints are accessible without authentication:
+- `/login` - Login page
+- `/*.css` - Static CSS files
+- `/error` - Error pages
+- `/actuator/**` - Spring Actuator endpoints (health, metrics, etc.)
+- Public repository artifacts (`/artifacts/{publicRepoId}/**`)
 
 ## Content Types
 
@@ -26,6 +43,8 @@ See the [Token Management](#token-management) section for details on obtaining J
 #### GET /repositories
 
 Get a list of all configured repositories with their statistics.
+
+**Authentication Required**: Yes - Users must be logged in to the web UI to access this endpoint.
 
 **Response:**
 ```json
@@ -62,6 +81,7 @@ Get a list of all configured repositories with their statistics.
 
 **Status Codes:**
 - `200 OK`: Success
+- `401 Unauthorized`: Authentication required
 
 ---
 
@@ -70,6 +90,8 @@ Get a list of all configured repositories with their statistics.
 #### GET /repositories/{repositoryId}/browse
 
 Browse the contents of a repository at a specific path.
+
+**Authentication Required**: Yes - Users must be logged in to the web UI to access this endpoint.
 
 **Parameters:**
 - `repositoryId` (path, required): Repository identifier
@@ -118,6 +140,7 @@ GET /repositories/central/browse?path=org/springframework
 **Status Codes:**
 - `200 OK`: Success
 - `400 Bad Request`: Invalid repository ID or path
+- `401 Unauthorized`: Authentication required
 - `500 Internal Server Error`: Server error
 
 ---
@@ -125,6 +148,8 @@ GET /repositories/central/browse?path=org/springframework
 #### GET /repositories/{repositoryId}/info
 
 Get detailed information about a specific file.
+
+**Authentication Required**: Yes - Users must be logged in to the web UI to access this endpoint.
 
 **Parameters:**
 - `repositoryId` (path, required): Repository identifier
@@ -171,6 +196,7 @@ GET /repositories/central/info?path=org/springframework/spring-core/5.3.21/sprin
 **Status Codes:**
 - `200 OK`: Success
 - `400 Bad Request`: Invalid repository ID, missing path, or file not found
+- `401 Unauthorized`: Authentication required
 - `500 Internal Server Error`: Server error
 
 ---
@@ -197,8 +223,8 @@ GET /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3.21
 - `Last-Modified` header with file modification timestamp
 
 **Status Codes:**
-- `200 OK`: File found and returned
-- `401 Unauthorized`: Authentication required for private repository
+- `200 OK`: File found and returned (public repositories only)
+- `401 Unauthorized`: Authentication required (for private repository or if not logged in)
 - `403 Forbidden`: Token lacks required scope
 - `404 Not Found`: Repository or file not found
 - `500 Internal Server Error`: Server error
@@ -220,7 +246,7 @@ DELETE /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3
 
 **Response:**
 - `204 No Content`: Successful deletion
-- `401 Unauthorized`: Authentication required for private repository
+- `401 Unauthorized`: Authentication required (for private repository or if not logged in)
 - `403 Forbidden`: Token lacks required scope
 - `404 Not Found`: Repository or file not found
 - `500 Internal Server Error`: Server error
@@ -231,7 +257,9 @@ DELETE /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3
 
 #### POST /token
 
-Generate a JWT token for accessing private repositories.
+Generate a JWT token for accessing private repositories. **This endpoint requires authentication**.
+
+**Authentication Required**: Yes - Users must be logged in to the web UI to generate tokens.
 
 **Parameters (form-urlencoded):**
 - `expires_in` (optional): Token expiration time in hours (default: 3)
@@ -242,6 +270,7 @@ Generate a JWT token for accessing private repositories.
 ```
 POST /token
 Content-Type: application/x-www-form-urlencoded
+Authorization: <session-based authentication from web UI>
 
 repositories=spring-enterprise,gemfire&scope=artifacts:read,artifacts:delete&expires_in=24
 ```
@@ -251,8 +280,20 @@ repositories=spring-enterprise,gemfire&scope=artifacts:read,artifacts:delete&exp
 eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvIiwiYXVkIjoia2FnYW1pIiwiaWF0IjoxNzIzMDE2...
 ```
 
+The generated JWT token includes:
+- `sub` (subject): The authenticated username
+- `iss` (issuer): The server URL
+- `aud` (audience): "kagami"
+- `iat` (issued at): Token creation timestamp
+- `exp` (expiration): Token expiration timestamp
+- `scope`: Granted permissions
+- `repositories`: Accessible repository IDs
+
 **Status Codes:**
 - `200 OK`: Token generated successfully
+- `401 Unauthorized`: Authentication required
+
+**Note**: It is recommended to use the web UI at `/token` to generate tokens rather than calling this API directly.
 
 ---
 
