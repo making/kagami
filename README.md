@@ -2,9 +2,13 @@
 
 A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, meaning "mirror" in Japanese) provides efficient caching and proxying of Maven artifacts from multiple remote repositories.
 
-<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/a1dc0529-2d26-4b30-8742-107593ee37ee" />
+<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/e352db90-9fe9-4884-92fe-ac93f8621485" />
 
-<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/1c519009-9e6c-4c40-bca0-7998d8f89ce7" />
+<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/48f46307-7042-4b8b-958a-52c433e24b83" />
+
+<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/954b34e6-4efa-4d8f-adeb-b270415224e7" />
+
+<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/97883489-cf38-46a3-939e-3e118265a014" />
 
 ## Features
 
