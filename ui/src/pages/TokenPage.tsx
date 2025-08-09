@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { LockIcon } from '../components/ui/LockIcon';
 import { Header } from '../components/Header';
 import { ArrowLeft, Copy, Key, Shield, Clock, AlertTriangle } from 'lucide-react';
+import { generateConfigExample, type BuildTool } from '../utils/configExamples';
 
 interface TokenFormData {
   repositories: string[];
@@ -15,7 +16,6 @@ interface TokenFormData {
   unit: 'hours' | 'days' | 'months';
 }
 
-type BuildTool = 'maven' | 'gradleGroovy' | 'gradleKotlin';
 
 export function TokenPage() {
   const { repositories, isLoading: reposLoading, error: reposError } = useRepositories();
@@ -133,171 +133,18 @@ export function TokenPage() {
   const generateConfigExamples = () => {
     if (!generatedToken) return { maven: '', gradleGroovy: '', gradleKotlin: '' };
     
-    const baseUrl = window.location.origin;
-    const selectedRepoIds = formData.repositories;
-    
-    // Use first repository for single repo examples, or show multiple for multi-repo setup
-    const primaryRepo = selectedRepoIds[0];
-    
-    const maven = selectedRepoIds.length === 1 
-      ? `<!-- settings.xml -->
-<settings>
-  <servers>
-    <server>
-      <id>kagami-${primaryRepo}</id>
-      <username>kagami</username>
-      <password>${generatedToken}</password>
-    </server>
-  </servers>
-  <profiles>
-    <profile>
-      <id>kagami-${primaryRepo}</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <repositories>
-        <repository>
-          <id>kagami-${primaryRepo}</id>
-          <name>Kagami Repository - ${primaryRepo}</name>
-          <url>${baseUrl}/artifacts/${primaryRepo}</url>
-          <snapshots>
-            <enabled>true</enabled>
-          </snapshots>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>kagami-${primaryRepo}</id>
-          <name>Kagami Repository - ${primaryRepo}</name>
-          <url>${baseUrl}/artifacts/${primaryRepo}</url>
-          <snapshots>
-            <enabled>true</enabled>
-          </snapshots>
-        </pluginRepository>
-      </pluginRepositories>
-    </profile>
-  </profiles>
-  
-  <!-- ALTERNATIVE: Mirror configuration -->
-  <!-- Use mirrors when you want to redirect ALL Maven repository requests through Kagami -->
-  <!-- This is useful for: -->
-  <!-- - Corporate environments where all external access must go through a proxy -->
-  <!-- - Offline environments where only Kagami has access to external repositories -->
-  <!-- - Performance optimization when Kagami has better network access to upstream repos -->
-  <!--
-  <mirrors>
-    <mirror>
-      <id>kagami-${primaryRepo}</id>
-      <mirrorOf>*</mirrorOf>
-      <name>Kagami Mirror - ${primaryRepo}</name>
-      <url>${baseUrl}/artifacts/${primaryRepo}</url>
-    </mirror>
-  </mirrors>
-  -->
-</settings>`
-      : `<!-- settings.xml -->
-<settings>
-  <servers>
-${selectedRepoIds.map(repo => `    <server>
-      <id>kagami-${repo}</id>
-      <username>kagami</username>
-      <password>${generatedToken}</password>
-    </server>`).join('\n')}
-  </servers>
-  <profiles>
-    <profile>
-      <id>kagami-multiple</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <repositories>
-${selectedRepoIds.map(repo => `        <repository>
-          <id>kagami-${repo}</id>
-          <name>Kagami Repository - ${repo}</name>
-          <url>${baseUrl}/artifacts/${repo}</url>
-          <snapshots>
-            <enabled>true</enabled>
-          </snapshots>
-        </repository>`).join('\n')}
-      </repositories>
-      <pluginRepositories>
-${selectedRepoIds.map(repo => `        <pluginRepository>
-          <id>kagami-${repo}</id>
-          <name>Kagami Repository - ${repo}</name>
-          <url>${baseUrl}/artifacts/${repo}</url>
-          <snapshots>
-            <enabled>true</enabled>
-          </snapshots>
-        </pluginRepository>`).join('\n')}
-      </pluginRepositories>
-    </profile>
-  </profiles>
-  
-  <!-- ALTERNATIVE: Mirror configuration for multiple repositories -->
-  <!-- Note: Mirrors can only redirect to ONE target URL, so this approach works -->
-  <!-- only if all selected repositories are accessible through a single Kagami endpoint -->
-  <!-- Use mirrors when you want to redirect ALL Maven repository requests through Kagami -->
-  <!-- This is useful for: -->
-  <!-- - Corporate environments where all external access must go through a proxy -->
-  <!-- - Offline environments where only Kagami has access to external repositories -->
-  <!-- - Performance optimization when Kagami has better network access to upstream repos -->
-  <!--
-  <mirrors>
-    <mirror>
-      <id>kagami-all</id>
-      <mirrorOf>*</mirrorOf>
-      <name>Kagami Mirror</name>
-      <url>${baseUrl}/artifacts/${selectedRepoIds[0]}</url>
-    </mirror>
-  </mirrors>
-  -->
-</settings>`;
+    const params = {
+      repositoryIds: formData.repositories,
+      token: generatedToken,
+      baseUrl: window.location.origin,
+      isPrivate: true
+    };
 
-    const gradleGroovy = selectedRepoIds.length === 1
-      ? `// build.gradle
-repositories {
-    maven {
-        url '${baseUrl}/artifacts/${primaryRepo}'
-        credentials {
-            username = 'kagami'
-            password = '${generatedToken}'
-        }
-    }
-}`
-      : `// build.gradle
-repositories {
-${selectedRepoIds.map(repo => `    maven {
-        url '${baseUrl}/artifacts/${repo}'
-        credentials {
-            username = 'kagami'
-            password = '${generatedToken}'
-        }
-    }`).join('\n')}
-}`;
-
-    const gradleKotlin = selectedRepoIds.length === 1
-      ? `// build.gradle.kts
-repositories {
-    maven {
-        url = uri("${baseUrl}/artifacts/${primaryRepo}")
-        credentials {
-            username = "kagami"
-            password = "${generatedToken}"
-        }
-    }
-}`
-      : `// build.gradle.kts
-repositories {
-${selectedRepoIds.map(repo => `    maven {
-        url = uri("${baseUrl}/artifacts/${repo}")
-        credentials {
-            username = "kagami"
-            password = "${generatedToken}"
-        }
-    }`).join('\n')}
-}`;
-
-    return { maven, gradleGroovy, gradleKotlin };
+    return {
+      maven: generateConfigExample('maven', params).content,
+      gradleGroovy: generateConfigExample('gradleGroovy', params).content,
+      gradleKotlin: generateConfigExample('gradleKotlin', params).content,
+    };
   };
 
   if (reposLoading) {

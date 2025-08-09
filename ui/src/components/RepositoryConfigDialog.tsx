@@ -3,6 +3,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogClose, DialogContent } from '.
 import { Button } from './ui/Button';
 import { Copy, Check } from 'lucide-react';
 import type { RepositoryInfo } from '../types/api';
+import { generateConfigExample, type BuildTool } from '../utils/configExamples';
 
 interface RepositoryConfigDialogProps {
   open: boolean;
@@ -10,7 +11,6 @@ interface RepositoryConfigDialogProps {
   repository: RepositoryInfo | null;
 }
 
-type BuildTool = 'maven' | 'gradle-groovy' | 'gradle-kotlin';
 
 export function RepositoryConfigDialog({ open, onOpenChange, repository }: RepositoryConfigDialogProps) {
   const [selectedTool, setSelectedTool] = useState<BuildTool>('maven');
@@ -20,141 +20,14 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
 
   const baseUrl = `${window.location.origin}/artifacts/${repository.id}`;
 
-  const getConfiguration = (tool: BuildTool): { title: string; content: string; filename: string } => {
-    switch (tool) {
-      case 'maven':
-        return {
-          title: 'Maven Configuration',
-          filename: 'pom.xml or settings.xml',
-          content: `<!-- RECOMMENDED: Add to your settings.xml -->
-<settings>
-${repository.isPrivate ? `  <servers>
-    <server>
-      <id>kagami-${repository.id}</id>
-      <username>kagami</username>
-      <password>YOUR_JWT_TOKEN_HERE</password>
-    </server>
-  </servers>
-` : ''}  <profiles>
-    <profile>
-      <id>kagami-${repository.id}</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <repositories>
-        <repository>
-          <id>kagami-${repository.id}</id>
-          <name>Kagami Repository - ${repository.id}</name>
-          <url>${baseUrl}</url>
-          <snapshots>
-            <enabled>${repository.id.includes('snapshot') ? 'true' : 'false'}</enabled>
-          </snapshots>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>kagami-${repository.id}</id>
-          <name>Kagami Repository - ${repository.id}</name>
-          <url>${baseUrl}</url>
-          <snapshots>
-            <enabled>${repository.id.includes('snapshot') ? 'true' : 'false'}</enabled>
-          </snapshots>
-        </pluginRepository>
-      </pluginRepositories>
-    </profile>
-  </profiles>
-</settings>
-
-<!-- ALTERNATIVE: Mirror configuration -->
-<!-- Use mirrors when you want to redirect ALL Maven repository requests through Kagami -->
-<!-- This is useful for: -->
-<!-- - Corporate environments where all external access must go through a proxy -->
-<!-- - Offline environments where only Kagami has access to external repositories -->
-<!-- - Performance optimization when Kagami has better network access to upstream repos -->
-<!--
-<settings>
-${repository.isPrivate ? `  <servers>
-    <server>
-      <id>kagami-${repository.id}</id>
-      <username>kagami</username>
-      <password>YOUR_JWT_TOKEN_HERE</password>
-    </server>
-  </servers>
-` : ''}  <mirrors>
-    <mirror>
-      <id>kagami-${repository.id}</id>
-      <mirrorOf>${repository.id === 'central' ? 'central' : '*'}</mirrorOf>
-      <name>Kagami Mirror for ${repository.id}</name>
-      <url>${baseUrl}</url>
-    </mirror>
-  </mirrors>
-</settings>
--->
-
-<!-- SIMPLE: Add directly to your pom.xml (project-specific) -->
-<!--
-<repositories>
-  <repository>
-    <id>${repository.id}</id>
-    <name>${repository.id.charAt(0).toUpperCase() + repository.id.slice(1)} Repository</name>
-    <url>${baseUrl}</url>
-  </repository>
-</repositories>
--->`
-        };
-
-      case 'gradle-groovy':
-        return {
-          title: 'Gradle Configuration (Groovy DSL)',
-          filename: 'build.gradle',
-          content: `repositories {
-    maven {
-        name = "${repository.id}"
-        url = "${baseUrl}"${repository.isPrivate ? `
-        credentials {
-            username = "kagami"
-            password = "YOUR_JWT_TOKEN_HERE"
-        }` : ''}
-    }
-    
-    // You can also add it as the first repository for priority
-    // maven { 
-    //     url "${baseUrl}"${repository.isPrivate ? `
-    //     credentials {
-    //         username = "kagami"
-    //         password = "YOUR_JWT_TOKEN_HERE"
-    //     }` : ''}
-    // }
-    // mavenCentral() // fallback
-}`
-        };
-
-      case 'gradle-kotlin':
-        return {
-          title: 'Gradle Configuration (Kotlin DSL)',
-          filename: 'build.gradle.kts',
-          content: `repositories {
-    maven {
-        name = "${repository.id}"
-        url = uri("${baseUrl}")${repository.isPrivate ? `
-        credentials {
-            username = "kagami"
-            password = "YOUR_JWT_TOKEN_HERE"
-        }` : ''}
-    }
-    
-    // You can also add it as the first repository for priority
-    // maven { 
-    //     url = uri("${baseUrl}")${repository.isPrivate ? `
-    //     credentials {
-    //         username = "kagami"
-    //         password = "YOUR_JWT_TOKEN_HERE"
-    //     }` : ''}
-    // }
-    // mavenCentral() // fallback
-}`
-        };
-    }
+  const getConfiguration = (tool: BuildTool) => {
+    const token = repository.isPrivate ? 'YOUR_JWT_TOKEN_HERE' : '';
+    return generateConfigExample(tool, {
+      repositoryIds: [repository.id],
+      token,
+      baseUrl: window.location.origin,
+      isPrivate: repository.isPrivate
+    });
   };
 
   const handleCopy = async (content: string, configType: string) => {
@@ -194,21 +67,21 @@ ${repository.isPrivate ? `  <servers>
             </button>
             <button
               className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                selectedTool === 'gradle-groovy'
+                selectedTool === 'gradleGroovy'
                   ? 'bg-white text-red-700 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
-              onClick={() => setSelectedTool('gradle-groovy')}
+              onClick={() => setSelectedTool('gradleGroovy')}
             >
               Gradle (Groovy)
             </button>
             <button
               className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                selectedTool === 'gradle-kotlin'
+                selectedTool === 'gradleKotlin'
                   ? 'bg-white text-red-700 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
-              onClick={() => setSelectedTool('gradle-kotlin')}
+              onClick={() => setSelectedTool('gradleKotlin')}
             >
               Gradle (Kotlin)
             </button>
