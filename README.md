@@ -152,6 +152,23 @@ Configure your Maven settings to use Kagami as a mirror:
       </pluginRepositories>
     </profile>
   </profiles>
+  
+  <!-- ALTERNATIVE: Mirror configuration -->
+  <!-- Use mirrors when you want to redirect ALL Maven repository requests through Kagami -->
+  <!-- This is useful for: -->
+  <!-- - Corporate environments where all external access must go through a proxy -->
+  <!-- - Offline environments where only Kagami has access to external repositories -->
+  <!-- - Performance optimization when Kagami has better network access to upstream repos -->
+  <!--
+  <mirrors>
+    <mirror>
+      <id>kagami</id>
+      <mirrorOf>*</mirrorOf>
+      <name>Kagami Mirror</name>
+      <url>http://localhost:8080/artifacts/central</url>
+    </mirror>
+  </mirrors>
+  -->
 </settings>
 ```
 
@@ -207,6 +224,23 @@ Then configure Maven with the JWT token:
       </pluginRepositories>
     </profile>
   </profiles>
+  
+  <!-- ALTERNATIVE: Mirror configuration -->
+  <!-- Use mirrors when you want to redirect ALL Maven repository requests through Kagami -->
+  <!-- This is useful for: -->
+  <!-- - Corporate environments where all external access must go through a proxy -->
+  <!-- - Offline environments where only Kagami has access to external repositories -->
+  <!-- - Performance optimization when Kagami has better network access to upstream repos -->
+  <!--
+  <mirrors>
+    <mirror>
+      <id>kagami-private</id>
+      <mirrorOf>*</mirrorOf>
+      <name>Kagami Private Mirror</name>
+      <url>http://localhost:8080/artifacts/private-repo</url>
+    </mirror>
+  </mirrors>
+  -->
 </settings>
 ```
 

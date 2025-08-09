@@ -173,6 +173,23 @@ export function TokenPage() {
       </pluginRepositories>
     </profile>
   </profiles>
+  
+  <!-- ALTERNATIVE: Mirror configuration -->
+  <!-- Use mirrors when you want to redirect ALL Maven repository requests through Kagami -->
+  <!-- This is useful for: -->
+  <!-- - Corporate environments where all external access must go through a proxy -->
+  <!-- - Offline environments where only Kagami has access to external repositories -->
+  <!-- - Performance optimization when Kagami has better network access to upstream repos -->
+  <!--
+  <mirrors>
+    <mirror>
+      <id>kagami-${primaryRepo}</id>
+      <mirrorOf>*</mirrorOf>
+      <name>Kagami Mirror - ${primaryRepo}</name>
+      <url>${baseUrl}/artifacts/${primaryRepo}</url>
+    </mirror>
+  </mirrors>
+  -->
 </settings>`
       : `<!-- settings.xml -->
 <settings>
@@ -211,6 +228,25 @@ ${selectedRepoIds.map(repo => `        <pluginRepository>
       </pluginRepositories>
     </profile>
   </profiles>
+  
+  <!-- ALTERNATIVE: Mirror configuration for multiple repositories -->
+  <!-- Note: Mirrors can only redirect to ONE target URL, so this approach works -->
+  <!-- only if all selected repositories are accessible through a single Kagami endpoint -->
+  <!-- Use mirrors when you want to redirect ALL Maven repository requests through Kagami -->
+  <!-- This is useful for: -->
+  <!-- - Corporate environments where all external access must go through a proxy -->
+  <!-- - Offline environments where only Kagami has access to external repositories -->
+  <!-- - Performance optimization when Kagami has better network access to upstream repos -->
+  <!--
+  <mirrors>
+    <mirror>
+      <id>kagami-all</id>
+      <mirrorOf>*</mirrorOf>
+      <name>Kagami Mirror</name>
+      <url>${baseUrl}/artifacts/${selectedRepoIds[0]}</url>
+    </mirror>
+  </mirrors>
+  -->
 </settings>`;
 
     const gradleGroovy = selectedRepoIds.length === 1
