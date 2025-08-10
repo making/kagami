@@ -141,6 +141,10 @@
   <build>
     <plugins>
       <plugin>
+        <groupId>io.github.git-commit-id</groupId>
+        <artifactId>git-commit-id-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
         <groupId>io.spring.javaformat</groupId>
         <artifactId>spring-javaformat-maven-plugin</artifactId>
         <version>0.0.47</version>
@@ -173,6 +177,29 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>build-info</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <image>
+            <env>
+              <BP_OCI_SOURCE>https://github.com/${env.GITHUB_REPOSITORY}</BP_OCI_SOURCE>
+              <BP_OCI_REVISION>${env.GITHUB_SHA}</BP_OCI_REVISION>
+            </env>
+          </image>
+          <additionalProperties>
+            <spring.boot.version>${project.parent.version}
+            </spring.boot.version>
+            <spring.framework.version>${spring-framework.version}
+            </spring.framework.version>
+            <spring.security.version>${spring-security.version}
+            </spring.security.version>
+          </additionalProperties>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>com.github.eirslett</groupId>
