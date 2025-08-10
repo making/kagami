@@ -15,8 +15,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * Configuration properties for Kagami mirror server
  */
 @ConfigurationProperties(prefix = "kagami")
-public record KagamiProperties(Storage storage, Map<String, Repository> repositories, Proxy proxy,
-		@DefaultValue Jwt jwt, @DefaultValue Authentication authentication) {
+public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<String, Repository> repositories,
+		Proxy proxy, @DefaultValue Jwt jwt, @DefaultValue Authentication authentication) {
 
 	public record Storage(String path) {
 	}

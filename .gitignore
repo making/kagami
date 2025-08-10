@@ -34,3 +34,4 @@ build/
 
 .references
 application-oidc.properties
+application-tanzu.properties
