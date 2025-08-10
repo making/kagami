@@ -26,13 +26,13 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 
 ## Quick Start
 
-### Option 1: Using Docker (Recommended)
+### Option 1: Using Docker
 
 The fastest way to get started with Kagami is using the pre-built Docker image:
 
 ```bash
 # Run Kagami with Docker
-docker run -p 8080:8080 \
+docker run --rm --pull always -p 8080:8080 \
   -v /tmp/kagami:/var/kagami/storage \
   -e kagami.storage.path=/var/kagami/storage \
   -e kagami.repositories.central.url=https://repo.maven.apache.org/maven2 \
@@ -50,7 +50,7 @@ docker run -p 8080:8080 \
 
 ```bash
 # With private repository with authentication
-docker run -p 8080:8080 \
+docker run --rm --pull always -p 8080:8080 \
   -v /tmp/kagami:/var/kagami/storage \
   -e kagami.storage.path=/var/kagami/storage \
   -e kagami.repositories.spring-enterprise.url=https://packages.broadcom.com/artifactory/spring-enterprise \
@@ -60,7 +60,7 @@ docker run -p 8080:8080 \
   ghcr.io/making/kagami:jvm
 
 # With custom authentication
-docker run -p 8080:8080 \
+docker run --rm --pull always -p 8080:8080 \
   -v /tmp/kagami:/var/kagami/storage \
   -e kagami.storage.path=/var/kagami/storage \
   -e kagami.repositories.central.url=https://repo.maven.apache.org/maven2 \
@@ -77,6 +77,7 @@ For production deployments with JWT token support, create a `docker-compose.yml`
 services:
   kagami:
     image: ghcr.io/making/kagami:jvm
+    pull_policy: always
     ports:
       - "8080:8080"
     volumes:
@@ -252,7 +253,7 @@ spring.security.oauth2.client.registration.microsoft-entra-id.scope=openid,email
 
 See https://docs.spring.io/spring-boot/reference/web/spring-security.html#web.security.oauth2.client for more details on configuring OIDC authentication.
 
-### HTTP Proxy Configuration
+### HTTP Proxy Configuration (Experimental)
 
 ```properties
 # Configure HTTP proxy
@@ -570,7 +571,7 @@ Kagami supports creating optimized Docker images using Spring Boot's buildpacks 
 
 # The generated image will be tagged as: kagami:0.0.1-SNAPSHOT
 # You can run it with:
-docker run -p 8080:8080 \
+docker run --pull always -p 8080:8080 \
   -v /tmp/kagami:/var/kagami/storage \
   -e kagami.storage.path=/var/kagami/storage \
   -e kagami.repositories.central.url=https://repo.maven.apache.org/maven2 \
