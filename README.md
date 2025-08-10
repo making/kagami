@@ -46,6 +46,8 @@ docker run --rm --pull always -p 8080:8080 \
    - Password: `demo`
 3. Access artifacts: `wget http://localhost:8080/artifacts/central/org/springframework/spring-core/6.0.0/spring-core-6.0.0.jar`
 
+**⚠️ Production Warning:** For production deployments, you must configure `kagami.jwt.private-key` and `kagami.jwt.public-key` to enable JWT token functionality. See [Private Repository Configuration](#private-repository-configuration) for key generation instructions. The Docker Compose example below shows the recommended production setup.
+
 **Docker Configuration Options:**
 
 ```bash
@@ -198,6 +200,35 @@ rm -f private.pem
 
 Place the generated `kagami-private.pem` and `kagami-public.pem` files in your `src/main/resources` directory.
 
+#### Alternative Configuration Methods
+
+Besides file references, you can configure JWT keys using the following methods:
+
+**File path (recommended for Docker/containers):**
+```properties
+kagami.jwt.private-key=file:/path/to/kagami-private.pem
+kagami.jwt.public-key=file:/path/to/kagami-public.pem
+```
+
+**Base64 encoded strings (useful when file mounting is difficult):**
+```properties
+kagami.jwt.private-key=base64:LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t...
+kagami.jwt.public-key=base64:LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0K...
+```
+
+To generate base64 encoded values:
+```bash
+# For private key
+echo "kagami.jwt.private-key=base64:$(cat kagami-private.pem | base64 -w0)"
+
+# For public key  
+echo "kagami.jwt.public-key=base64:$(cat kagami-public.pem | base64 -w0)"
+```
+
+The base64 format is particularly useful in container environments where file mounting is challenging, such as certain cloud platforms or Kubernetes deployments with secret management.
+
+For more information on configuration value conversion, see the [Spring Boot documentation](https://docs.spring.io/spring-boot/reference/features/external-config.html#features.external-config.typesafe-configuration-properties.conversion.base64).
+
 ### Web UI Authentication
 
 #### Simple Authentication (Form-based)
@@ -251,7 +282,7 @@ spring.security.oauth2.client.registration.microsoft-entra-id.scope=openid,email
 - Multiple identity providers can be configured simultaneously
 - Users must have matching email patterns to be granted USER role access
 
-See https://docs.spring.io/spring-boot/reference/web/spring-security.html#web.security.oauth2.client for more details on configuring OIDC authentication.
+See the [Spring Boot documentation](https://docs.spring.io/spring-boot/reference/web/spring-security.html#web.security.oauth2.client) for more details on configuring OIDC authentication.
 
 ### HTTP Proxy Configuration (Experimental)
 
