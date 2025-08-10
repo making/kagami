@@ -1,7 +1,10 @@
 package am.ik.kagami;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Base64;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -23,6 +26,17 @@ public record KagamiProperties(Storage storage, Map<String, Repository> reposito
 
 	public record Jwt(RSAPublicKey publicKey, RSAPrivateKey privateKey) {
 
-	}
+		public String keyId() {
+			byte[] publicKeyDERBytes = publicKey.getEncoded();
+			try {
+				MessageDigest hasher = MessageDigest.getInstance("SHA-256");
+				byte[] publicKeyDERHash = hasher.digest(publicKeyDERBytes);
+				return Base64.getUrlEncoder().withoutPadding().encodeToString(publicKeyDERHash);
+			}
+			catch (NoSuchAlgorithmException e) {
+				throw new RuntimeException(e);
+			}
+		}
 
+	}
 }

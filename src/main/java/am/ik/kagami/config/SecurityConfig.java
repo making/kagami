@@ -46,7 +46,7 @@ class SecurityConfig {
 					authz.requestMatchers(DELETE, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope("artifacts:delete"), hasRole("USER")));
 				});
 				authz.requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
-					.requestMatchers("/login", "/*.css", "/error").permitAll()
+					.requestMatchers("/login", "/*.css", "/error", "/.well-known/**", "/openid/v1/jwks").permitAll()
 					.requestMatchers(POST, "/token").hasRole("USER")
 					.requestMatchers("/me").hasRole("USER")
 					.anyRequest().authenticated();
