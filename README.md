@@ -15,7 +15,6 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **Local Caching**: Automatically caches artifacts from remote repositories to reduce download times
 - **Multiple Repository Support**: Configure multiple remote repositories with individual settings
 - **Private Repository Support**: JWT-based authentication for secure repository access
-- **HTTP Proxy Support**: Configure HTTP proxy for outbound connections
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
 - **Web Dashboard**: Modern React-based UI for repository browsing and management with unified header navigation
 - **Authentication**: Form-based authentication or OIDC/OAuth2 login for web UI access with styled login/logout pages
@@ -111,8 +110,6 @@ services:
    ```
 4. Run with: `docker compose up -d`
 
-**Note:** The Kagami container runs as user ID 1002 for security. Mounted files and directories must have appropriate permissions for this user to read/write them.
-
 ### Option 2: Building from Source
 
 #### Prerequisites
@@ -148,7 +145,7 @@ wget http://localhost:8080/artifacts/central/org/springframework/spring-core/6.0
 
 ## Configuration
 
-Configure repositories and settings in `application.properties`:
+Configure repositories and settings in `application.properties` or environment variables:
 
 ### Basic Repository Configuration
 
@@ -225,7 +222,7 @@ echo "kagami.jwt.private-key=base64:$(cat kagami-private.pem | base64 -w0)"
 echo "kagami.jwt.public-key=base64:$(cat kagami-public.pem | base64 -w0)"
 ```
 
-The base64 format is particularly useful in container environments where file mounting is challenging, such as certain cloud platforms or Kubernetes deployments with secret management.
+The base64 format is particularly useful in container environments where file mounting is challenging, such as certain cloud platforms like Cloud Foundry.
 
 For more information on configuration value conversion, see the [Spring Boot documentation](https://docs.spring.io/spring-boot/reference/features/external-config.html#features.external-config.typesafe-configuration-properties.conversion.base64).
 
@@ -278,7 +275,7 @@ spring.security.oauth2.client.registration.microsoft-entra-id.scope=openid,email
 
 **Notes**:
 - When OIDC is enabled, users will see provider-specific login buttons instead of username/password fields
-- The `allowed-name-patterns` property restricts access to users whose email matches the specified patterns
+- The `allowed-name-patterns` property restricts access to users whose name matches the specified patterns
 - Multiple identity providers can be configured simultaneously
 - Users must have matching email patterns to be granted USER role access
 
@@ -368,7 +365,7 @@ For private repositories, generate a JWT token using the web interface:
 5. Click "Generate Token" and copy the generated JWT
 6. Use the provided Maven, Gradle Groovy, or Gradle Kotlin configuration examples
 
-**Note**: JWT tokens cannot be used to generate new tokens. You must use the web interface with your username/password credentials.
+**Note**: JWT tokens cannot be used to generate new tokens. You must use the web interface.
 
 Then configure Maven with the JWT token:
 
