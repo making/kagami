@@ -15,7 +15,6 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **Local Caching**: Automatically caches artifacts from remote repositories to reduce download times
 - **Multiple Repository Support**: Configure multiple remote repositories with individual settings
 - **Private Repository Support**: JWT-based authentication for secure repository access
-- **Basic Authentication**: Support for repositories requiring username/password authentication
 - **HTTP Proxy Support**: Configure HTTP proxy for outbound connections
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
 - **Web Dashboard**: Modern React-based UI for repository browsing and management with unified header navigation
