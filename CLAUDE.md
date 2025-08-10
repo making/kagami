@@ -12,6 +12,7 @@ Backend (Spring Boot):
 ./mvnw clean spring-javaformat:apply compile                    # Compile application
 ./mvnw spring-javaformat:apply test                             # Run all tests
 ./mvnw spring-boot:run                                          # Start backend server (port 8080)
+./mvnw spring-boot:build-image                                  # Create Docker image
 ```
 
 Frontend (React):
@@ -19,6 +20,11 @@ Frontend (React):
 cd ui && npm install                                            # Install dependencies
 cd ui && npm run dev                                            # Start development server (port 5173)
 ```
+
+**Docker:**
+- Pre-built image: `ghcr.io/making/kagami:jvm`
+- Local build: `./mvnw spring-boot:build-image`
+- Environment variable configuration supported
 
 ## System Architecture
 

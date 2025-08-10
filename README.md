@@ -26,11 +26,97 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 
 ## Quick Start
 
-### Prerequisites
+### Option 1: Using Docker (Recommended)
+
+The fastest way to get started with Kagami is using the pre-built Docker image:
+
+```bash
+# Run Kagami with Docker
+docker run -p 8080:8080 \
+  -v /tmp/kagami:/var/kagami/storage \
+  -e kagami.storage.path=/var/kagami/storage \
+  -e kagami.repositories.central.url=https://repo.maven.apache.org/maven2 \
+  ghcr.io/making/kagami:jvm
+```
+
+**Access the application:**
+1. Open http://localhost:8080 in your browser
+2. Log in with default credentials:
+   - Username: `demo`
+   - Password: `demo`
+3. Access artifacts: `wget http://localhost:8080/artifacts/central/org/springframework/spring-core/6.0.0/spring-core-6.0.0.jar`
+
+**Docker Configuration Options:**
+
+```bash
+# With private repository with authentication
+docker run -p 8080:8080 \
+  -v /tmp/kagami:/var/kagami/storage \
+  -e kagami.storage.path=/var/kagami/storage \
+  -e kagami.repositories.spring-enterprise.url=https://packages.broadcom.com/artifactory/spring-enterprise \
+  -e kagami.repositories.spring-enterprise.username=your-bc-username \
+  -e kagami.repositories.spring-enterprise.password=your-bc-token \
+  -e kagami.repositories.spring-enterprise.is-private=true \
+  ghcr.io/making/kagami:jvm
+
+# With custom authentication
+docker run -p 8080:8080 \
+  -v /tmp/kagami:/var/kagami/storage \
+  -e kagami.storage.path=/var/kagami/storage \
+  -e kagami.repositories.central.url=https://repo.maven.apache.org/maven2 \
+  -e spring.security.user.name=admin \
+  -e spring.security.user.password='{noop}mypassword' \
+  ghcr.io/making/kagami:jvm
+```
+
+**Using Docker Compose:**
+
+For production deployments with JWT token support, create a `docker-compose.yml` file:
+
+```yaml
+services:
+  kagami:
+    image: ghcr.io/making/kagami:jvm
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./kagami-storage:/var/kagami/storage
+      - ./kagami-private.pem:/etc/kagami/kagami-private.pem:ro
+      - ./kagami-public.pem:/etc/kagami/kagami-public.pem:ro
+    environment:
+      kagami.storage.path: /var/kagami/storage
+      kagami.repositories.central.url: https://repo.maven.apache.org/maven2
+      # Configure private repository (requires JWT keys)
+      kagami.repositories.private-repo.url: https://internal.repo.com/maven2
+      kagami.repositories.private-repo.is-private: true
+      # JWT key configuration
+      kagami.jwt.private-key: file:/etc/kagami/kagami-private.pem
+      kagami.jwt.public-key: file:/etc/kagami/kagami-public.pem
+      # Optional: Custom authentication
+      # spring.security.user.name: admin
+      # spring.security.user.password: '{noop}mypassword'
+```
+
+**Before running:**
+1. Generate JWT key pair following the instructions in [Private Repository Configuration](#private-repository-configuration)
+2. Place `kagami-private.pem` and `kagami-public.pem` in the same directory as your `docker-compose.yml`
+3. Set appropriate file permissions:
+   ```bash
+   mkdir -p ./kagami-storage
+   chmod a+w ./kagami-storage
+   chmod a+r ./kagami-private.pem ./kagami-public.pem
+   ```
+4. Run with: `docker compose up -d`
+
+**Note:** The Kagami container runs as user ID 1002 for security. Mounted files and directories must have appropriate permissions for this user to read/write them.
+
+### Option 2: Building from Source
+
+#### Prerequisites
 
 - Java 21 or later
 
-### Running
+#### Running
 
 1. Clone the repository:
 ```bash
@@ -54,7 +140,7 @@ open http://localhost:8080
 
 5. Access artifacts via HTTP:
 ```bash
-curl http://localhost:8080/artifacts/central/org/springframework/spring-core/6.0.0/spring-core-6.0.0.jar
+wget http://localhost:8080/artifacts/central/org/springframework/spring-core/6.0.0/spring-core-6.0.0.jar
 ```
 
 ## Configuration
@@ -461,15 +547,37 @@ settingsEvaluated {
 
 ## Building from Source
 
+### Build and Test
+
 ```bash
-# Build
+# Build the application
 ./mvnw clean package
 
-# Run tests
+# Run all tests
 ./mvnw test
 
-# Create Docker image (if Docker is available)
+# Run with development profile
+./mvnw spring-boot:run
+```
+
+### Creating Docker Images
+
+Kagami supports creating optimized Docker images using Spring Boot's buildpacks integration:
+
+```bash
+# Create Docker image using buildpacks (requires Docker)
 ./mvnw spring-boot:build-image
+
+# The generated image will be tagged as: kagami:0.0.1-SNAPSHOT
+# You can run it with:
+docker run -p 8080:8080 \
+  -v /tmp/kagami:/var/kagami/storage \
+  -e kagami.storage.path=/var/kagami/storage \
+  -e kagami.repositories.central.url=https://repo.maven.apache.org/maven2 \
+  kagami:0.0.1-SNAPSHOT
+
+# Custom image name and tag
+./mvnw spring-boot:build-image -Dspring-boot.build-image.imageName=myregistry/kagami:latest
 ```
 
 ### Logging
