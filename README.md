@@ -18,10 +18,11 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **HTTP Proxy Support**: Configure HTTP proxy for outbound connections
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
 - **Web Dashboard**: Modern React-based UI for repository browsing and management with unified header navigation
-- **Authentication**: Form-based authentication for web UI access with styled login/logout pages
+- **Authentication**: Form-based authentication or OIDC/OAuth2 login for web UI access with styled login/logout pages
 - **Token Management**: Web-based JWT token generation with configurable expiration, permissions, and build tool configuration examples
 - **User Interface**: Consistent header across all pages showing logged-in username, logout functionality, and token generation access
 - **Security Features**: OAuth2 Resource Server with JWT tokens, repository-specific access control, role-based token generation, CSRF protection partially disabled for API usage
+- **OIDC Support**: OpenID Connect authentication with multiple identity providers (Google, Microsoft Entra ID, etc.)
 
 ## Quick Start
 
@@ -112,13 +113,56 @@ Place the generated `kagami-private.pem` and `kagami-public.pem` files in your `
 
 ### Web UI Authentication
 
+#### Simple Authentication (Form-based)
+
+<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/774de4f6-9a80-47b0-bc9e-e9f47061707e" />
+
 ```properties
 # Configure web UI authentication (default: demo/demo)
+kagami.authentication.type=simple
 spring.security.user.name=your-username
 spring.security.user.password={noop}plainpassword
 # For production, use encoded password:
 # spring.security.user.password={bcrypt}$2a$10$...
 ```
+
+Only one user can be configured with this method. For multiple users, use OIDC authentication.
+
+#### OIDC Authentication
+
+<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/d986e66a-8f7b-43b6-b008-f5171dd10bed" />
+
+Configure OIDC authentication for enterprise single sign-on:
+
+```properties
+# Enable OIDC authentication
+kagami.authentication.type=oidc
+
+# Restrict access to specific email patterns (regex)
+kagami.authentication.allowed-name-patterns=.*@example\\.com,.*@example\\.org
+
+# Configure Google as identity provider
+spring.security.oauth2.client.provider.google.issuer-uri=https://accounts.google.com
+spring.security.oauth2.client.provider.google.user-name-attribute=email
+spring.security.oauth2.client.registration.google.client-id=your-google-client-id
+spring.security.oauth2.client.registration.google.client-secret=your-google-client-secret
+spring.security.oauth2.client.registration.google.scope=openid,email
+
+# Configure Microsoft Entra ID (formerly Azure AD)
+spring.security.oauth2.client.provider.microsoft-entra-id.issuer-uri=https://sts.windows.net/{tenant-id}/
+spring.security.oauth2.client.provider.microsoft-entra-id.user-name-attribute=email
+spring.security.oauth2.client.registration.microsoft-entra-id.client-id=your-client-id
+spring.security.oauth2.client.registration.microsoft-entra-id.client-secret=your-client-secret
+spring.security.oauth2.client.registration.microsoft-entra-id.scope=openid,email
+```
+
+**Notes**:
+- When OIDC is enabled, users will see provider-specific login buttons instead of username/password fields
+- The `allowed-name-patterns` property restricts access to users whose email matches the specified patterns
+- Multiple identity providers can be configured simultaneously
+- Users must have matching email patterns to be granted USER role access
+
+See https://docs.spring.io/spring-boot/reference/web/spring-security.html#web.security.oauth2.client for more details on configuring OIDC authentication.
 
 ### HTTP Proxy Configuration
 
@@ -452,9 +496,6 @@ curl http://localhost:8080/actuator/prometheus
 ## Roadmap
 
 The following features are planned for future releases:
-
-### Authentication & Security
-- **OIDC Authentication**: OpenID Connect integration for dashboard access (in addition to current form-based auth)
 
 ### Storage Backends
 - **S3 Storage**: Amazon S3 and S3-compatible storage backends (MinIO, etc.)

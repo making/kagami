@@ -2,6 +2,7 @@ package am.ik.kagami.repository;
 
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.storage.StorageService;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +26,8 @@ class RemoteRepositoryServiceTest {
 		// Test property-based proxy configuration
 		var properties = new KagamiProperties(new KagamiProperties.Storage("/tmp"),
 				Map.of("test", new KagamiProperties.Repository("http://example.com", "", "", true)),
-				new KagamiProperties.Proxy("http://config-proxy:8080"), new KagamiProperties.Jwt(null, null));
+				new KagamiProperties.Proxy("http://config-proxy:8080"), new KagamiProperties.Jwt(null, null),
+				new KagamiProperties.Authentication(KagamiProperties.AuthenticationType.SIMPLE, List.of()));
 
 		var service = new RemoteRepositoryService(properties, storageService, RestClient.builder());
 
@@ -38,7 +40,8 @@ class RemoteRepositoryServiceTest {
 		// Test with no proxy configuration
 		var properties = new KagamiProperties(new KagamiProperties.Storage("/tmp"),
 				Map.of("test", new KagamiProperties.Repository("http://example.com", "", "", true)),
-				new KagamiProperties.Proxy(""), new KagamiProperties.Jwt(null, null));
+				new KagamiProperties.Proxy(""), new KagamiProperties.Jwt(null, null),
+				new KagamiProperties.Authentication(KagamiProperties.AuthenticationType.SIMPLE, List.of()));
 
 		var service = new RemoteRepositoryService(properties, storageService, RestClient.builder());
 
@@ -52,7 +55,8 @@ class RemoteRepositoryServiceTest {
 		var properties = new KagamiProperties(new KagamiProperties.Storage("/tmp"),
 				Map.of("authenticated-repo",
 						new KagamiProperties.Repository("http://private.example.com", "user", "pass", true)),
-				new KagamiProperties.Proxy(""), new KagamiProperties.Jwt(null, null));
+				new KagamiProperties.Proxy(""), new KagamiProperties.Jwt(null, null),
+				new KagamiProperties.Authentication(KagamiProperties.AuthenticationType.SIMPLE, List.of()));
 
 		var service = new RemoteRepositoryService(properties, storageService, RestClient.builder());
 

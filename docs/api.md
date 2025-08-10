@@ -10,9 +10,15 @@ Repository browsing endpoints are available at `/repositories` and artifact oper
 
 ### Web UI Authentication
 
-The web UI requires form-based authentication. Users must log in with username and password configured in the application properties:
+The web UI requires authentication through either form-based login or OIDC/OAuth2:
+
+#### Form-based Authentication
 - Username: `spring.security.user.name` (default: `demo`)
 - Password: `spring.security.user.password` (default: `{noop}demo`)
+
+#### OIDC Authentication
+- Configured via OAuth2 client settings
+- Access restricted by email patterns in `kagami.authentication.allowed-name-patterns`
 
 The web interface features:
 - Styled login and logout pages matching the application design
@@ -22,18 +28,27 @@ The web interface features:
 
 ### API Authentication
 
-Public repositories require no authentication. Private repositories require JWT-based authentication using:
-- Bearer token in Authorization header: `Authorization: Bearer <jwt>`
+#### Repository Browsing APIs (`/repositories/**`)
+**Important**: All repository browsing endpoints require USER role authentication. These APIs are designed for web UI access only and are not intended for programmatic access. Users must be logged in through the web interface to access these endpoints.
+
+#### Artifact APIs (`/artifacts/**`)
+- Public repositories: No authentication required
+- Private repositories: JWT-based authentication using Bearer token in Authorization header: `Authorization: Bearer <jwt>`
 
 JWT tokens must be generated through the authenticated web UI. See the [Token Management](#token-management) section for details.
 
 ### Endpoints Without Authentication
 
 The following endpoints are accessible without authentication:
+- `/` - Home page (redirects to login if not authenticated)
 - `/login` - Login page
+- `/logout` - Logout page
 - `/*.css` - Static CSS files
+- `/assets/**` - Static assets
 - `/error` - Error pages
 - `/actuator/**` - Spring Actuator endpoints (health, metrics, etc.)
+- `/.well-known/**` - Well-known endpoints
+- `/openid/v1/jwks` - JWKS endpoint for JWT verification
 - Public repository artifacts (`/artifacts/{publicRepoId}/**`)
 
 ## Content Types
@@ -49,7 +64,7 @@ The following endpoints are accessible without authentication:
 
 Get a list of all configured repositories with their statistics.
 
-**Authentication Required**: Yes - Users must be logged in to the web UI to access this endpoint.
+**Authentication Required**: Yes - Requires USER role. Users must be logged in to the web UI to access this endpoint. This API is intended for web UI use only.
 
 **Response:**
 ```json
@@ -87,6 +102,7 @@ Get a list of all configured repositories with their statistics.
 **Status Codes:**
 - `200 OK`: Success
 - `401 Unauthorized`: Authentication required
+- `403 Forbidden`: USER role required
 
 ---
 
@@ -96,7 +112,7 @@ Get a list of all configured repositories with their statistics.
 
 Browse the contents of a repository at a specific path.
 
-**Authentication Required**: Yes - Users must be logged in to the web UI to access this endpoint.
+**Authentication Required**: Yes - Requires USER role. Users must be logged in to the web UI to access this endpoint. This API is intended for web UI use only.
 
 **Parameters:**
 - `repositoryId` (path, required): Repository identifier
@@ -154,7 +170,7 @@ GET /repositories/central/browse?path=org/springframework
 
 Get detailed information about a specific file.
 
-**Authentication Required**: Yes - Users must be logged in to the web UI to access this endpoint.
+**Authentication Required**: Yes - Requires USER role. Users must be logged in to the web UI to access this endpoint. This API is intended for web UI use only.
 
 **Parameters:**
 - `repositoryId` (path, required): Repository identifier
@@ -320,7 +336,7 @@ The generated JWT token includes:
 
 Get current authenticated user information and CSRF token.
 
-**Authentication Required**: Yes - Users must be logged in to the web UI to access this endpoint.
+**Authentication Required**: Yes - Users must be logged in to the web UI to access this endpoint. This API is intended for web UI use only.
 
 **Example Request:**
 ```
@@ -342,6 +358,7 @@ GET /me
 **Status Codes:**
 - `200 OK`: Success
 - `401 Unauthorized`: Authentication required
+- `403 Forbidden`: USER role required
 
 ---
 

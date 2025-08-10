@@ -53,12 +53,13 @@ cd ui && npm run dev                                            # Start developm
    - Uses `@JsonInclude(NON_NULL)` to exclude null values from JSON responses
 
 5. **Security Layer** (`am.ik.kagami.config.SecurityConfig`, `am.ik.kagami.token`)
-   - Form-based authentication for web UI access
+   - Form-based authentication or OIDC/OAuth2 login for web UI access
    - JWT token-based authentication for private repository access
    - `BasicToJwtAuthorizationExchangeFilter` converts Basic auth to JWT bearer tokens
    - TOKEN generation requires USER role (JWT tokens cannot generate new tokens)
-   - CSRF partially disabled for `/artifacts/**` and `/token`, Remember-me enabled for web UI
-   - Default user configurable via `spring.security.user.*` properties
+   - CSRF partially disabled for `/artifacts/**` and `/token`, Remember-me enabled for form-based auth
+   - Form-based auth: Default user configurable via `spring.security.user.*` properties
+   - OIDC auth: Supports multiple identity providers with email-based access control
 
 6. **Frontend UI** (`ui/`)
    - React 18 + TypeScript + Vite for modern development experience
@@ -76,8 +77,11 @@ cd ui && npm run dev                                            # Start developm
 - Supports username/password for Basic auth per repository
 - HTTP proxy configurable via properties or environment variables (http_proxy, HTTP_PROXY)
 - Frontend development server proxies `/repositories`, `/artifacts`, `/login` requests to backend at `http://localhost:8080`
-- Web UI authentication: `spring.security.user.name/password` (default: demo/demo)
+- Web UI authentication modes:
+  - Simple: `spring.security.user.name/password` (default: demo/demo)
+  - OIDC: OAuth2 client configuration with `kagami.authentication.allowed-name-patterns` for access control
 - JWT keys: `kagami.jwt.private-key/public-key` for token signing/verification
+- Authentication type: `kagami.authentication.type` (SIMPLE or OIDC)
 
 ## Design Requirements
 
@@ -211,13 +215,14 @@ osascript -e 'display notification "<Message Body>" with title "<Message Title>"
    - All UI endpoints require authentication except `/login`, `/*.css`, `/error`, `/actuator/**`
 
 5. **Security Architecture**
-   - Form-based authentication for web UI with session management
+   - Form-based authentication or OIDC/OAuth2 for web UI with session management
    - JWT tokens for programmatic access to private repositories
    - Tokens include username (subject claim) for audit trails
    - Basic auth automatically converted to JWT bearer tokens
    - Token generation requires USER role - JWT tokens cannot generate new tokens
    - CSRF protection partially disabled (`/artifacts/**`, `/token`) to support REST API usage
-   - Remember-me functionality for user convenience
+   - Remember-me functionality for form-based authentication
+   - OIDC authentication supports multiple identity providers with email-based access control patterns
 
 6. **Frontend Architecture**
    - Component-based architecture with reusable UI primitives
