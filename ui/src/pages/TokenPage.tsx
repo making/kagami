@@ -130,22 +130,6 @@ export function TokenPage() {
     });
   };
 
-  const generateConfigExamples = () => {
-    if (!generatedToken) return { maven: '', gradleGroovy: '', gradleKotlin: '' };
-    
-    const params = {
-      repositoryIds: formData.repositories,
-      token: generatedToken,
-      baseUrl: window.location.origin,
-      isPrivate: true
-    };
-
-    return {
-      maven: generateConfigExample('maven', params).content,
-      gradleGroovy: generateConfigExample('gradleGroovy', params).content,
-      gradleKotlin: generateConfigExample('gradleKotlin', params).content,
-    };
-  };
 
   if (reposLoading) {
     return (
@@ -407,13 +391,13 @@ export function TokenPage() {
               {/* Selected Configuration */}
               <div className="border border-gray-200 rounded-lg">
                 {(() => {
-                  const configs = generateConfigExamples();
-                  const configMap = {
-                    maven: { title: 'Maven (settings.xml)', content: configs.maven },
-                    gradleGroovy: { title: 'Gradle Groovy (build.gradle)', content: configs.gradleGroovy },
-                    gradleKotlin: { title: 'Gradle Kotlin (build.gradle.kts)', content: configs.gradleKotlin },
+                  const params = {
+                    repositoryIds: formData.repositories,
+                    token: generatedToken!,
+                    baseUrl: window.location.origin,
+                    isPrivate: true
                   };
-                  const config = configMap[selectedTool];
+                  const config = generateConfigExample(selectedTool, params);
 
                   return (
                     <>

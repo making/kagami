@@ -286,42 +286,130 @@ repositories {
 
 #### Private Repository
 
+**Groovy DSL ($HOME/.gradle/init.gradle)**
 ```gradle
-// Add to your settings.gradle file
-pluginManagement {
+// $HOME/.gradle/init.gradle - Groovy DSL version
+
+def repoUrl = "http://localhost:8080/artifacts/private-repo"
+def repoToken = "Bearer YOUR_JWT_TOKEN"
+
+// For regular dependencies (legacy projects)
+allprojects {
     repositories {
         maven {
-            name = "private-repo"
-            url = "http://localhost:8080/artifacts/private-repo"
+            url = repoUrl
             allowInsecureProtocol = true
             authentication {
                 header(HttpHeaderAuthentication)
             }
             credentials(HttpHeaderCredentials) {
                 name = "Authorization"
-                value = "Bearer YOUR_JWT_TOKEN"
+                value = repoToken
             }
         }
-        gradlePluginPortal() // fallback
         mavenCentral() // fallback
     }
 }
 
-dependencyResolutionManagement {
-    repositories {
-        maven {
-            name = "private-repo"
-            url = "http://localhost:8080/artifacts/private-repo"
-            allowInsecureProtocol = true
-            authentication {
-                header(HttpHeaderAuthentication)
+// Configure settings.gradle
+settingsEvaluated { settings ->
+    // For plugin resolution
+    settings.pluginManagement {
+        repositories {
+            maven {
+                url = repoUrl
+                allowInsecureProtocol = true
+                authentication {
+                    header(HttpHeaderAuthentication)
+                }
+                credentials(HttpHeaderCredentials) {
+                    name = "Authorization"
+                    value = repoToken
+                }
             }
-            credentials(HttpHeaderCredentials) {
-                name = "Authorization"
-                value = "Bearer YOUR_JWT_TOKEN"
-            }
+            gradlePluginPortal() // fallback
+            mavenCentral() // fallback
         }
+    }
+    
+    // Dependency resolution management (Gradle 6.8+)
+    settings.dependencyResolutionManagement {
+        // Ignore repositories defined in build.gradle
+        repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+        
+        repositories {
+            maven {
+                url = repoUrl
+                allowInsecureProtocol = true
+                authentication {
+                    header(HttpHeaderAuthentication)
+                }
+                credentials(HttpHeaderCredentials) {
+                    name = "Authorization"
+                    value = repoToken
+                }
+            }
+            mavenCentral()
+        }
+    }
+}
+```
+
+**Kotlin DSL ($HOME/.gradle/init.gradle.kts)**
+```kotlin
+// $HOME/.gradle/init.gradle.kts - Kotlin DSL version
+
+import org.gradle.api.artifacts.repositories.PasswordCredentials
+import org.gradle.authentication.http.HttpHeaderAuthentication
+import org.gradle.kotlin.dsl.*
+
+val repoUrl = "http://localhost:8080/artifacts/private-repo"
+val repoToken = "Bearer YOUR_JWT_TOKEN"
+
+// Extension function to configure repository
+fun RepositoryHandler.addKagamiRepository() {
+    maven {
+        url = uri(repoUrl)
+        isAllowInsecureProtocol = true
+        authentication {
+            create<HttpHeaderAuthentication>("header")
+        }
+        credentials(HttpHeaderCredentials::class) {
+            name = "Authorization"
+            value = repoToken
+        }
+    }
+}
+
+// For regular dependencies (legacy projects)
+allprojects {
+    repositories {
+        addKagamiRepository()
         mavenCentral() // fallback
+    }
+}
+
+// Configure settings.gradle
+settingsEvaluated {
+    // For plugin resolution
+    pluginManagement {
+        repositories {
+            addKagamiRepository()
+            gradlePluginPortal() // fallback
+            mavenCentral() // fallback
+        }
+    }
+    
+    // Dependency resolution management (Gradle 6.8+)
+    dependencyResolutionManagement {
+        // Ignore repositories defined in build.gradle
+        @Suppress("UnstableApiUsage")
+        repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+        
+        repositories {
+            addKagamiRepository()
+            mavenCentral() // fallback
+        }
     }
 }
 ```

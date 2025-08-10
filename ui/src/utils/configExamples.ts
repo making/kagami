@@ -19,8 +19,8 @@ export function generateMavenConfig({ repositoryIds, token, baseUrl, isPrivate =
   if (repositoryIds.length === 1) {
     return {
       title: 'Maven Configuration',
-      filename: 'settings.xml',
-      content: `<!-- RECOMMENDED: Add to your settings.xml -->
+      filename: '$HOME/.m2/settings.xml',
+      content: `<!-- RECOMMENDED: Add to your $HOME/.m2/settings.xml -->
 <settings>
 ${isPrivate ? `  <servers>
     <server>
@@ -96,8 +96,8 @@ ${isPrivate ? `  <servers>
   } else {
     return {
       title: 'Maven Configuration',
-      filename: 'settings.xml',
-      content: `<!-- RECOMMENDED: Add to your settings.xml -->
+      filename: '$HOME/.m2/settings.xml',
+      content: `<!-- RECOMMENDED: Add to your $HOME/.m2/settings.xml -->
 <settings>
 ${isPrivate ? `  <servers>
 ${repositoryIds.map(repo => `    <server>
@@ -165,90 +165,130 @@ ${repositoryIds.map(repo => `        <pluginRepository>
 }
 
 export function generateGradleGroovyConfig({ repositoryIds, token, baseUrl, isPrivate = true }: ConfigExamplesParams): ConfigExample {
-  const primaryRepo = repositoryIds[0];
   const isHttpUrl = baseUrl.startsWith('http://');
   
   if (repositoryIds.length === 1) {
+    const repo = repositoryIds[0];
     return {
       title: 'Gradle Configuration (Groovy DSL)',
-      filename: 'settings.gradle',
-      content: `// Add to your settings.gradle file
-pluginManagement {
+      filename: '$HOME/.gradle/init.gradle',
+      content: `// $HOME/.gradle/init.gradle - Groovy DSL version
+
+def repoUrl = "${baseUrl}/artifacts/${repo}"
+def repoToken = "Bearer ${token}"
+
+// For regular dependencies (legacy projects)
+allprojects {
     repositories {
         maven {
-            name = "${primaryRepo}"
-            url = "${baseUrl}/artifacts/${primaryRepo}"${isHttpUrl ? `
+            url = repoUrl${isHttpUrl ? `
             allowInsecureProtocol = true` : ''}${isPrivate ? `
             authentication {
                 header(HttpHeaderAuthentication)
             }
             credentials(HttpHeaderCredentials) {
                 name = "Authorization"
-                value = "Bearer ${token}"
+                value = repoToken
             }` : ''}
         }
-        gradlePluginPortal() // fallback
         mavenCentral() // fallback
     }
 }
 
-dependencyResolutionManagement {
-    repositories {
-        maven {
-            name = "${primaryRepo}"
-            url = "${baseUrl}/artifacts/${primaryRepo}"${isHttpUrl ? `
-            allowInsecureProtocol = true` : ''}${isPrivate ? `
-            authentication {
-                header(HttpHeaderAuthentication)
+// Configure settings.gradle
+settingsEvaluated { settings ->
+    // For plugin resolution
+    settings.pluginManagement {
+        repositories {
+            maven {
+                url = repoUrl${isHttpUrl ? `
+                allowInsecureProtocol = true` : ''}${isPrivate ? `
+                authentication {
+                    header(HttpHeaderAuthentication)
+                }
+                credentials(HttpHeaderCredentials) {
+                    name = "Authorization"
+                    value = repoToken
+                }` : ''}
             }
-            credentials(HttpHeaderCredentials) {
-                name = "Authorization"
-                value = "Bearer ${token}"
-            }` : ''}
+            gradlePluginPortal() // fallback
+            mavenCentral() // fallback
         }
-        mavenCentral() // fallback
+    }
+    
+    // Dependency resolution management (Gradle 6.8+)
+    settings.dependencyResolutionManagement {
+        // Ignore repositories defined in build.gradle
+        repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+        
+        repositories {
+            maven {
+                url = repoUrl${isHttpUrl ? `
+                allowInsecureProtocol = true` : ''}${isPrivate ? `
+                authentication {
+                    header(HttpHeaderAuthentication)
+                }
+                credentials(HttpHeaderCredentials) {
+                    name = "Authorization"
+                    value = repoToken
+                }` : ''}
+            }
+            mavenCentral() // fallback
+        }
     }
 }`
     };
   } else {
     return {
       title: 'Gradle Configuration (Groovy DSL)',
-      filename: 'settings.gradle',
-      content: `// Add to your settings.gradle file
-pluginManagement {
+      filename: '$HOME/.gradle/init.gradle',
+      content: `// $HOME/.gradle/init.gradle - Groovy DSL version
+
+// Repository configurations
+${repositoryIds.map(repo => `def ${repo}Url = "${baseUrl}/artifacts/${repo}"`).join('\n')}
+def repoToken = "Bearer ${token}"
+
+// Extension method to add repositories
+def addKagamiRepositories = { repos ->
+${repositoryIds.map(repo => `    repos.maven {
+        url = ${repo}Url${isHttpUrl ? `
+        allowInsecureProtocol = true` : ''}${isPrivate ? `
+        authentication {
+            header(HttpHeaderAuthentication)
+        }
+        credentials(HttpHeaderCredentials) {
+            name = "Authorization"
+            value = repoToken
+        }` : ''}
+    }`).join('\n    ')}
+    repos.mavenCentral() // fallback
+}
+
+// For regular dependencies (legacy projects)
+allprojects {
     repositories {
-${repositoryIds.map(repo => `        maven {
-            name = "${repo}"
-            url = "${baseUrl}/artifacts/${repo}"${isHttpUrl ? `
-            allowInsecureProtocol = true` : ''}${isPrivate ? `
-            authentication {
-                header(HttpHeaderAuthentication)
-            }
-            credentials(HttpHeaderCredentials) {
-                name = "Authorization"
-                value = "Bearer ${token}"
-            }` : ''}
-        }`).join('\n')}
-        gradlePluginPortal() // fallback
-        mavenCentral() // fallback
+        addKagamiRepositories(delegate)
     }
 }
 
-dependencyResolutionManagement {
-    repositories {
-${repositoryIds.map(repo => `        maven {
-            name = "${repo}"
-            url = "${baseUrl}/artifacts/${repo}"${isHttpUrl ? `
-            allowInsecureProtocol = true` : ''}${isPrivate ? `
-            authentication {
-                header(HttpHeaderAuthentication)
-            }
-            credentials(HttpHeaderCredentials) {
-                name = "Authorization"
-                value = "Bearer ${token}"
-            }` : ''}
-        }`).join('\n')}
-        mavenCentral() // fallback
+// Configure settings.gradle
+settingsEvaluated { settings ->
+    // For plugin resolution
+    settings.pluginManagement {
+        repositories {
+            addKagamiRepositories(delegate)
+            gradlePluginPortal() // fallback
+        }
+    }
+    
+    // Dependency resolution management (Gradle 6.8+)
+    settings.dependencyResolutionManagement {
+        // Ignore repositories defined in build.gradle
+        repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+        
+        repositories {
+            addKagamiRepositories(delegate)
+        }
     }
 }`
     };
@@ -256,90 +296,125 @@ ${repositoryIds.map(repo => `        maven {
 }
 
 export function generateGradleKotlinConfig({ repositoryIds, token, baseUrl, isPrivate = true }: ConfigExamplesParams): ConfigExample {
-  const primaryRepo = repositoryIds[0];
   const isHttpUrl = baseUrl.startsWith('http://');
   
   if (repositoryIds.length === 1) {
+    const repo = repositoryIds[0];
     return {
       title: 'Gradle Configuration (Kotlin DSL)',
-      filename: 'settings.gradle.kts',
-      content: `// Add to your settings.gradle.kts file
-pluginManagement {
-    repositories {
-        maven {
-            name = "${primaryRepo}"
-            url = uri("${baseUrl}/artifacts/${primaryRepo}")${isHttpUrl ? `
-            isAllowInsecureProtocol = true` : ''}${isPrivate ? `
-            authentication {
-                create<HttpHeaderAuthentication>("header")
-            }
-            credentials(HttpHeaderCredentials::class) {
-                name = "Authorization"
-                value = "Bearer ${token}"
-            }` : ''}
+      filename: '$HOME/.gradle/init.gradle.kts',
+      content: `// $HOME/.gradle/init.gradle.kts - Kotlin DSL version
+
+import org.gradle.api.artifacts.repositories.PasswordCredentials
+import org.gradle.authentication.http.HttpHeaderAuthentication
+import org.gradle.kotlin.dsl.*
+
+val repoUrl = "${baseUrl}/artifacts/${repo}"
+val repoToken = "Bearer ${token}"
+
+// Extension function to configure repository
+fun RepositoryHandler.addKagamiRepository() {
+    maven {
+        url = uri(repoUrl)${isHttpUrl ? `
+        isAllowInsecureProtocol = true` : ''}${isPrivate ? `
+        authentication {
+            create<HttpHeaderAuthentication>("header")
         }
-        gradlePluginPortal() // fallback
+        credentials(HttpHeaderCredentials::class) {
+            name = "Authorization"
+            value = repoToken
+        }` : ''}
+    }
+}
+
+// For regular dependencies (legacy projects)
+allprojects {
+    repositories {
+        addKagamiRepository()
         mavenCentral() // fallback
     }
 }
 
-dependencyResolutionManagement {
-    repositories {
-        maven {
-            name = "${primaryRepo}"
-            url = uri("${baseUrl}/artifacts/${primaryRepo}")${isHttpUrl ? `
-            isAllowInsecureProtocol = true` : ''}${isPrivate ? `
-            authentication {
-                create<HttpHeaderAuthentication>("header")
-            }
-            credentials(HttpHeaderCredentials::class) {
-                name = "Authorization"
-                value = "Bearer ${token}"
-            }` : ''}
+// Configure settings.gradle
+settingsEvaluated {
+    // For plugin resolution
+    pluginManagement {
+        repositories {
+            addKagamiRepository()
+            gradlePluginPortal() // fallback
+            mavenCentral() // fallback
         }
-        mavenCentral() // fallback
+    }
+    
+    // Dependency resolution management (Gradle 6.8+)
+    dependencyResolutionManagement {
+        // Ignore repositories defined in build.gradle
+        @Suppress("UnstableApiUsage")
+        repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+        
+        repositories {
+            addKagamiRepository()
+            mavenCentral() // fallback
+        }
     }
 }`
     };
   } else {
     return {
       title: 'Gradle Configuration (Kotlin DSL)',
-      filename: 'settings.gradle.kts',
-      content: `// Add to your settings.gradle.kts file
-pluginManagement {
+      filename: '$HOME/.gradle/init.gradle.kts',
+      content: `// $HOME/.gradle/init.gradle.kts - Kotlin DSL version
+
+import org.gradle.api.artifacts.repositories.PasswordCredentials
+import org.gradle.authentication.http.HttpHeaderAuthentication
+import org.gradle.kotlin.dsl.*
+
+// Repository configurations
+${repositoryIds.map(repo => `val ${repo}Url = "${baseUrl}/artifacts/${repo}"`).join('\n')}
+val repoToken = "Bearer ${token}"
+
+// Extension function to configure Kagami repositories
+fun RepositoryHandler.addKagamiRepositories() {
+${repositoryIds.map(repo => `    maven {
+        url = uri(${repo}Url)${isHttpUrl ? `
+        isAllowInsecureProtocol = true` : ''}${isPrivate ? `
+        authentication {
+            create<HttpHeaderAuthentication>("header")
+        }
+        credentials(HttpHeaderCredentials::class) {
+            name = "Authorization"
+            value = repoToken
+        }` : ''}
+    }`).join('\n    ')}
+    mavenCentral() // fallback
+}
+
+// For regular dependencies (legacy projects)
+allprojects {
     repositories {
-${repositoryIds.map(repo => `        maven {
-            name = "${repo}"
-            url = uri("${baseUrl}/artifacts/${repo}")${isHttpUrl ? `
-            isAllowInsecureProtocol = true` : ''}${isPrivate ? `
-            authentication {
-                create<HttpHeaderAuthentication>("header")
-            }
-            credentials(HttpHeaderCredentials::class) {
-                name = "Authorization"
-                value = "Bearer ${token}"
-            }` : ''}
-        }`).join('\n')}
-        gradlePluginPortal() // fallback
-        mavenCentral() // fallback
+        addKagamiRepositories()
     }
 }
 
-dependencyResolutionManagement {
-    repositories {
-${repositoryIds.map(repo => `        maven {
-            name = "${repo}"
-            url = uri("${baseUrl}/artifacts/${repo}")${isHttpUrl ? `
-            isAllowInsecureProtocol = true` : ''}${isPrivate ? `
-            authentication {
-                create<HttpHeaderAuthentication>("header")
-            }
-            credentials(HttpHeaderCredentials::class) {
-                name = "Authorization"
-                value = "Bearer ${token}"
-            }` : ''}
-        }`).join('\n')}
-        mavenCentral() // fallback
+// Configure settings.gradle
+settingsEvaluated {
+    // For plugin resolution
+    pluginManagement {
+        repositories {
+            addKagamiRepositories()
+            gradlePluginPortal() // fallback
+        }
+    }
+    
+    // Dependency resolution management (Gradle 6.8+)
+    dependencyResolutionManagement {
+        // Ignore repositories defined in build.gradle
+        @Suppress("UnstableApiUsage")
+        repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+        
+        repositories {
+            addKagamiRepositories()
+        }
     }
 }`
     };
