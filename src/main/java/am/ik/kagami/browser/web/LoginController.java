@@ -5,6 +5,7 @@ import am.ik.kagami.KagamiProperties.AuthenticationType;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientProperties;
@@ -32,9 +33,11 @@ public class LoginController {
 		if (this.authenticationType == AuthenticationType.OIDC) {
 			if (oAuth2ClientProperties != null) {
 				oidcClients = oAuth2ClientProperties.getRegistration()
-					.keySet()
+					.entrySet()
 					.stream()
-					.map(clientId -> Map.of("clientId", clientId, "name", toClientName(clientId)))
+					.map(entry -> Map.of("provider", entry.getKey(), "clientName",
+							Objects.requireNonNullElseGet(entry.getValue().getClientName(),
+									() -> toClientName(entry.getKey()))))
 					.toList();
 			}
 			else {
@@ -53,8 +56,8 @@ public class LoginController {
 		return "logout";
 	}
 
-	static String toClientName(String clientId) {
-		return Arrays.stream(clientId.split("-")).map(StringUtils::capitalize).collect(Collectors.joining(" "));
+	static String toClientName(String provider) {
+		return Arrays.stream(provider.split("-")).map(StringUtils::capitalize).collect(Collectors.joining(" "));
 	}
 
 }

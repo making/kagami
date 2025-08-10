@@ -130,7 +130,7 @@ Only one user can be configured with this method. For multiple users, use OIDC a
 
 #### OIDC Authentication
 
-<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/d986e66a-8f7b-43b6-b008-f5171dd10bed" />
+<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/aa3e57f2-726f-4111-9b69-50458cd0e184" />
 
 Configure OIDC authentication for enterprise single sign-on:
 
@@ -146,6 +146,7 @@ spring.security.oauth2.client.provider.google.issuer-uri=https://accounts.google
 spring.security.oauth2.client.provider.google.user-name-attribute=email
 spring.security.oauth2.client.registration.google.client-id=your-google-client-id
 spring.security.oauth2.client.registration.google.client-secret=your-google-client-secret
+spring.security.oauth2.client.registration.google.client-name=Google
 spring.security.oauth2.client.registration.google.scope=openid,email
 
 # Configure Microsoft Entra ID (formerly Azure AD)
@@ -153,6 +154,7 @@ spring.security.oauth2.client.provider.microsoft-entra-id.issuer-uri=https://sts
 spring.security.oauth2.client.provider.microsoft-entra-id.user-name-attribute=email
 spring.security.oauth2.client.registration.microsoft-entra-id.client-id=your-client-id
 spring.security.oauth2.client.registration.microsoft-entra-id.client-secret=your-client-secret
+spring.security.oauth2.client.registration.microsoft-entra-id.client-name=Microsoft Entra ID
 spring.security.oauth2.client.registration.microsoft-entra-id.scope=openid,email
 ```
 
