@@ -4,7 +4,6 @@ import java.time.InstantSource;
 import org.springframework.boot.web.client.RestClientCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.zalando.logbook.Logbook;
 import org.zalando.logbook.spring.LogbookClientHttpRequestInterceptor;
 
 /**
@@ -19,8 +18,8 @@ class AppConfig {
 	}
 
 	@Bean
-	RestClientCustomizer restClientCustomizer(Logbook logbook) {
-		return builder -> builder.requestInterceptor(new LogbookClientHttpRequestInterceptor(logbook));
+	RestClientCustomizer restClientCustomizer(LogbookClientHttpRequestInterceptor logbookClientHttpRequestInterceptor) {
+		return builder -> builder.requestInterceptor(logbookClientHttpRequestInterceptor);
 	}
 
 }
