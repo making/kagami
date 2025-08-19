@@ -1,10 +1,13 @@
 package am.ik.kagami.artifact.web;
 
+import am.ik.kagami.KagamiProperties;
+import am.ik.kagami.KagamiProperties.Repository;
 import am.ik.kagami.repository.RemoteRepositoryService;
 import am.ik.kagami.storage.StorageService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Map;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -27,15 +30,24 @@ public class ArtifactController {
 
 	private final RemoteRepositoryService remoteRepositoryService;
 
-	public ArtifactController(StorageService storageService, RemoteRepositoryService remoteRepositoryService) {
+	private final Map<String, Repository> repositories;
+
+	public ArtifactController(StorageService storageService, RemoteRepositoryService remoteRepositoryService,
+			KagamiProperties properties) {
 		this.storageService = storageService;
 		this.remoteRepositoryService = remoteRepositoryService;
+		this.repositories = properties.repositories();
 	}
 
 	@GetMapping("/{repositoryId}/**")
 	public ResponseEntity<Resource> getArtifact(@PathVariable String repositoryId, HttpServletRequest request) {
 		// Validate repository
 		if (!this.remoteRepositoryService.isRepositoryConfigured(repositoryId)) {
+			return ResponseEntity.notFound().build();
+		}
+		Repository repository = this.repositories.get(repositoryId);
+		if (repository == null) {
+			// This should not happen
 			return ResponseEntity.notFound().build();
 		}
 		// Extract artifact path from request
@@ -54,10 +66,11 @@ public class ArtifactController {
 
 		if (resource != null && resource.exists()) {
 			try {
+				CacheControl cacheControl = CacheControl.maxAge(Duration.ofSeconds(31536000));
 				return ResponseEntity.ok()
 					.contentType(determineContentType(artifactPath))
 					.contentLength(resource.contentLength())
-					.cacheControl(CacheControl.maxAge(Duration.ofSeconds(31536000)).cachePublic())
+					.cacheControl(repository.isPrivate() ? cacheControl.cachePrivate() : cacheControl.cachePublic())
 					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=%s".formatted(resource.getFilename()))
 					.body(resource);
 			}

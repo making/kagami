@@ -108,6 +108,8 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(response.getHeaders()).containsEntry(HttpHeaders.CACHE_CONTROL,
+				List.of("max-age=31536000, private"));
 	}
 
 	@Test
