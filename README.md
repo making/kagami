@@ -574,6 +574,33 @@ settingsEvaluated {
 }
 ```
 
+
+## How to deploy Kagami to Cloud Foundry
+
+Generate the JWT key pair as documented [above](#private-repository-configuration) and paste base64-encoded values in `manifest.yaml` as below:
+
+```yaml
+applications:
+- name: kagami
+  instances: 1
+  memory: 768m
+  docker:
+    image: ghcr.io/making/kagami:jvm
+  env:
+    kagami.repositories.central.url: https://repo.maven.apache.org/maven2
+    kagami.jwt.private-key: base64:LS0tLS1CRUd...
+    kagami.jwt.public-key: base64:LS0tLS1CRUdJ...
+```
+
+Then deploy it:
+
+```
+cf push
+```
+
+On Cloud Foundry, applications are ephemeral by default. Therefore, all data will be lost when Kagami is restarted or updated. Kagami is a mirror repository, so even if data is lost, it will be re-downloaded the next time it is accessed. Aside from the slow initial download time, ephemeral containers are not a problem. Similarly, when scaling out, each container has its own cache with shared nothing.
+If initial download time or disk capacity are issues, consider using [Volume Services](https://docs.cloudfoundry.org/devguide/services/using-vol-services.html).
+
 ## Building from Source
 
 ### Build and Test
