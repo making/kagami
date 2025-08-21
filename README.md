@@ -222,7 +222,7 @@ echo "kagami.jwt.private-key=base64:$(cat kagami-private.pem | base64 -w0)"
 echo "kagami.jwt.public-key=base64:$(cat kagami-public.pem | base64 -w0)"
 ```
 
-The base64 format is particularly useful in container environments where file mounting is challenging, such as certain cloud platforms like Cloud Foundry.
+The base64 format is particularly useful in container environments where file mounting is challenging, such as certain cloud platforms like [Cloud Foundry](#deploying-kagami-to-cloud-foundry).
 
 For more information on configuration value conversion, see the [Spring Boot documentation](https://docs.spring.io/spring-boot/reference/features/external-config.html#features.external-config.typesafe-configuration-properties.conversion.base64).
 
@@ -575,7 +575,7 @@ settingsEvaluated {
 ```
 
 
-## How to deploy Kagami to Cloud Foundry
+## Deploying Kagami to Cloud Foundry
 
 Generate the JWT key pair as documented [above](#private-repository-configuration) and paste base64-encoded values in `manifest.yaml` as below:
 
