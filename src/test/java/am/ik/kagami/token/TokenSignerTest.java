@@ -1,0 +1,62 @@
+package am.ik.kagami.token;
+
+import am.ik.kagami.KagamiProperties;
+import org.junit.jupiter.api.Test;
+
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class TokenSignerTest {
+
+	@Test
+	void loadKeysFromClasspath() {
+		new ApplicationContextRunner()
+			.withPropertyValues("kagami.jwt.private-key=classpath:kagami-private.pem",
+					"kagami.jwt.public-key=classpath:kagami-public.pem")
+			.withUserConfiguration(Config.class)
+			.withBean(TokenSigner.class)
+			.run(context -> {
+				assertThat(context.getBean(TokenSigner.class)).isNotNull();
+				assertThat(context.getBean(KagamiProperties.class).jwt().keyId())
+					.isEqualTo("bC1rhUxQkmNvOyCmPgEI5kweLIFnfdEUmtj564_kNmI");
+			});
+	}
+
+	@Test
+	void loadKeysFromFile() {
+		new ApplicationContextRunner()
+			.withPropertyValues("kagami.jwt.private-key=file:src/main/resources/kagami-private.pem",
+					"kagami.jwt.public-key=file:src/main/resources/kagami-public.pem")
+			.withUserConfiguration(Config.class)
+			.withBean(TokenSigner.class)
+			.run(context -> {
+				assertThat(context.getBean(TokenSigner.class)).isNotNull();
+				assertThat(context.getBean(KagamiProperties.class).jwt().keyId())
+					.isEqualTo("bC1rhUxQkmNvOyCmPgEI5kweLIFnfdEUmtj564_kNmI");
+			});
+	}
+
+	@Test
+	void loadKeysFromBase64() {
+		new ApplicationContextRunner().withPropertyValues(
+				"kagami.jwt.private-key=base64:LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRRFM1emQ4WnN6KzBibjUKaUFkeHZyWXphUHpGMWhCMkFLU3pDR09RN0ZLNDhHK2NiTGg0OXhNL3l2TXVETmFHNDZXWU81V1hSa0hWOWloago4VWV1UERTV2NBOUtVdDBnTEdSYTZDV0RwelNVcWpVZWFWQnorU2ZBSFV4SHlnK25kZThINHFlYTQ1U20rM1Y5CnA5SFJUZ1dxUEZ4cWQ3U3NxaHc5enZUMmZyUjV6bXl0Ump5d01qWVE3cmVFa3B1bHRqREpKeW0vbDBwSzJ4NkQKdjJXb1FSNWpyQnhhMDMreEtpM01UMld2MmxZQXRReTc5SzdQWmxyRkY1U3RnaXpuVlVrU2s0ZE9HVUN2czdTZwpkd1NjSG1qd3VyRkREcGhlallkMm52SlFqVkpSRWhQYm84b1ZOUFlRVGNUZDdNQmxicVhobHdWeWNpSFFLQ2g5CmpzVVI5WG9GQWdNQkFBRUNnZ0VBRm9LdFRtN2VoSGc0SkdVYmZrMS92djcrczlNRVVNUUMwRVVkODNMMTVWMXMKWEVMU2NiN1ZaQ0t5VUFENHlNNzFkc2t0VDBjbGNjUGpUYitNQ2hITS94MlkxRE1CL1JRZjVnQVBPUDBZeEtGaQpLQXZQbFlGTGQ5cm9zR1RseE5iMm0xM2F5OUpzcEdJRWlWUG5Oakxnc2VuZFoxTzlpZ3hpRlVySXBLS2plcmlYCkVCTTZWTW5sNGxaV1ZhMjQ1N2VHVGpwdnU1alZjdlVGMUhCaU40dCt5S2dZNjF5VEtTSVd5eGZRSHVGR0dyc3kKL0xVNHhJbzVQTm5pelFvV1JNUitocVd1M2p1aTNMRDJsdXNiVVBWYjA0S0RmQVQ4eDYrVHBOamQ2M0dHbGRobQpJY0Fsd21JVkJBakQvQkxWSHZUSkRYU05vV0txTVVUMFZvVlcvKzVIcFFLQmdRRHEzTUQrRVd1aUxVdENmVzZvCnMwZHlFU1lUT0RCQjVLTjh4M3JpUGEwYjNwQ0VVMjQvMHVXT3FQaEdsU3JBNG4wR3ovMXFWWGNYTytEQ2M4YzcKRGJqWWtNWWZUeGl2eER0UVlkMGFaOGJlckR4eDNNOVhuZkpCMmc2dXB6RmZWWmMzVFp6RUZvVlJoZUJJaVN0RApLdkgzWXFZWGpBRzFKTGxVMUpFSDUyZzREd0tCZ1FEbDRuRlNGdXJJMzdibkIxdWhEK29kVlNDRzJIdGhIcFFmCkkyMnBYdUNpRkcyZjRXejlNcm5pQ0NCS1g3SEhaeVdOT2ZLYUtQSE1GQ3VyOG5xWVRSWEpTWjRSRkhkdWVERy8KZkpKd3ZCZ2YyTHpMQ1VXZzFUd0ljUWZEandkN0hKbnZCL1hYS3NxL04xS1Y5SXdvemp3ZmlYV0U1MnFlOVFaMwpBNmUzTU45NHF3S0JnQTFTQ2V3ZkJ0REM2dUxSaEdZekRObE9XYTk3WDFsTlkyeGZUL3ZtN1p1SUN3QkdUeGwxCmw2bDRzZVFtNzY3UzZhNXFPNEE5YXF5NXE2eTdybEFPSGk3Q1AwcGxUUXdqQUE0MkRybEJxNGpUa2ZZUFJQOCsKS1JCTkVzb2JGM1RGd1BiVkF4QW9DdFd0MXlPbUMvc2FRM0Q1ZWx3Wmg3dERZdk9KdnRRSTd1TkhBb0dCQU1JaApaL0VheVVxNUlZd1grcGtaQjJ1ZDU4bjRKcmp0U2NqQjhtbUZaYzE1MHRtaFZKaTlyWnZqb09FdHpzUEZwMENNCkh3TndjRUVYQjRvOVNxb3k3cUw5T0M3VVNjZFFXVEtMMEY3RGVOdnIvQUs1NGNMZ1Q4SVJNYTFEcTkyYldhTXgKNWJtK3VWaWhMMnpUQjBtdVg3ZUNMV3Yrd1Z0Yk1BcHhXOENuMVEvaEFvR0FDN1pkRVA5U0crYlIxTmM0cW5qRgpIcmRzQmV2eGFVQmNFSWNabzcyblpSOFR5ZE5DeHllNlFocDBVd0hSSzRMZ3hjSXYxL2w2SHVMN3ptQ2lsYTdOCmNCVVJMSGZicDcreDM3OXVMNHVkb29aeGthSlRWZytYd1cwTzh4eVhySmo5bGRvRWRSTVg5Y29NOFM2TkhpNEEKR1YvaUx0SGZQNzFYRzdTaEFvWHRqdWc9Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K",
+				"kagami.jwt.public-key=base64:LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUEwdWMzZkdiTS90RzUrWWdIY2I2MgpNMmo4eGRZUWRnQ2tzd2hqa094U3VQQnZuR3k0ZVBjVFA4cnpMZ3pXaHVPbG1EdVZsMFpCMWZZb1kvRkhyancwCmxuQVBTbExkSUN4a1d1Z2xnNmMwbEtvMUhtbFFjL2tud0IxTVI4b1BwM1h2QitLbm11T1VwdnQxZmFmUjBVNEYKcWp4Y2FuZTByS29jUGM3MDluNjBlYzVzclVZOHNESTJFTzYzaEpLYnBiWXd5U2NwdjVkS1N0c2VnNzlscUVFZQpZNndjV3ROL3NTb3R6RTlscjlwV0FMVU11L1N1ejJaYXhSZVVyWUlzNTFWSkVwT0hUaGxBcjdPMG9IY0VuQjVvCjhMcXhRdzZZWG8ySGRwN3lVSTFTVVJJVDI2UEtGVFQyRUUzRTNlekFaVzZsNFpjRmNuSWgwQ2dvZlk3RkVmVjYKQlFJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0tCg==")
+			.withUserConfiguration(Config.class)
+			.withBean(TokenSigner.class)
+			.run(context -> {
+				assertThat(context.getBean(TokenSigner.class)).isNotNull();
+				assertThat(context.getBean(KagamiProperties.class).jwt().keyId())
+					.isEqualTo("bC1rhUxQkmNvOyCmPgEI5kweLIFnfdEUmtj564_kNmI");
+			});
+	}
+
+	@TestConfiguration
+	@EnableConfigurationProperties({ KagamiProperties.class })
+	static class Config {
+
+	}
+
+}
