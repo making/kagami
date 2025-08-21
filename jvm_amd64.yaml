@@ -1,2 +1,2 @@
-image: ghcr.io/making/kagami@sha256:03a6e9becac5a62885ccc69d63e0315951782801ebb489acd12f884a5972a052
-git_revision: 6b3b99573f8d084dae4eee905ee4681c8a2a5e0f
+image: ghcr.io/making/kagami@sha256:f91a8adf8e1b9befe5342e6684961477aaec60de3d829667939d6941245b778e
+git_revision: 19a8c77ff2034a4c1868aedff62148af6af7562b
