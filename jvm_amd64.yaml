@@ -1,8 +1,8 @@
-image: ghcr.io/making/kagami@sha256:602a0bb61299411842d1f65373737f4aa778b09f1b7a0fefd4e9a92d6e17c2a9
-git_revision: 72fd8647964ddbfe407e0d812ebc927c05d2c240
+image: ghcr.io/making/kagami@sha256:cc8b94209b0eecf2bdbea511c83f0153b8276b0db25142a40ea3171f927f7799
+git_revision: b950fbf03e9ca93fd41a5294b154415d9a59705c
 deployment:
   image:
     repository: ghcr.io/making/kagami
-    digest: sha256:602a0bb61299411842d1f65373737f4aa778b09f1b7a0fefd4e9a92d6e17c2a9
+    digest: sha256:cc8b94209b0eecf2bdbea511c83f0153b8276b0db25142a40ea3171f927f7799
   podLabels:
-    github.com/revision: 72fd8647964ddbfe407e0d812ebc927c05d2c240
+    github.com/revision: b950fbf03e9ca93fd41a5294b154415d9a59705c
