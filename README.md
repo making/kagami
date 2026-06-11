@@ -367,21 +367,20 @@ For private repositories, generate a JWT token using the web interface:
 
 **Note**: JWT tokens cannot be used to generate new tokens. You must use the web interface.
 
-Then configure Maven with the JWT token:
+Two authentication methods are supported for build tools:
+
+- **Username/Password (Basic authentication)**: the username can be any value and the password is the JWT token
+- **Bearer token**: send the JWT token in the `Authorization: Bearer` header
+
+Then configure Maven with the JWT token. With the standard username/password configuration:
 
 ```xml
 <settings>
   <servers>
     <server>
       <id>kagami-private</id>
-      <configuration>
-        <httpHeaders>
-          <property>
-            <name>Authorization</name>
-            <value>Bearer YOUR_JWT_TOKEN</value>
-          </property>
-        </httpHeaders>
-      </configuration>
+      <username>any-username</username>
+      <password>YOUR_JWT_TOKEN</password>
     </server>
   </servers>
   <profiles>
@@ -432,6 +431,22 @@ Then configure Maven with the JWT token:
 </settings>
 ```
 
+Alternatively, configure the Bearer token method by replacing the `<server>` element above with:
+
+```xml
+<server>
+  <id>kagami-private</id>
+  <configuration>
+    <httpHeaders>
+      <property>
+        <name>Authorization</name>
+        <value>Bearer YOUR_JWT_TOKEN</value>
+      </property>
+    </httpHeaders>
+  </configuration>
+</server>
+```
+
 ### Gradle Configuration
 
 #### Public Repository
@@ -446,12 +461,15 @@ repositories {
 
 #### Private Repository
 
+The examples below use the username/password method. The Bearer token method is also available
+(see the end of this section).
+
 **Groovy DSL ($HOME/.gradle/init.gradle)**
 ```gradle
 // $HOME/.gradle/init.gradle - Groovy DSL version
 
 def repoUrl = "http://localhost:8080/artifacts/private-repo"
-def repoToken = "Bearer YOUR_JWT_TOKEN"
+def repoToken = "YOUR_JWT_TOKEN"
 
 // For regular dependencies (legacy projects)
 allprojects {
@@ -459,12 +477,9 @@ allprojects {
         maven {
             url = repoUrl
             allowInsecureProtocol = true
-            authentication {
-                header(HttpHeaderAuthentication)
-            }
-            credentials(HttpHeaderCredentials) {
-                name = "Authorization"
-                value = repoToken
+            credentials {
+                username = "kagami" // can be any value
+                password = repoToken
             }
         }
         mavenCentral() // fallback
@@ -479,12 +494,9 @@ settingsEvaluated { settings ->
             maven {
                 url = repoUrl
                 allowInsecureProtocol = true
-                authentication {
-                    header(HttpHeaderAuthentication)
-                }
-                credentials(HttpHeaderCredentials) {
-                    name = "Authorization"
-                    value = repoToken
+                credentials {
+                    username = "kagami" // can be any value
+                    password = repoToken
                 }
             }
             gradlePluginPortal() // fallback
@@ -501,12 +513,9 @@ settingsEvaluated { settings ->
             maven {
                 url = repoUrl
                 allowInsecureProtocol = true
-                authentication {
-                    header(HttpHeaderAuthentication)
-                }
-                credentials(HttpHeaderCredentials) {
-                    name = "Authorization"
-                    value = repoToken
+                credentials {
+                    username = "kagami" // can be any value
+                    password = repoToken
                 }
             }
             mavenCentral()
@@ -519,24 +528,17 @@ settingsEvaluated { settings ->
 ```kotlin
 // $HOME/.gradle/init.gradle.kts - Kotlin DSL version
 
-import org.gradle.api.artifacts.repositories.PasswordCredentials
-import org.gradle.authentication.http.HttpHeaderAuthentication
-import org.gradle.kotlin.dsl.*
-
 val repoUrl = "http://localhost:8080/artifacts/private-repo"
-val repoToken = "Bearer YOUR_JWT_TOKEN"
+val repoToken = "YOUR_JWT_TOKEN"
 
 // Extension function to configure repository
 fun RepositoryHandler.addKagamiRepository() {
     maven {
         url = uri(repoUrl)
         isAllowInsecureProtocol = true
-        authentication {
-            create<HttpHeaderAuthentication>("header")
-        }
-        credentials(HttpHeaderCredentials::class) {
-            name = "Authorization"
-            value = repoToken
+        credentials {
+            username = "kagami" // can be any value
+            password = repoToken
         }
     }
 }
@@ -574,6 +576,36 @@ settingsEvaluated {
 }
 ```
 
+To use the Bearer token method instead, replace each `credentials` block in the examples above
+with the following.
+
+Groovy DSL:
+
+```gradle
+authentication {
+    header(HttpHeaderAuthentication)
+}
+credentials(HttpHeaderCredentials) {
+    name = "Authorization"
+    value = "Bearer YOUR_JWT_TOKEN"
+}
+```
+
+Kotlin DSL (add the imports at the top of the init script):
+
+```kotlin
+import org.gradle.authentication.http.HttpHeaderAuthentication
+import org.gradle.kotlin.dsl.*
+
+// ...
+authentication {
+    create<HttpHeaderAuthentication>("header")
+}
+credentials(HttpHeaderCredentials::class) {
+    name = "Authorization"
+    value = "Bearer YOUR_JWT_TOKEN"
+}
+```
 
 ## Deploying Kagami to Cloud Foundry
 

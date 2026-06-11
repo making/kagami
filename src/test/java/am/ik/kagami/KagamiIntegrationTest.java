@@ -93,7 +93,8 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-		assertThat(response.getHeaders()).containsEntry(HttpHeaders.WWW_AUTHENTICATE, List.of("Bearer"));
+		assertThat(response.getHeaders()).containsEntry(HttpHeaders.WWW_AUTHENTICATE,
+				List.of("Bearer", "Basic realm=\"Kagami\""));
 	}
 
 	@Test
@@ -113,6 +114,36 @@ public class KagamiIntegrationTest {
 	}
 
 	@Test
+	void getArtifactsShouldBeOkWithBasicAuthUsingTokenAsPassword() {
+		this.mockServer.GET("/am/ik/kagami/kagami/0.0.2/kagami-0.0.2.pom", req -> Response.ok("<project></project>"))
+			.GET("/am/ik/kagami/kagami/0.0.2/kagami-0.0.2.pom.sha1",
+					req -> Response.ok("147ddc4bbee044878ea3f8341a40e770e4b92f4e"));
+		String token = issueToken(List.of("mock"), List.of("artifacts:read"));
+		var response = this.restClient.get()
+			.uri("/artifacts/mock/am/ik/kagami/kagami/0.0.2/kagami-0.0.2.pom")
+			// The username part can be anything. The password part is the JWT token.
+			.headers(httpHeaders -> httpHeaders.setBasicAuth("anyuser", Objects.requireNonNull(token)))
+			.retrieve()
+			.toBodilessEntity();
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	@Test
+	void getArtifactsShouldBeUnAuthorizedWithBasicAuthUsingInvalidPassword() {
+		var response = this.restClient.get()
+			.uri("/artifacts/mock/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom")
+			.headers(httpHeaders -> httpHeaders.setBasicAuth("anyuser", "not-a-jwt"))
+			.retrieve()
+			.toBodilessEntity();
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+		assertThat(response.getHeaders()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
+			assertThat(values).hasSize(2);
+			assertThat(values.getFirst()).contains("invalid_token");
+			assertThat(values.getLast()).isEqualTo("Basic realm=\"Kagami\"");
+		});
+	}
+
+	@Test
 	void getArtifactsShouldBeUnAuthorizedWithoutValidRepositories() {
 		String token = issueToken(List.of("another"), List.of("artifacts:read"));
 		var response = this.restClient.get()
@@ -122,7 +153,7 @@ public class KagamiIntegrationTest {
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 		assertThat(response.getHeaders()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
-			assertThat(values).hasSize(1);
+			assertThat(values).hasSize(2);
 			assertThat(values.getFirst())
 				.contains("Token does not contain the repository 'mock' in 'kagami:repositories' claim");
 		});
@@ -151,7 +182,8 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-		assertThat(response.getHeaders()).containsEntry(HttpHeaders.WWW_AUTHENTICATE, List.of("Bearer"));
+		assertThat(response.getHeaders()).containsEntry(HttpHeaders.WWW_AUTHENTICATE,
+				List.of("Bearer", "Basic realm=\"Kagami\""));
 	}
 
 	@Test
@@ -183,7 +215,7 @@ public class KagamiIntegrationTest {
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 		assertThat(response.getHeaders()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
-			assertThat(values).hasSize(1);
+			assertThat(values).hasSize(2);
 			assertThat(values.getFirst())
 				.contains("Token does not contain the repository 'mock' in 'kagami:repositories' claim");
 		});
