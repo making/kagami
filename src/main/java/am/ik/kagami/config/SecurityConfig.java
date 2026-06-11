@@ -2,6 +2,7 @@ package am.ik.kagami.config;
 
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.KagamiProperties.AuthenticationType;
+import am.ik.kagami.token.web.BasicToBearerTokenResolver;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpHeaders;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -25,8 +27,11 @@ import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
@@ -42,6 +47,7 @@ class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, KagamiProperties properties) throws Exception {
+		AuthenticationEntryPoint artifactsEntryPoint = artifactsAuthenticationEntryPoint();
 		HttpSecurity security = http
 		// @formatter:off
 			.authorizeHttpRequests(authz -> {
@@ -62,8 +68,12 @@ class SecurityConfig {
 					.anyRequest().hasRole("USER");
 			})
 				// @formatter:on
-			.oauth2ResourceServer(oauth -> oauth.jwt(jwt -> {
-			}))
+			.oauth2ResourceServer(oauth -> oauth.bearerTokenResolver(new BasicToBearerTokenResolver())
+				.authenticationEntryPoint(artifactsEntryPoint)
+				.jwt(jwt -> {
+				}))
+			.exceptionHandling(exception -> exception.defaultAuthenticationEntryPointFor(artifactsEntryPoint,
+					PathPatternRequestMatcher.withDefaults().matcher("/artifacts/**")))
 			.csrf(csrf -> csrf.ignoringRequestMatchers("/artifacts/**", "/token"))
 			.logout(logout -> logout.logoutUrl("/logout")
 				.logoutSuccessUrl("/login?logout")
@@ -79,6 +89,21 @@ class SecurityConfig {
 				throw new IllegalStateException("Unsupported authentication type: " + authenticationType);
 		}
 		return security.build();
+	}
+
+	/**
+	 * Entry point for artifact endpoints that advertises the Basic authentication scheme
+	 * in addition to Bearer so that Maven clients configured with the standard
+	 * {@code <username>} / {@code <password>} server settings respond to the 401
+	 * challenge with Basic credentials, which are then resolved as a bearer token by
+	 * {@link BasicToBearerTokenResolver}.
+	 */
+	private static AuthenticationEntryPoint artifactsAuthenticationEntryPoint() {
+		BearerTokenAuthenticationEntryPoint bearerEntryPoint = new BearerTokenAuthenticationEntryPoint();
+		return (request, response, authException) -> {
+			bearerEntryPoint.commence(request, response, authException);
+			response.addHeader(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"Kagami\"");
+		};
 	}
 
 	@Bean

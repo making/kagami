@@ -3,7 +3,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogClose, DialogContent } from '.
 import { Button } from './ui/Button';
 import { Copy, Check } from 'lucide-react';
 import type { RepositoryInfo } from '../types/api';
-import { generateConfigExample, type BuildTool } from '../utils/configExamples';
+import { generateConfigExample, type AuthMethod, type BuildTool } from '../utils/configExamples';
 
 interface RepositoryConfigDialogProps {
   open: boolean;
@@ -14,6 +14,7 @@ interface RepositoryConfigDialogProps {
 
 export function RepositoryConfigDialog({ open, onOpenChange, repository }: RepositoryConfigDialogProps) {
   const [selectedTool, setSelectedTool] = useState<BuildTool>('maven');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('basic');
   const [copiedConfig, setCopiedConfig] = useState<string | null>(null);
 
   if (!repository) return null;
@@ -26,7 +27,8 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
       repositoryIds: [repository.id],
       token,
       baseUrl: window.location.origin,
-      isPrivate: repository.isPrivate
+      isPrivate: repository.isPrivate,
+      authMethod
     });
   };
 
@@ -86,6 +88,32 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
               Gradle (Kotlin)
             </button>
           </div>
+
+          {/* Authentication Method Tabs (private repositories only) */}
+          {repository.isPrivate && (
+            <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+              <button
+                className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
+                  authMethod === 'basic'
+                    ? 'bg-white text-red-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                onClick={() => setAuthMethod('basic')}
+              >
+                Username / Password
+              </button>
+              <button
+                className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
+                  authMethod === 'bearer'
+                    ? 'bg-white text-red-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                onClick={() => setAuthMethod('bearer')}
+              >
+                Bearer Token
+              </button>
+            </div>
+          )}
 
           {/* Repository Information */}
           <div className="bg-gray-50 rounded-lg p-4">

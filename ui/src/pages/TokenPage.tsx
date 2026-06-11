@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button';
 import { LockIcon } from '../components/ui/LockIcon';
 import { Header } from '../components/Header';
 import { ArrowLeft, Copy, Key, Shield, Clock, AlertTriangle } from 'lucide-react';
-import { generateConfigExample, type BuildTool } from '../utils/configExamples';
+import { generateConfigExample, type AuthMethod, type BuildTool } from '../utils/configExamples';
 
 interface TokenFormData {
   repositories: string[];
@@ -30,6 +30,7 @@ export function TokenPage() {
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<{ [key: string]: boolean }>({});
   const [selectedTool, setSelectedTool] = useState<BuildTool>('maven');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('basic');
 
   const availableScopes = [
     { value: 'artifacts:read', label: 'Read Artifacts', description: 'Download and view repository contents' },
@@ -122,6 +123,7 @@ export function TokenPage() {
     setError(null);
     setCopySuccess({});
     setSelectedTool('maven');
+    setAuthMethod('basic');
     setFormData({
       repositories: [],
       scopes: [],
@@ -388,6 +390,30 @@ export function TokenPage() {
                 </button>
               </div>
 
+              {/* Authentication Method Tabs */}
+              <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
+                <button
+                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
+                    authMethod === 'basic'
+                      ? 'bg-white text-red-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  onClick={() => setAuthMethod('basic')}
+                >
+                  Username / Password
+                </button>
+                <button
+                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
+                    authMethod === 'bearer'
+                      ? 'bg-white text-red-700 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  onClick={() => setAuthMethod('bearer')}
+                >
+                  Bearer Token
+                </button>
+              </div>
+
               {/* Selected Configuration */}
               <div className="border border-gray-200 rounded-lg">
                 {(() => {
@@ -395,7 +421,8 @@ export function TokenPage() {
                     repositoryIds: formData.repositories,
                     token: generatedToken!,
                     baseUrl: window.location.origin,
-                    isPrivate: true
+                    isPrivate: true,
+                    authMethod
                   };
                   const config = generateConfigExample(selectedTool, params);
 

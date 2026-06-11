@@ -61,7 +61,7 @@ cd ui && npm run dev                                            # Start developm
 5. **Security Layer** (`am.ik.kagami.config.SecurityConfig`, `am.ik.kagami.token`)
    - Form-based authentication or OIDC/OAuth2 login for web UI access
    - JWT token-based authentication for private repository access
-   - `BasicToJwtAuthorizationExchangeFilter` converts Basic auth to JWT bearer tokens
+   - `BasicToBearerTokenResolver` resolves the password part of Basic auth as a JWT bearer token (username is ignored)
    - TOKEN generation requires USER role (JWT tokens cannot generate new tokens)
    - CSRF partially disabled for `/artifacts/**` and `/token`, Remember-me enabled for form-based auth
    - Form-based auth: Default user configurable via `spring.security.user.*` properties
@@ -144,7 +144,7 @@ Current package structure:
     - `token` - JWT token generation and verification
         - `TokenSigner` - JWT signing service
         - `web.TokenController` - Token generation endpoint
-        - `web.BasicToJwtAuthorizationExchangeFilter` - Basic to Bearer token conversion
+        - `web.BasicToBearerTokenResolver` - Resolves Basic auth password as a bearer token
 - `ui/` (Frontend - React)
     - `src/components/` - Reusable UI components
         - `ui/` - Basic UI primitives (Button, Card, Alert, etc.)
