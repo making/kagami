@@ -27,6 +27,14 @@ export default defineConfig({
                 target: 'http://localhost:8080',
                 changeOrigin: true,
             },
+            '/fonts': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+            },
+            '/favicon.svg': {
+                target: 'http://localhost:8080',
+                changeOrigin: true,
+            },
         },
     },
 })

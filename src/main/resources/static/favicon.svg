@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="64" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d92638"/>
+      <stop offset="1" stop-color="#d6256f"/>
+    </linearGradient>
+  </defs>
+  <!-- Sharp-cornered gradient tile, matching the Kagami brand mark -->
+  <rect width="64" height="64" fill="url(#g)"/>
+  <!-- "K" and its reflection across the vertical center line (kagami = mirror) -->
+  <g fill="#ffffff">
+    <polygon points="8,14 14,14 14,27 24,14 32,14 20,30 32,50 24,50 14,35 14,50 8,50"/>
+    <polygon points="8,14 14,14 14,27 24,14 32,14 20,30 32,50 24,50 14,35 14,50 8,50"
+             transform="matrix(-1 0 0 1 64 0)" opacity="0.4"/>
+  </g>
+</svg>

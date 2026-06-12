@@ -4,9 +4,8 @@ import { useRepositories } from '../hooks/useApi';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { Alert, AlertDescription } from '../components/ui/Alert';
 import { Button } from '../components/ui/Button';
-import { LockIcon } from '../components/ui/LockIcon';
 import { Header } from '../components/Header';
-import { ArrowLeft, Copy, Key, Shield, Clock, AlertTriangle } from 'lucide-react';
+import { Copy, Key, AlertTriangle } from 'lucide-react';
 import { generateConfigExample, type AuthMethod, type BuildTool } from '../utils/configExamples';
 
 interface TokenFormData {
@@ -16,6 +15,44 @@ interface TokenFormData {
   unit: 'hours' | 'days' | 'months';
 }
 
+interface SectionHeadProps {
+  index: string;
+  title: string;
+  description: string;
+}
+
+function SectionHead({ index, title, description }: SectionHeadProps) {
+  return (
+    <div className="px-6 py-3.5 border-b border-line">
+      <h3 className="registry-label font-semibold flex items-center gap-3">
+        <span className="text-accent">{index}</span>
+        {title}
+      </h3>
+      <p className="text-[11.5px] text-ink-3 mt-1">{description}</p>
+    </div>
+  );
+}
+
+interface TabProps {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+function Tab({ active, onClick, children }: TabProps) {
+  return (
+    <button
+      className={`flex-1 py-2 px-3 registry-label font-medium border-r border-line last:border-r-0 cursor-pointer transition-colors ${
+        active
+          ? 'bg-gradient-to-r from-accent to-magenta text-white'
+          : 'bg-transparent text-ink-2 hover:bg-ink hover:text-white'
+      }`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function TokenPage() {
   const { repositories, isLoading: reposLoading, error: reposError } = useRepositories();
@@ -81,7 +118,7 @@ export function TokenPage() {
 
     setIsGenerating(true);
     setError(null);
-    
+
     try {
       const response = await fetch('/token', {
         method: 'POST',
@@ -132,10 +169,9 @@ export function TokenPage() {
     });
   };
 
-
   if (reposLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="max-w-[1120px] mx-auto px-7 py-8">
         <div className="flex justify-center items-center h-32">
           <LoadingSpinner size="lg" />
         </div>
@@ -146,27 +182,32 @@ export function TokenPage() {
   return (
     <div>
       <Header />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <header className="mb-8">
-            <Link 
-              to="/" 
-              className="inline-flex items-center text-red-600 hover:text-red-700 mb-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Repositories
-            </Link>
-            <div className="flex items-center space-x-3 mb-2">
-              <Key className="h-8 w-8 text-red-600" />
-              <h1 className="text-3xl font-bold text-gray-900">
-                Generate Access Token
-              </h1>
-            </div>
-            <p className="text-gray-600">
-              Create JWT tokens for accessing private repositories
-            </p>
-          </header>
+      <div className="max-w-[900px] mx-auto px-7 pb-12">
+        {/* Section label */}
+        <div className="pt-12 pb-3.5 flex items-center gap-4 registry-label text-ink-3 after:content-[''] after:flex-1 after:h-px after:bg-line">
+          <Link
+            to="/"
+            className="registry-label text-ink-2 no-underline hover:text-accent transition-colors"
+          >
+            &larr; Repositories
+          </Link>
+          <span>/ Access Token</span>
+        </div>
+
+        {/* Page head */}
+        <header className="border border-line border-b-0 bg-paper px-8 pt-8 pb-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="w-[34px] h-[34px] bg-gradient-to-r from-accent to-magenta grid place-items-center text-white">
+              <Key className="h-4 w-4" />
+            </span>
+            <h1 className="font-sans font-extrabold uppercase text-3xl tracking-[-0.015em]">
+              Generate <span className="bg-gradient-to-r from-accent to-magenta bg-clip-text text-transparent">Access Token</span>
+            </h1>
+          </div>
+          <p className="text-[12.5px] text-ink-2">
+            Create JWT tokens for accessing private repositories
+          </p>
+        </header>
 
         {reposError && (
           <Alert variant="error" className="mb-6">
@@ -174,9 +215,9 @@ export function TokenPage() {
               Failed to load repositories: {reposError.message}
               {reposError.message.includes('401') && (
                 <div className="mt-3">
-                  <a 
-                    href="/login" 
-                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  <a
+                    href="/login"
+                    className="inline-flex items-center px-4 py-2 registry-label font-semibold text-white bg-gradient-to-r from-accent to-magenta no-underline hover:brightness-110"
                   >
                     Go to Login
                   </a>
@@ -187,103 +228,109 @@ export function TokenPage() {
         )}
 
         {!generatedToken ? (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-8">
+          <div className="border border-line bg-paper">
             {/* Repository Selection */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Shield className="h-5 w-5 text-red-600 mr-2" />
-                Select Repositories
-              </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Choose which repositories this token can access
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {repositories.map((repo) => (
-                  <label
-                    key={repo.id}
-                    className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={formData.repositories.includes(repo.id)}
-                      onChange={(e) => handleRepositoryChange(repo.id, e.target.checked)}
-                      className="h-4 w-4 text-red-600 rounded focus:ring-red-500"
-                    />
-                    <div className="ml-3 flex-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium text-gray-900">{repo.id}</span>
-                        {repo.isPrivate && <LockIcon className="h-4 w-4" />}
-                      </div>
-                      <span className="text-xs text-gray-500 font-mono">{repo.url}</span>
+            <SectionHead
+              index="01 /"
+              title="Select Repositories"
+              description="Choose which repositories this token can access"
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-6 border-b border-line">
+              {repositories.map((repo) => (
+                <label
+                  key={repo.id}
+                  className={`flex items-center p-3 border cursor-pointer transition-colors ${
+                    formData.repositories.includes(repo.id)
+                      ? 'border-accent bg-wash shadow-[inset_3px_0_0_var(--color-accent)]'
+                      : 'border-line hover:bg-wash'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.repositories.includes(repo.id)}
+                    onChange={(e) => handleRepositoryChange(repo.id, e.target.checked)}
+                    className="h-4 w-4 accent-accent"
+                  />
+                  <div className="ml-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-sans font-bold text-sm">{repo.id}</span>
+                      {repo.isPrivate && (
+                        <span className="registry-label text-[8.5px] text-magenta border border-magenta px-1.5 py-0.5">
+                          Private
+                        </span>
+                      )}
                     </div>
-                  </label>
-                ))}
-              </div>
+                    <span className="text-[11px] text-ink-3 break-all">{repo.url}</span>
+                  </div>
+                </label>
+              ))}
             </div>
 
             {/* Scope Selection */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Select Permissions
-              </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Choose what actions this token can perform
-              </p>
-              <div className="space-y-3">
-                {availableScopes.map((scope) => (
-                  <label
-                    key={scope.value}
-                    className="flex items-start p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={formData.scopes.includes(scope.value)}
-                      onChange={(e) => handleScopeChange(scope.value, e.target.checked)}
-                      className="h-4 w-4 text-red-600 rounded focus:ring-red-500 mt-1"
-                    />
-                    <div className="ml-3">
-                      <div className="font-medium text-gray-900">{scope.label}</div>
-                      <div className="text-sm text-gray-600">{scope.description}</div>
-                    </div>
-                  </label>
-                ))}
-              </div>
+            <SectionHead
+              index="02 /"
+              title="Select Permissions"
+              description="Choose what actions this token can perform"
+            />
+            <div className="space-y-3 p-6 border-b border-line">
+              {availableScopes.map((scope) => (
+                <label
+                  key={scope.value}
+                  className={`flex items-start p-3 border cursor-pointer transition-colors ${
+                    formData.scopes.includes(scope.value)
+                      ? 'border-accent bg-wash shadow-[inset_3px_0_0_var(--color-accent)]'
+                      : 'border-line hover:bg-wash'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.scopes.includes(scope.value)}
+                    onChange={(e) => handleScopeChange(scope.value, e.target.checked)}
+                    className="h-4 w-4 accent-accent mt-0.5"
+                  />
+                  <div className="ml-3">
+                    <div className="font-sans font-bold text-sm">{scope.label}</div>
+                    <div className="text-[11.5px] text-ink-2 mt-0.5">{scope.description}</div>
+                    <div className="text-[10px] text-ink-3 mt-0.5">{scope.value}</div>
+                  </div>
+                </label>
+              ))}
             </div>
 
             {/* Expiration */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Clock className="h-5 w-5 text-red-600 mr-2" />
-                Token Expiration
-              </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Set how long the token will remain valid
-              </p>
-              <div className="flex items-center space-x-3">
+            <SectionHead
+              index="03 /"
+              title="Token Expiration"
+              description="Set how long the token will remain valid"
+            />
+            <div className="p-6">
+              <div className="flex items-center gap-3">
                 <input
                   type="number"
                   min="1"
                   value={formData.duration}
                   onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) || 1 }))}
-                  className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-24 px-3 py-2 border border-line bg-paper text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                 />
                 <select
                   value={formData.unit}
                   onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value as 'hours' | 'days' | 'months' }))}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="px-3 py-2 border border-line bg-paper text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                 >
                   <option value="hours">Hours</option>
                   <option value="days">Days</option>
                   <option value="months">Months</option>
                 </select>
               </div>
-              
+
               {isLongDuration() && (
                 <Alert variant="warning" className="mt-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Long-lived token warning:</strong> This token will be valid for more than 6 months. 
-                    Since JWT tokens cannot be revoked, consider using shorter durations for better security.
+                  <AlertDescription className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>
+                      <strong>Long-lived token warning:</strong> This token will be valid for more than 6 months.
+                      Since JWT tokens cannot be revoked, consider using shorter durations for better security.
+                    </span>
                   </AlertDescription>
                 </Alert>
               )}
@@ -291,17 +338,18 @@ export function TokenPage() {
 
             {/* Error Display */}
             {error && (
-              <Alert variant="error" className="mb-6">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <div className="px-6 pb-6">
+                <Alert variant="error">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              </div>
             )}
 
             {/* Generate Button */}
-            <div className="flex justify-end">
+            <div className="flex justify-end px-6 py-4 border-t-2 border-t-ink">
               <Button
                 onClick={generateToken}
                 disabled={isGenerating || formData.repositories.length === 0 || formData.scopes.length === 0}
-                className="px-6 py-2"
               >
                 {isGenerating ? (
                   <>
@@ -316,106 +364,69 @@ export function TokenPage() {
           </div>
         ) : (
           /* Token Result */
-          <div className="bg-white rounded-xl border border-gray-200 shadow-lg p-8">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                <Key className="h-8 w-8 text-green-600" />
+          <div className="border border-line bg-paper">
+            <div className="px-8 py-6 border-b border-line">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="w-[34px] h-[34px] bg-gradient-to-r from-accent to-magenta grid place-items-center text-white">
+                  <Key className="h-4 w-4" />
+                </span>
+                <h3 className="font-sans font-extrabold uppercase text-xl tracking-[-0.01em]">
+                  Token Generated
+                </h3>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Token Generated Successfully!
-              </h3>
-              <p className="text-gray-600">
+              <p className="text-[12.5px] text-ink-2">
                 Copy this token and store it securely. You won't be able to see it again.
               </p>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="p-6 border-b border-line">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-gray-700">JWT Token:</label>
-                <Button
+                <span className="registry-label text-ink-3">JWT Token</span>
+                <button
                   onClick={() => copyToClipboard(generatedToken!, 'token')}
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center space-x-1"
+                  className="registry-label flex items-center gap-1.5 border border-line px-3 py-1.5 cursor-pointer text-ink-2 font-mono transition-colors hover:bg-ink hover:text-white hover:border-ink"
                 >
-                  <Copy className="h-4 w-4" />
-                  <span>{copySuccess.token ? 'Copied!' : 'Copy'}</span>
-                </Button>
+                  <Copy className="h-3 w-3" />
+                  {copySuccess.token ? 'Copied!' : 'Copy'}
+                </button>
               </div>
-              <div className="bg-white border rounded p-3 font-mono text-sm break-all select-all">
+              <div className="border border-line bg-wash p-3 text-xs break-all select-all">
                 {generatedToken}
               </div>
             </div>
 
             {/* Configuration Examples */}
-            <div className="mb-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                Build Tool Configuration
-              </h4>
-              <p className="text-sm text-gray-600 mb-4">
-                Use these configurations in your build tools to access the selected repositories with the generated token.
-              </p>
-
+            <SectionHead
+              index="&gt;"
+              title="Build Tool Configuration"
+              description="Use these configurations in your build tools to access the selected repositories with the generated token"
+            />
+            <div className="p-6 space-y-4">
               {/* Build Tool Tabs */}
-              <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
-                <button
-                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                    selectedTool === 'maven'
-                      ? 'bg-white text-red-700 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                  onClick={() => setSelectedTool('maven')}
-                >
+              <div className="flex border border-line">
+                <Tab active={selectedTool === 'maven'} onClick={() => setSelectedTool('maven')}>
                   Maven
-                </button>
-                <button
-                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                    selectedTool === 'gradleGroovy'
-                      ? 'bg-white text-red-700 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                  onClick={() => setSelectedTool('gradleGroovy')}
-                >
+                </Tab>
+                <Tab active={selectedTool === 'gradleGroovy'} onClick={() => setSelectedTool('gradleGroovy')}>
                   Gradle (Groovy)
-                </button>
-                <button
-                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                    selectedTool === 'gradleKotlin'
-                      ? 'bg-white text-red-700 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                  onClick={() => setSelectedTool('gradleKotlin')}
-                >
+                </Tab>
+                <Tab active={selectedTool === 'gradleKotlin'} onClick={() => setSelectedTool('gradleKotlin')}>
                   Gradle (Kotlin)
-                </button>
+                </Tab>
               </div>
 
               {/* Authentication Method Tabs */}
-              <div className="flex space-x-1 bg-gray-100 rounded-lg p-1 mb-4">
-                <button
-                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                    authMethod === 'basic'
-                      ? 'bg-white text-red-700 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                  onClick={() => setAuthMethod('basic')}
-                >
+              <div className="flex border border-line">
+                <Tab active={authMethod === 'basic'} onClick={() => setAuthMethod('basic')}>
                   Username / Password
-                </button>
-                <button
-                  className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                    authMethod === 'bearer'
-                      ? 'bg-white text-red-700 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                  onClick={() => setAuthMethod('bearer')}
-                >
+                </Tab>
+                <Tab active={authMethod === 'bearer'} onClick={() => setAuthMethod('bearer')}>
                   Bearer Token
-                </button>
+                </Tab>
               </div>
 
               {/* Selected Configuration */}
-              <div className="border border-gray-200 rounded-lg">
+              <div className="border border-line">
                 {(() => {
                   const params = {
                     repositoryIds: formData.repositories,
@@ -428,37 +439,32 @@ export function TokenPage() {
 
                   return (
                     <>
-                      <div className="flex items-center justify-between p-3 bg-gray-50 border-b border-gray-200">
-                        <h5 className="font-medium text-gray-900">{config.title}</h5>
-                        <Button
+                      <div className="flex items-center justify-between px-4 py-2 border-b border-line">
+                        <h5 className="registry-label font-semibold">{config.title}</h5>
+                        <button
                           onClick={() => copyToClipboard(config.content, selectedTool)}
-                          variant="ghost"
-                          size="sm"
-                          className="flex items-center space-x-1"
+                          className="registry-label flex items-center gap-1.5 border border-line px-3 py-1.5 cursor-pointer text-ink-2 font-mono transition-colors hover:bg-ink hover:text-white hover:border-ink"
                         >
-                          <Copy className="h-4 w-4" />
-                          <span>{copySuccess[selectedTool] ? 'Copied!' : 'Copy'}</span>
-                        </Button>
+                          <Copy className="h-3 w-3" />
+                          {copySuccess[selectedTool] ? 'Copied!' : 'Copy'}
+                        </button>
                       </div>
-                      <div className="p-3">
-                        <pre className="bg-gray-900 text-gray-100 p-3 rounded text-xs overflow-x-auto">
-                          <code>{config.content}</code>
-                        </pre>
-                      </div>
+                      <pre className="bg-ink text-[#f4f0f2] p-4 text-xs overflow-x-auto leading-relaxed">
+                        <code>{config.content}</code>
+                      </pre>
                     </>
                   );
                 })()}
               </div>
             </div>
 
-            <div className="text-center">
-              <Button onClick={reset} variant="ghost">
+            <div className="flex justify-center px-6 py-4 border-t-2 border-t-ink">
+              <Button onClick={reset} variant="secondary">
                 Generate Another Token
               </Button>
             </div>
           </div>
         )}
-        </div>
       </div>
     </div>
   );

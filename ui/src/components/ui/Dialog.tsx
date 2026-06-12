@@ -43,7 +43,7 @@ const Dialog = forwardRef<HTMLDivElement, DialogProps>(
         <div
           ref={ref}
           className={cn(
-            'relative bg-white rounded-lg shadow-xl border max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden',
+            'relative bg-paper shadow-2xl border border-line max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden',
             className
           )}
           {...props}
@@ -60,7 +60,7 @@ const DialogHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('flex items-center justify-between p-6 border-b', className)}
+      className={cn('flex items-center justify-between px-6 py-4 border-b-2 border-b-ink', className)}
       {...props}
     />
   )
@@ -71,7 +71,7 @@ const DialogTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingEle
   ({ className, ...props }, ref) => (
     <h2
       ref={ref}
-      className={cn('text-lg font-semibold text-gray-900', className)}
+      className={cn('font-sans text-lg font-bold text-ink', className)}
       {...props}
     />
   )
@@ -88,7 +88,7 @@ const DialogClose = forwardRef<HTMLButtonElement, DialogCloseProps>(
       ref={ref}
       type="button"
       className={cn(
-        'rounded-md p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors',
+        'p-2 text-ink-3 hover:text-white hover:bg-ink transition-colors cursor-pointer',
         className
       )}
       onClick={onClick}

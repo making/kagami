@@ -1,12 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { DirectoryBrowser } from '../components/DirectoryBrowser';
 import { FileInfoModal } from '../components/FileInfoModal';
 import { Header } from '../components/Header';
-import { ArrowLeft } from 'lucide-react';
 import type { RepositoryEntry } from '../types/api';
 
 export function BrowserPage() {
@@ -43,45 +40,34 @@ export function BrowserPage() {
   return (
     <div>
       <Header />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <header className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                onClick={() => navigate('/')}
-                className="flex items-center space-x-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back to Repositories</span>
-              </Button>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Repository Browser
-              </h1>
-            </div>
-          </header>
+      <div className="max-w-[1120px] mx-auto px-7 pb-12">
+        {/* Section label */}
+        <div className="pt-12 pb-3.5 flex items-center gap-4 registry-label text-ink-3 after:content-[''] after:flex-1 after:h-px after:bg-line">
+          <button
+            onClick={() => navigate('/')}
+            className="registry-label text-ink-2 cursor-pointer bg-transparent border-none font-mono hover:text-accent transition-colors"
+          >
+            &larr; Repositories
+          </button>
+          <span>/ Browse</span>
+        </div>
 
-        {/* Main Content */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <Breadcrumb
-                repositoryId={repositoryId}
-                currentPath={currentPath}
-                onNavigate={handleNavigate}
-              />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DirectoryBrowser
-              repositoryId={repositoryId}
-              currentPath={currentPath}
-              onNavigate={handleNavigate}
-              onShowFileInfo={handleShowFileInfo}
-            />
-          </CardContent>
-        </Card>
+        {/* Breadcrumb bar */}
+        <div className="border border-line border-b-2 border-b-ink bg-paper px-6 py-3">
+          <Breadcrumb
+            repositoryId={repositoryId}
+            currentPath={currentPath}
+            onNavigate={handleNavigate}
+          />
+        </div>
+
+        {/* Directory listing */}
+        <DirectoryBrowser
+          repositoryId={repositoryId}
+          currentPath={currentPath}
+          onNavigate={handleNavigate}
+          onShowFileInfo={handleShowFileInfo}
+        />
 
         {/* File Info Modal */}
         {selectedFile && (
@@ -91,7 +77,11 @@ export function BrowserPage() {
             onClose={handleCloseFileInfo}
           />
         )}
-        </div>
+
+        <footer className="mt-20 py-6 border-t-2 border-t-ink flex justify-between registry-label text-ink-3">
+          <span>Kagami &mdash; Maven Mirror</span>
+          <span>鏡</span>
+        </footer>
       </div>
     </div>
   );

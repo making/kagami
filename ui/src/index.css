@@ -1,16 +1,81 @@
 @import "tailwindcss";
 
 /*
-  Tailwind CSS v4 changes the default border and ring colors to `currentColor`
-  and the default ring width to 1px. This project relies on the v3 defaults
-  (gray-200 borders, a 3px blue-500 ring), so restore them for compatibility.
+  Design tokens for the "Technical Registry" design language.
+  Sharp corners, hairline rules, IBM Plex Mono body with Archivo display,
+  and the red-to-pink gradient accent carried over from the previous design.
 */
+@theme {
+  /* Named "canvas" (not "base") to avoid clobbering Tailwind's text-base utility */
+  --color-canvas: #f6f5f3;
+  --color-paper: #fdfdfc;
+  --color-ink: #1a1518;
+  --color-ink-2: #5f575c;
+  --color-ink-3: #989094;
+  --color-line: #d9d5d3;
+  --color-wash: #fff6f7;
+  --color-accent: #d92638;
+  --color-magenta: #d6256f;
+
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
 @layer base {
+  /*
+    Tailwind CSS v4 changes the default border color to `currentColor`.
+    This design relies on hairline borders everywhere, so default to the
+    line color instead.
+  */
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentColor);
+    border-color: var(--color-line, currentColor);
+  }
+
+  body {
+    font-family: var(--font-mono);
+    color: var(--color-ink);
+    /* Faint horizontal ruling over the warm gray base, like section paper */
+    background:
+      linear-gradient(var(--color-line) 1px, transparent 1px) 0 0 / 100% 56px,
+      var(--color-canvas);
+    background-blend-mode: multiply;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  /* Tiny uppercase tracking label used for table headers and section titles */
+  .registry-label {
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  /* Row hover treatment: warm wash plus a red inset bar on the left edge */
+  .registry-row-hover {
+    transition: background-color 0.12s ease;
+  }
+  .registry-row-hover:hover {
+    background-color: var(--color-wash);
+    box-shadow: inset 3px 0 0 var(--color-accent);
+  }
+
+  /* Staggered entrance for list rows */
+  .registry-rise {
+    animation: registry-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  @keyframes registry-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 }

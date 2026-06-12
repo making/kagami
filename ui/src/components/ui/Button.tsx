@@ -11,21 +11,23 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         className={cn(
-          // Base styles
-          'inline-flex items-center justify-center rounded-md font-medium transition-colors',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500',
+          // Base styles: sharp corners, mono uppercase, registry look
+          'inline-flex items-center justify-center font-mono uppercase tracking-[0.14em] transition-colors cursor-pointer',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
           'disabled:pointer-events-none disabled:opacity-50',
-          
+
           // Variants
-          variant === 'primary' && 'bg-red-600 text-white hover:bg-red-700',
-          variant === 'secondary' && 'bg-gray-100 text-gray-900 hover:bg-gray-200',
-          variant === 'ghost' && 'hover:bg-gray-100 text-gray-700',
-          
+          variant === 'primary' &&
+            'bg-gradient-to-r from-accent to-magenta text-white font-semibold hover:brightness-110',
+          variant === 'secondary' &&
+            'border border-line bg-transparent text-ink-2 hover:bg-ink hover:border-ink hover:text-white',
+          variant === 'ghost' && 'text-ink-2 hover:bg-ink hover:text-white',
+
           // Sizes
-          size === 'sm' && 'h-8 px-3 text-sm',
-          size === 'md' && 'h-10 px-4',
-          size === 'lg' && 'h-12 px-6 text-lg',
-          
+          size === 'sm' && 'h-8 px-3 text-[10px]',
+          size === 'md' && 'h-10 px-5 text-xs',
+          size === 'lg' && 'h-12 px-7 text-sm',
+
           className
         )}
         ref={ref}

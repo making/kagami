@@ -1,6 +1,3 @@
-import { ChevronRight, Home } from 'lucide-react';
-import { Button } from './ui/Button';
-
 interface BreadcrumbProps {
   repositoryId: string;
   currentPath: string;
@@ -9,35 +6,43 @@ interface BreadcrumbProps {
 
 export function Breadcrumb({ repositoryId, currentPath, onNavigate }: BreadcrumbProps) {
   const pathParts = currentPath ? currentPath.split('/').filter(Boolean) : [];
-  
+
   return (
-    <nav className="flex items-center space-x-1 text-sm text-gray-600">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => onNavigate('')}
-        className="flex items-center space-x-1 px-2 py-1"
-      >
-        <Home className="h-4 w-4" />
-        <span>{repositoryId}</span>
-      </Button>
-      
+    <nav className="flex items-center gap-1 flex-wrap font-mono text-xs">
+      <span className="text-accent font-semibold mr-2">&gt;</span>
+
+      {pathParts.length === 0 ? (
+        <span className="bg-gradient-to-r from-accent to-magenta text-white px-2 py-0.5 font-medium">
+          {repositoryId}
+        </span>
+      ) : (
+        <button
+          onClick={() => onNavigate('')}
+          className="text-ink-2 px-1 py-0.5 cursor-pointer hover:bg-ink hover:text-white transition-colors"
+        >
+          {repositoryId}
+        </button>
+      )}
+
       {pathParts.map((part, index) => {
         const pathToHere = pathParts.slice(0, index + 1).join('/');
         const isLast = index === pathParts.length - 1;
-        
+
         return (
-          <div key={index} className="flex items-center space-x-1">
-            <ChevronRight className="h-4 w-4 text-gray-400" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onNavigate(pathToHere)}
-              className={`px-2 py-1 ${isLast ? 'font-medium text-gray-900' : ''}`}
-              disabled={isLast}
-            >
-              {part}
-            </Button>
+          <div key={index} className="flex items-center gap-1">
+            <span className="text-ink-3">/</span>
+            {isLast ? (
+              <span className="bg-gradient-to-r from-accent to-magenta text-white px-2 py-0.5 font-medium">
+                {part}
+              </span>
+            ) : (
+              <button
+                onClick={() => onNavigate(pathToHere)}
+                className="text-ink-2 px-1 py-0.5 cursor-pointer hover:bg-ink hover:text-white transition-colors"
+              >
+                {part}
+              </button>
+            )}
           </div>
         );
       })}

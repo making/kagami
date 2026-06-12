@@ -11,11 +11,11 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>(
       ref={ref}
       role="alert"
       className={cn(
-        'relative w-full rounded-lg border p-4',
-        variant === 'default' && 'bg-red-50 border-red-200 text-red-800',
-        variant === 'error' && 'bg-red-50 border-red-200 text-red-800',
-        variant === 'warning' && 'bg-yellow-50 border-yellow-200 text-yellow-800',
-        variant === 'success' && 'bg-green-50 border-green-200 text-green-800',
+        'relative w-full border p-4 font-mono text-sm bg-paper border-line border-l-4',
+        variant === 'default' && 'border-l-accent text-ink-2',
+        variant === 'error' && 'border-l-accent text-accent',
+        variant === 'warning' && 'border-l-amber-500 text-amber-800',
+        variant === 'success' && 'border-l-green-600 text-green-800',
         className
       )}
       {...props}
@@ -28,7 +28,7 @@ const AlertTitle = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLHeadingEl
   ({ className, ...props }, ref) => (
     <h5
       ref={ref}
-      className={cn('mb-1 font-medium leading-none tracking-tight', className)}
+      className={cn('mb-1 registry-label font-semibold leading-none', className)}
       {...props}
     />
   )

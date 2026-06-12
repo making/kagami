@@ -1,12 +1,4 @@
-import { 
-  Folder, 
-  FileText, 
-  Package, 
-  FileCode, 
-  Shield,
-  Hash,
-  File
-} from 'lucide-react';
+import { cn } from '../../utils/cn';
 
 interface FileIconProps {
   fileName: string;
@@ -14,30 +6,24 @@ interface FileIconProps {
   className?: string;
 }
 
-export function FileIcon({ fileName, type, className = "h-4 w-4" }: FileIconProps) {
-  if (type === 'directory') {
-    return <Folder className={`${className} text-red-500`} />;
-  }
+/**
+ * Renders the entry type as a small uppercase label (e.g. DIR, JAR, POM),
+ * following the technical registry design language.
+ */
+export function FileIcon({ fileName, type, className }: FileIconProps) {
+  const extension = fileName.split('.').pop()?.toLowerCase() || 'file';
+  // Keep the label short so it fits in the narrow type column
+  const label = type === 'directory' ? 'dir' : extension.length > 6 ? extension.slice(0, 5) + '…' : extension;
 
-  // Determine icon based on file extension
-  const extension = fileName.split('.').pop()?.toLowerCase();
-  
-  switch (extension) {
-    case 'jar':
-      return <Package className={`${className} text-orange-500`} />;
-    case 'pom':
-    case 'xml':
-      return <FileCode className={`${className} text-green-500`} />;
-    case 'sha1':
-    case 'sha256':
-    case 'md5':
-      return <Hash className={`${className} text-gray-500`} />;
-    case 'asc':
-      return <Shield className={`${className} text-purple-500`} />;
-    case 'txt':
-    case 'md':
-      return <FileText className={`${className} text-gray-600`} />;
-    default:
-      return <File className={`${className} text-gray-500`} />;
-  }
+  return (
+    <span
+      className={cn(
+        'registry-label font-mono',
+        type === 'directory' ? 'text-accent font-semibold' : 'text-ink-3',
+        className
+      )}
+    >
+      {label}
+    </span>
+  );
 }

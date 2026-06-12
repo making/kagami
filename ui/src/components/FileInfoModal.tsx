@@ -1,5 +1,4 @@
 import { useFileInfo } from '../hooks/useApi';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { Alert, AlertDescription } from './ui/Alert';
@@ -34,18 +33,21 @@ export function FileInfoModal({ repositoryId, entry, onClose }: FileInfoModalPro
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg font-semibold truncate pr-4">
-            File Information: {entry.name}
-          </CardTitle>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-line bg-paper shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b-2 border-b-ink">
+          <h2 className="registry-label font-semibold truncate pr-4 flex items-center gap-3 before:content-[''] before:w-[9px] before:h-[9px] before:shrink-0 before:bg-gradient-to-r before:from-accent before:to-magenta">
+            File Information / {entry.name}
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 text-ink-3 hover:text-white hover:bg-ink transition-colors cursor-pointer"
+          >
             <X className="h-4 w-4" />
-          </Button>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <LoadingSpinner size="lg" />
@@ -57,48 +59,36 @@ export function FileInfoModal({ repositoryId, entry, onClose }: FileInfoModalPro
               </AlertDescription>
             </Alert>
           ) : fileInfo ? (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">File Name</label>
-                  <div className="mt-1 text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">
-                    {fileInfo.name}
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 border border-line">
+                <div className="border-b md:border-r border-line p-4">
+                  <div className="registry-label text-ink-3 mb-1.5">File Name</div>
+                  <div className="text-[13px] break-all">{fileInfo.name}</div>
                 </div>
-                
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Content Type</label>
-                  <div className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {fileInfo.contentType}
-                  </div>
+                <div className="border-b border-line p-4">
+                  <div className="registry-label text-ink-3 mb-1.5">Content Type</div>
+                  <div className="text-[13px]">{fileInfo.contentType}</div>
                 </div>
-                
-                <div>
-                  <label className="text-sm font-medium text-gray-700">File Size</label>
-                  <div className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {formatFileSize(fileInfo.size)}
-                  </div>
+                <div className="border-b md:border-b-0 md:border-r border-line p-4">
+                  <div className="registry-label text-ink-3 mb-1.5">File Size</div>
+                  <div className="text-[13px]">{formatFileSize(fileInfo.size)}</div>
                 </div>
-                
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Last Modified</label>
-                  <div className="mt-1 text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {formatDate(fileInfo.lastModified)}
-                  </div>
+                <div className="p-4">
+                  <div className="registry-label text-ink-3 mb-1.5">Last Modified</div>
+                  <div className="text-[13px]">{formatDate(fileInfo.lastModified)}</div>
                 </div>
               </div>
 
               {/* Full Path */}
               <div>
-                <label className="text-sm font-medium text-gray-700">Path</label>
-                <div className="mt-1 flex items-center space-x-2">
-                  <div className="flex-1 text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">
+                <div className="registry-label text-ink-3 mb-1.5">Path</div>
+                <div className="flex items-stretch">
+                  <div className="flex-1 text-[12px] border border-line bg-wash p-2.5 break-all">
                     {fileInfo.path}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <button
+                    className="border border-l-0 border-line px-3 cursor-pointer text-ink-2 hover:bg-ink hover:text-white transition-colors"
                     onClick={() => handleCopy(fileInfo.path, 'path')}
                   >
                     {copiedField === 'path' ? (
@@ -106,25 +96,24 @@ export function FileInfoModal({ repositoryId, entry, onClose }: FileInfoModalPro
                     ) : (
                       <Copy className="h-4 w-4" />
                     )}
-                  </Button>
+                  </button>
                 </div>
               </div>
 
               {/* Checksums */}
               {(fileInfo.sha1 || fileInfo.sha256) && (
                 <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-gray-700">Checksums</h3>
-                  
+                  <h3 className="registry-label font-semibold">Checksums</h3>
+
                   {fileInfo.sha1 && (
                     <div>
-                      <label className="text-xs font-medium text-gray-600">SHA-1</label>
-                      <div className="mt-1 flex items-center space-x-2">
-                        <div className="flex-1 text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded break-all">
+                      <div className="registry-label text-ink-3 mb-1.5">SHA-1</div>
+                      <div className="flex items-stretch">
+                        <div className="flex-1 text-[12px] border border-line bg-wash p-2.5 break-all">
                           {fileInfo.sha1}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <button
+                          className="border border-l-0 border-line px-3 cursor-pointer text-ink-2 hover:bg-ink hover:text-white transition-colors"
                           onClick={() => handleCopy(fileInfo.sha1!, 'sha1')}
                         >
                           {copiedField === 'sha1' ? (
@@ -132,21 +121,20 @@ export function FileInfoModal({ repositoryId, entry, onClose }: FileInfoModalPro
                           ) : (
                             <Copy className="h-4 w-4" />
                           )}
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   )}
-                  
+
                   {fileInfo.sha256 && (
                     <div>
-                      <label className="text-xs font-medium text-gray-600">SHA-256</label>
-                      <div className="mt-1 flex items-center space-x-2">
-                        <div className="flex-1 text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded break-all">
+                      <div className="registry-label text-ink-3 mb-1.5">SHA-256</div>
+                      <div className="flex items-stretch">
+                        <div className="flex-1 text-[12px] border border-line bg-wash p-2.5 break-all">
                           {fileInfo.sha256}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <button
+                          className="border border-l-0 border-line px-3 cursor-pointer text-ink-2 hover:bg-ink hover:text-white transition-colors"
                           onClick={() => handleCopy(fileInfo.sha256!, 'sha256')}
                         >
                           {copiedField === 'sha256' ? (
@@ -154,7 +142,7 @@ export function FileInfoModal({ repositoryId, entry, onClose }: FileInfoModalPro
                           ) : (
                             <Copy className="h-4 w-4" />
                           )}
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -162,7 +150,7 @@ export function FileInfoModal({ repositoryId, entry, onClose }: FileInfoModalPro
               )}
 
               {/* Actions */}
-              <div className="flex justify-end space-x-2 pt-4">
+              <div className="flex justify-end space-x-2 pt-2">
                 <Button variant="secondary" onClick={onClose}>
                   Close
                 </Button>
@@ -173,8 +161,8 @@ export function FileInfoModal({ repositoryId, entry, onClose }: FileInfoModalPro
               </div>
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

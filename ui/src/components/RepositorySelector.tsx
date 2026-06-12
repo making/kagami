@@ -2,9 +2,6 @@ import { useState } from 'react';
 import { useRepositories } from '../hooks/useApi';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { Alert, AlertDescription } from './ui/Alert';
-import { Button } from './ui/Button';
-import { LockIcon } from './ui/LockIcon';
-import { Database, Calendar, HardDrive, Package, Settings } from 'lucide-react';
 import { formatFileSize, formatRelativeTime } from '../utils/format';
 import { RepositoryConfigDialog } from './RepositoryConfigDialog';
 import type { RepositoryInfo } from '../types/api';
@@ -50,14 +47,14 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
   if (error) {
     const is401Error = error.message.includes('401');
     return (
-      <Alert variant="error">
+      <Alert variant="error" className="mt-6">
         <AlertDescription>
           Failed to load repositories: {error.message}
           {is401Error && (
             <div className="mt-3">
-              <a 
-                href="/login" 
-                className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              <a
+                href="/login"
+                className="inline-flex items-center px-4 py-2 registry-label font-semibold text-white bg-gradient-to-r from-accent to-magenta no-underline hover:brightness-110"
               >
                 Go to Login
               </a>
@@ -70,7 +67,7 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
 
   if (repositories.length === 0) {
     return (
-      <Alert>
+      <Alert className="mt-6">
         <AlertDescription>
           No repositories configured. Please check your server configuration.
         </AlertDescription>
@@ -79,80 +76,90 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
-          Select Repository
-        </h2>
-        <p className="text-gray-500 text-sm">Choose a repository to explore</p>
-      </div>
-      
-      <div className="space-y-4">
-        {repositories.map((repo) => (
-          <div
-            key={repo.id}
-            className={`group relative overflow-hidden rounded-xl border border-gray-200 bg-white cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-red-500/10 hover:border-red-300 ${
-              selectedRepository === repo.id ? 'ring-2 ring-red-500 shadow-lg' : ''
-            }`}
-            onClick={() => onSelectRepository(repo.id)}
-          >            
-            <div className="px-6 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-red-600 shadow-lg">
-                    <Database className="h-5 w-5 text-white" />
+    <>
+      <div className="border border-line border-t-0 bg-paper">
+        {/* Panel head */}
+        <div className="flex justify-between items-center px-6 py-3.5 border-b-2 border-b-ink">
+          <h2 className="registry-label font-semibold flex items-center gap-3 before:content-[''] before:w-[9px] before:h-[9px] before:bg-gradient-to-r before:from-accent before:to-magenta">
+            Repositories
+          </h2>
+          <span className="registry-label text-ink-3">
+            {repositories.length} entries / select to browse
+          </span>
+        </div>
+
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-line">
+              <th className="text-left registry-label text-[9.5px] text-ink-3 font-medium px-6 py-2.5">
+                Repository
+              </th>
+              <th className="text-right registry-label text-[9.5px] text-ink-3 font-medium px-6 py-2.5">
+                Artifacts
+              </th>
+              <th className="text-right registry-label text-[9.5px] text-ink-3 font-medium px-6 py-2.5">
+                Size
+              </th>
+              <th className="text-right registry-label text-[9.5px] text-ink-3 font-medium px-6 py-2.5">
+                Updated
+              </th>
+              <th></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {repositories.map((repo, index) => (
+              <tr
+                key={repo.id}
+                className={`group border-b border-line last:border-b-0 cursor-pointer registry-row-hover registry-rise ${
+                  selectedRepository === repo.id ? 'bg-wash shadow-[inset_3px_0_0_var(--color-accent)]' : ''
+                }`}
+                style={{ animationDelay: `${0.04 + index * 0.06}s` }}
+                onClick={() => onSelectRepository(repo.id)}
+              >
+                <td className="px-6 py-4.5">
+                  <div className="font-sans font-bold text-base tracking-[-0.01em] flex items-center gap-2.5 group-hover:text-accent transition-colors">
+                    {repo.id}
+                    {repo.isPrivate && (
+                      <span className="registry-label text-[8.5px] font-mono font-normal text-magenta border border-magenta px-1.5 py-0.5">
+                        Private
+                      </span>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2">
-                      <h3 className="font-semibold text-gray-900 text-lg group-hover:text-red-700 transition-colors">
-                        {repo.id}
-                      </h3>
-                      {repo.isPrivate && (
-                        <LockIcon className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div className="text-sm text-gray-500 truncate mt-1 font-mono">
-                      {repo.url}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-4 text-sm text-gray-600">
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors">
-                    <Package className="h-4 w-4 text-orange-500" />
-                    <span className="font-medium">{repo.artifactCount.toLocaleString()}</span>
-                    <span className="text-xs text-gray-400">artifacts</span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors">
-                    <HardDrive className="h-4 w-4 text-green-500" />
-                    <span className="font-medium">{formatFileSize(repo.totalSize)}</span>
-                  </div>
-                  
-                  {repo.lastUpdated && (
-                    <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors">
-                      <Calendar className="h-4 w-4 text-red-500" />
-                      <span className="font-medium">{formatRelativeTime(repo.lastUpdated)}</span>
-                    </div>
+                  <div className="text-[11px] text-ink-3 mt-1">{repo.url}</div>
+                </td>
+                <td className="px-6 py-4.5 text-right">
+                  <span className="font-semibold text-[13.5px]">
+                    {repo.artifactCount.toLocaleString()}
+                  </span>
+                </td>
+                <td className="px-6 py-4.5 text-right whitespace-nowrap">
+                  <span className="font-semibold text-[13.5px]">{formatFileSize(repo.totalSize)}</span>
+                </td>
+                <td className="px-6 py-4.5 text-right whitespace-nowrap">
+                  {repo.lastUpdated ? (
+                    <span className="font-semibold text-[13.5px]">
+                      {formatRelativeTime(repo.lastUpdated)}
+                    </span>
+                  ) : (
+                    <span className="text-ink-3">&mdash;</span>
                   )}
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                </td>
+                <td className="px-6 py-4.5 text-right">
+                  <button
                     onClick={(e) => handleShowConfig(repo, e)}
-                    className="flex items-center space-x-1 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors text-gray-600 hover:text-red-700"
+                    className="registry-label border border-line bg-transparent px-3 py-1.5 cursor-pointer text-ink-2 font-mono transition-colors hover:bg-ink hover:text-white hover:border-ink"
                   >
-                    <Settings className="h-4 w-4" />
-                    <span className="text-xs">Config</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
-            
-            {/* Bottom border gradient */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-pink-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
-          </div>
-        ))}
+                    Config
+                  </button>
+                </td>
+                <td className="w-14 pr-6 text-right text-ink-3 transition-all group-hover:text-accent group-hover:translate-x-0.5">
+                  &rarr;
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <RepositoryConfigDialog
@@ -160,6 +167,6 @@ export function RepositorySelector({ onSelectRepository, selectedRepository }: R
         onOpenChange={handleCloseConfig}
         repository={configDialog.repository}
       />
-    </div>
+    </>
   );
 }

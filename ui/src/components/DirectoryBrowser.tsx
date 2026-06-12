@@ -1,9 +1,7 @@
 import { useBrowseRepository } from '../hooks/useApi';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { Alert, AlertDescription } from './ui/Alert';
-import { Button } from './ui/Button';
 import { FileIcon } from './ui/FileIcon';
-import { ArrowUp, Download, Info, Trash2 } from 'lucide-react';
 import { formatFileSize, formatRelativeTime } from '../utils/format';
 import type { RepositoryEntry } from '../types/api';
 
@@ -14,17 +12,17 @@ interface DirectoryBrowserProps {
   onShowFileInfo: (entry: RepositoryEntry) => void;
 }
 
-export function DirectoryBrowser({ 
-  repositoryId, 
-  currentPath, 
+export function DirectoryBrowser({
+  repositoryId,
+  currentPath,
   onNavigate,
-  onShowFileInfo 
+  onShowFileInfo
 }: DirectoryBrowserProps) {
   const { result, isLoading, error } = useBrowseRepository(repositoryId, currentPath);
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="flex justify-center items-center h-64 border border-line border-t-0 bg-paper">
         <LoadingSpinner size="lg" />
       </div>
     );
@@ -32,7 +30,7 @@ export function DirectoryBrowser({
 
   if (error) {
     return (
-      <Alert variant="error">
+      <Alert variant="error" className="border-t-0">
         <AlertDescription>
           Failed to browse directory: {error.message}
         </AlertDescription>
@@ -63,19 +61,19 @@ export function DirectoryBrowser({
         entry.type === 'directory' ? ' This will delete all contents recursively.' : ''
       }`
     );
-    
+
     if (!confirmed) return;
-    
+
     try {
       const deletePath = entry.type === 'directory' ? `${entry.path}/` : entry.path;
       const response = await fetch(`/artifacts/${repositoryId}/${deletePath}`, {
         method: 'DELETE',
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to delete: ${response.status} ${response.statusText}`);
       }
-      
+
       // Refresh the current directory
       window.location.reload();
     } catch (error) {
@@ -83,111 +81,88 @@ export function DirectoryBrowser({
     }
   };
 
+  const fileActionButtonClass =
+    'registry-label text-[9.5px] border border-line bg-transparent text-ink-2 px-2.5 py-1 cursor-pointer font-mono transition-colors hover:bg-ink hover:border-ink hover:text-white';
+
   return (
-    <div className="space-y-4">
+    <div className="border border-line border-t-0 bg-paper">
       {/* Parent directory navigation */}
       {result.parentPath !== null && (
-        <div className="pb-2 border-b">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onNavigate(result.parentPath || '')}
-            className="flex items-center space-x-2"
-          >
-            <ArrowUp className="h-4 w-4" />
-            <span>Parent Directory</span>
-          </Button>
+        <div
+          className="grid grid-cols-[64px_minmax(0,1fr)] items-center border-b border-line cursor-pointer registry-row-hover"
+          onClick={() => onNavigate(result.parentPath || '')}
+        >
+          <div className="px-4 py-3 border-r border-line text-center">
+            <FileIcon fileName=".." type="directory" />
+          </div>
+          <div className="px-4 py-3 text-[13px] font-medium">../ Parent directory</div>
         </div>
       )}
 
       {/* Directory entries */}
       {result.entries.length === 0 ? (
-        <Alert>
-          <AlertDescription>
-            This directory is empty.
-          </AlertDescription>
-        </Alert>
+        <div className="px-6 py-8 text-center text-ink-3 text-sm">
+          This directory is empty.
+        </div>
       ) : (
-        <div className="space-y-3">
-          {result.entries.map((entry) => (
-            <div
-              key={entry.path}
-              className={`group relative overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-300 hover:shadow-xl hover:shadow-red-500/10 hover:border-red-300 ${
-                entry.type === 'directory' ? 'cursor-pointer' : ''
-              }`}
-              onClick={() => entry.type === 'directory' ? handleEntryClick(entry) : undefined}
-            >
-              <div className="px-6 py-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <FileIcon fileName={entry.name} type={entry.type} className="h-6 w-6" />
-                    <div className="flex-1 min-w-0">
-                      <h3 className={`font-semibold text-gray-900 group-hover:text-red-700 transition-colors truncate ${
-                        entry.type === 'directory' ? 'text-base' : 'text-sm'
-                      }`}>
-                        {entry.name}
-                      </h3>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {entry.type === 'file' && entry.size !== undefined && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-50 text-xs font-medium text-gray-600 mr-2">
-                            {formatFileSize(entry.size)}
-                          </span>
-                        )}
-                        <span className="text-xs">{formatRelativeTime(entry.lastModified)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {entry.type === 'file' && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onShowFileInfo(entry);
-                          }}
-                          className="flex items-center space-x-1 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors"
-                        >
-                          <Info className="h-4 w-4" />
-                          <span className="text-xs">Info</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownload(entry);
-                          }}
-                          className="flex items-center space-x-1 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors"
-                        >
-                          <Download className="h-4 w-4" />
-                          <span className="text-xs">Download</span>
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
+        result.entries.map((entry, index) => (
+          <div
+            key={entry.path}
+            className={`group grid grid-cols-[64px_minmax(0,1fr)_auto] items-center border-b border-line last:border-b-0 registry-row-hover registry-rise ${
+              entry.type === 'directory' ? 'cursor-pointer' : ''
+            }`}
+            style={{ animationDelay: `${0.04 + Math.min(index, 15) * 0.04}s` }}
+            onClick={() => entry.type === 'directory' ? handleEntryClick(entry) : undefined}
+          >
+            <div className="px-4 py-3 border-r border-line text-center overflow-hidden">
+              <FileIcon fileName={entry.name} type={entry.type} />
+            </div>
+            <div className="px-4 py-3 min-w-0">
+              <div className="text-[13px] font-medium truncate">{entry.name}</div>
+            </div>
+            <div className="flex items-center gap-6 px-4 py-3">
+              <span className="text-[11.5px] text-ink-2 text-right min-w-[70px]">
+                {entry.type === 'file' && entry.size !== undefined ? formatFileSize(entry.size) : ''}
+              </span>
+              <span className="hidden md:inline text-[11.5px] text-ink-2 text-right min-w-[110px]">
+                {formatRelativeTime(entry.lastModified)}
+              </span>
+              <div className="flex gap-1.5 opacity-25 group-hover:opacity-100 transition-opacity">
+                {entry.type === 'file' && (
+                  <>
+                    <button
+                      className={fileActionButtonClass}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(entry);
+                        onShowFileInfo(entry);
                       }}
-                      className="flex items-center space-x-1 px-3 py-2 rounded-lg bg-gray-50 group-hover:bg-white/80 transition-colors text-red-600 hover:text-red-700"
                     >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="text-xs">Delete</span>
-                    </Button>
-                  </div>
-                </div>
+                      Info
+                    </button>
+                    <button
+                      className={fileActionButtonClass}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload(entry);
+                      }}
+                    >
+                      Get
+                    </button>
+                  </>
+                )}
+                <button
+                  className={`${fileActionButtonClass} hover:bg-accent hover:border-accent`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(entry);
+                  }}
+                >
+                  Del
+                </button>
               </div>
-              
-              {/* Bottom border gradient */}
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-pink-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
             </div>
-          ))}
-        </div>
+          </div>
+        ))
       )}
     </div>
   );

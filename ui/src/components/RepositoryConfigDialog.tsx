@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Dialog, DialogHeader, DialogTitle, DialogClose, DialogContent } from './ui/Dialog';
-import { Button } from './ui/Button';
 import { Copy, Check } from 'lucide-react';
 import type { RepositoryInfo } from '../types/api';
 import { generateConfigExample, type AuthMethod, type BuildTool } from '../utils/configExamples';
@@ -11,6 +10,26 @@ interface RepositoryConfigDialogProps {
   repository: RepositoryInfo | null;
 }
 
+interface TabProps {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+function Tab({ active, onClick, children }: TabProps) {
+  return (
+    <button
+      className={`flex-1 py-2 px-3 registry-label font-medium border-r border-line last:border-r-0 cursor-pointer transition-colors ${
+        active
+          ? 'bg-gradient-to-r from-accent to-magenta text-white'
+          : 'bg-transparent text-ink-2 hover:bg-ink hover:text-white'
+      }`}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function RepositoryConfigDialog({ open, onOpenChange, repository }: RepositoryConfigDialogProps) {
   const [selectedTool, setSelectedTool] = useState<BuildTool>('maven');
@@ -47,151 +66,110 @@ export function RepositoryConfigDialog({ open, onOpenChange, repository }: Repos
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogHeader>
-        <DialogTitle>
-          Repository Configuration - {repository.id}
+        <DialogTitle className="registry-label font-semibold font-mono flex items-center gap-3 before:content-[''] before:w-[9px] before:h-[9px] before:shrink-0 before:bg-gradient-to-r before:from-accent before:to-magenta">
+          Repository Configuration / {repository.id}
         </DialogTitle>
         <DialogClose onClick={() => onOpenChange(false)} />
       </DialogHeader>
-      
+
       <DialogContent>
         <div className="space-y-6">
           {/* Build Tool Tabs */}
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            <button
-              className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                selectedTool === 'maven'
-                  ? 'bg-white text-red-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              onClick={() => setSelectedTool('maven')}
-            >
+          <div className="flex border border-line">
+            <Tab active={selectedTool === 'maven'} onClick={() => setSelectedTool('maven')}>
               Maven
-            </button>
-            <button
-              className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                selectedTool === 'gradleGroovy'
-                  ? 'bg-white text-red-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              onClick={() => setSelectedTool('gradleGroovy')}
-            >
+            </Tab>
+            <Tab active={selectedTool === 'gradleGroovy'} onClick={() => setSelectedTool('gradleGroovy')}>
               Gradle (Groovy)
-            </button>
-            <button
-              className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                selectedTool === 'gradleKotlin'
-                  ? 'bg-white text-red-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-              onClick={() => setSelectedTool('gradleKotlin')}
-            >
+            </Tab>
+            <Tab active={selectedTool === 'gradleKotlin'} onClick={() => setSelectedTool('gradleKotlin')}>
               Gradle (Kotlin)
-            </button>
+            </Tab>
           </div>
 
           {/* Authentication Method Tabs (private repositories only) */}
           {repository.isPrivate && (
-            <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-              <button
-                className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                  authMethod === 'basic'
-                    ? 'bg-white text-red-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-                onClick={() => setAuthMethod('basic')}
-              >
+            <div className="flex border border-line">
+              <Tab active={authMethod === 'basic'} onClick={() => setAuthMethod('basic')}>
                 Username / Password
-              </button>
-              <button
-                className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                  authMethod === 'bearer'
-                    ? 'bg-white text-red-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-                onClick={() => setAuthMethod('bearer')}
-              >
+              </Tab>
+              <Tab active={authMethod === 'bearer'} onClick={() => setAuthMethod('bearer')}>
                 Bearer Token
-              </button>
+              </Tab>
             </div>
           )}
 
           {/* Repository Information */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="font-medium text-gray-900 mb-2">Repository Information</h3>
-            <div className="space-y-1 text-sm text-gray-600">
-              <div><span className="font-medium">ID:</span> {repository.id}</div>
-              <div><span className="font-medium">URL:</span> {baseUrl}</div>
-              <div><span className="font-medium">Original:</span> {repository.url}</div>
+          <div className="border border-line">
+            <div className="registry-label font-semibold px-4 py-2.5 border-b border-line">
+              Repository Information
+            </div>
+            <div className="p-4 space-y-1.5 text-[12px] text-ink-2">
+              <div><span className="registry-label text-ink-3 mr-2">ID</span> {repository.id}</div>
+              <div className="break-all"><span className="registry-label text-ink-3 mr-2">URL</span> {baseUrl}</div>
+              <div className="break-all"><span className="registry-label text-ink-3 mr-2">Origin</span> {repository.url}</div>
             </div>
           </div>
 
           {/* Configuration */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-gray-900">{config.title}</h3>
-              <Button
-                variant="ghost"
-                size="sm"
+          <div className="border border-line">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-line">
+              <h3 className="registry-label font-semibold">{config.title}</h3>
+              <button
+                className="registry-label flex items-center gap-1.5 border border-line px-3 py-1.5 cursor-pointer text-ink-2 font-mono transition-colors hover:bg-ink hover:text-white hover:border-ink"
                 onClick={() => handleCopy(config.content, selectedTool)}
-                className="text-gray-600 hover:text-red-700"
               >
                 {copiedConfig === selectedTool ? (
                   <>
-                    <Check className="h-4 w-4 mr-1" />
+                    <Check className="h-3 w-3" />
                     Copied!
                   </>
                 ) : (
                   <>
-                    <Copy className="h-4 w-4 mr-1" />
+                    <Copy className="h-3 w-3" />
                     Copy
                   </>
                 )}
-              </Button>
+              </button>
             </div>
-            
-            <div className="text-sm text-gray-600 mb-2">
-              Add this configuration to your <code className="bg-gray-100 px-1 rounded">{config.filename}</code>:
+            <div className="px-4 py-3 text-[12px] text-ink-2 border-b border-line">
+              Add this configuration to your <code className="bg-wash text-accent px-1">{config.filename}</code>:
             </div>
-            
-            <div className="relative">
-              <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
-                <code>{config.content}</code>
-              </pre>
-            </div>
+            <pre className="bg-ink text-[#f4f0f2] p-4 overflow-x-auto text-xs leading-relaxed">
+              <code>{config.content}</code>
+            </pre>
           </div>
 
           {/* Authentication Notice for Private Repositories */}
           {repository.isPrivate && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-              <h4 className="font-medium text-amber-900 mb-2">🔒 Authentication Required</h4>
-              <div className="text-sm text-amber-800 space-y-2">
+            <div className="border border-line border-l-4 border-l-magenta p-4">
+              <h4 className="registry-label font-semibold text-magenta mb-2">Authentication Required</h4>
+              <div className="text-[12px] text-ink-2 space-y-2">
                 <p>This is a private repository that requires JWT token authentication.</p>
-                <p>
-                  <strong>To generate a JWT token:</strong>
-                </p>
+                <p className="font-semibold">To generate a JWT token:</p>
                 <ol className="list-decimal list-inside space-y-1 ml-2">
-                  <li>Go to the <a href="/token" className="font-medium text-amber-900 underline hover:text-amber-700">Generate Token</a> page</li>
+                  <li>Go to the <a href="/token" className="text-accent underline hover:text-magenta">Generate Token</a> page</li>
                   <li>Select this repository ({repository.id})</li>
                   <li>Choose your required permissions (artifacts:read for downloads)</li>
                   <li>Set token expiration (recommended: 6 months or less)</li>
-                  <li>Generate the token and replace <code className="bg-amber-100 px-1 rounded">YOUR_JWT_TOKEN_HERE</code> in the configuration above</li>
+                  <li>Generate the token and replace <code className="bg-wash text-accent px-1">YOUR_JWT_TOKEN_HERE</code> in the configuration above</li>
                 </ol>
               </div>
             </div>
           )}
 
           {/* Usage Notes */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-900 mb-2">Usage Notes</h4>
-            <ul className="text-sm text-blue-800 space-y-1">
-              <li>• This Kagami server caches artifacts from the original repository</li>
-              <li>• Artifacts are fetched on-demand and cached locally for faster subsequent access</li>
-              <li>• You can use this as a primary repository or as a mirror for faster downloads</li>
+          <div className="border border-line border-l-4 border-l-ink p-4">
+            <h4 className="registry-label font-semibold mb-2">Usage Notes</h4>
+            <ul className="text-[12px] text-ink-2 space-y-1">
+              <li>&mdash; This Kagami server caches artifacts from the original repository</li>
+              <li>&mdash; Artifacts are fetched on-demand and cached locally for faster subsequent access</li>
+              <li>&mdash; You can use this as a primary repository or as a mirror for faster downloads</li>
               {repository.id === 'central' && (
-                <li>• This mirrors Maven Central - you can use it as a drop-in replacement</li>
+                <li>&mdash; This mirrors Maven Central - you can use it as a drop-in replacement</li>
               )}
               {repository.isPrivate && (
-                <li>• JWT tokens cannot be revoked - use appropriate expiration times for security</li>
+                <li>&mdash; JWT tokens cannot be revoked - use appropriate expiration times for security</li>
               )}
             </ul>
           </div>
