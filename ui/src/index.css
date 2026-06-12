@@ -1,3 +1,16 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/*
+  Tailwind CSS v4 changes the default border and ring colors to `currentColor`
+  and the default ring width to 1px. This project relies on the v3 defaults
+  (gray-200 borders, a 3px blue-500 ring), so restore them for compatibility.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
