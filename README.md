@@ -2,13 +2,13 @@
 
 A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, meaning "mirror" in Japanese) provides efficient caching and proxying of Maven artifacts from multiple remote repositories.
 
-<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/e352db90-9fe9-4884-92fe-ac93f8621485" />
+<img width="1717" height="800" alt="Image" src="https://github.com/user-attachments/assets/e369b689-0085-4530-bd1e-e9ca98fbb338" />
 
-<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/48f46307-7042-4b8b-958a-52c433e24b83" />
+<img width="1749" height="640" alt="Image" src="https://github.com/user-attachments/assets/382386e4-b2c9-4b5c-b440-8a2a434084b8" />
 
-<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/954b34e6-4efa-4d8f-adeb-b270415224e7" />
+<img width="1747" height="972" alt="Image" src="https://github.com/user-attachments/assets/e7ad9e76-3124-4516-85aa-93c8c083054b" />
 
-<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/97883489-cf38-46a3-939e-3e118265a014" />
+<img width="1763" height="960" alt="Image" src="https://github.com/user-attachments/assets/251763be-a8f9-4689-8b3f-aa313d02df6c" />
 
 ## Features
 
@@ -230,8 +230,6 @@ For more information on configuration value conversion, see the [Spring Boot doc
 
 #### Simple Authentication (Form-based)
 
-<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/774de4f6-9a80-47b0-bc9e-e9f47061707e" />
-
 ```properties
 # Configure web UI authentication (default: demo/demo)
 kagami.authentication.type=simple
@@ -244,8 +242,6 @@ spring.security.user.password={noop}plainpassword
 Only one user can be configured with this method. For multiple users, use OIDC authentication.
 
 #### OIDC Authentication
-
-<img width="1024" alt="Image" src="https://github.com/user-attachments/assets/aa3e57f2-726f-4111-9b69-50458cd0e184" />
 
 Configure OIDC authentication for enterprise single sign-on:
 
