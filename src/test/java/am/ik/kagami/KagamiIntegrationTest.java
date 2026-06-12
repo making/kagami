@@ -98,6 +98,31 @@ public class KagamiIntegrationTest {
 	}
 
 	@Test
+	void getArtifactsShouldNotAdvertiseBasicSchemeToBrowserWithoutToken() {
+		var response = this.restClient.get()
+			.uri("/artifacts/mock/junit/junit/4.13.2/junit-4.13.2.pom")
+			// Browsers send Sec-Fetch-* headers on every request
+			.header("Sec-Fetch-Mode", "navigate")
+			.retrieve()
+			.toBodilessEntity();
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+		assertThat(response.getHeaders()).containsEntry(HttpHeaders.WWW_AUTHENTICATE, List.of("Bearer"));
+	}
+
+	@Test
+	void apiShouldNotAdvertiseBasicSchemeToBrowserWhenSessionExpired() {
+		// Simulate a fetch request from the UI after the login session has expired
+		var response = this.restClient.get()
+			.uri("/repositories")
+			.header("Sec-Fetch-Mode", "cors")
+			.header(HttpHeaders.USER_AGENT, "Mozilla/5.0")
+			.retrieve()
+			.toBodilessEntity();
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+		assertThat(response.getHeaders()).containsEntry(HttpHeaders.WWW_AUTHENTICATE, List.of("Bearer"));
+	}
+
+	@Test
 	void getArtifactsShouldBeOkWithBearerToken() {
 		this.mockServer.GET("/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom", req -> Response.ok("<project></project>"))
 			.GET("/am/ik/kagami/kagami/0.0.1/kagami-0.0.1.pom.sha1",

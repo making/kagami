@@ -3,6 +3,7 @@ package am.ik.kagami.config;
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.KagamiProperties.AuthenticationType;
 import am.ik.kagami.token.web.BasicToBearerTokenResolver;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -96,14 +97,31 @@ class SecurityConfig {
 	 * in addition to Bearer so that Maven clients configured with the standard
 	 * {@code <username>} / {@code <password>} server settings respond to the 401
 	 * challenge with Basic credentials, which are then resolved as a bearer token by
-	 * {@link BasicToBearerTokenResolver}.
+	 * {@link BasicToBearerTokenResolver}. The Basic scheme is not advertised to web
+	 * browsers because they would pop up a native credential dialog on a 401 response
+	 * (e.g. when the login session has expired).
 	 */
 	private static AuthenticationEntryPoint artifactsAuthenticationEntryPoint() {
 		BearerTokenAuthenticationEntryPoint bearerEntryPoint = new BearerTokenAuthenticationEntryPoint();
 		return (request, response, authException) -> {
 			bearerEntryPoint.commence(request, response, authException);
-			response.addHeader(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"Kagami\"");
+			if (!isBrowserRequest(request)) {
+				response.addHeader(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"Kagami\"");
+			}
 		};
+	}
+
+	/**
+	 * Determines whether the request originates from a web browser. Browsers send
+	 * {@code Sec-Fetch-*} headers on every request and a {@code User-Agent} starting with
+	 * {@code Mozilla}, while Maven and Gradle clients send neither.
+	 */
+	private static boolean isBrowserRequest(HttpServletRequest request) {
+		if (request.getHeader("Sec-Fetch-Mode") != null) {
+			return true;
+		}
+		String userAgent = request.getHeader(HttpHeaders.USER_AGENT);
+		return userAgent != null && userAgent.startsWith("Mozilla");
 	}
 
 	@Bean
