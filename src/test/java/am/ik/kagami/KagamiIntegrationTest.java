@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
 		properties = { "kagami.repositories.mock.is-private=true", "spring.security.user.name=test",
-				"spring.security.user.password={noop}pass", "spring.http.client.redirects=dont_follow" })
+				"spring.security.user.password={noop}pass", "spring.http.clients.redirects=dont_follow" })
 @Import(MockConfig.class)
 public class KagamiIntegrationTest {
 
@@ -93,8 +93,11 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-		assertThat(response.getHeaders()).containsEntry(HttpHeaders.WWW_AUTHENTICATE,
-				List.of("Bearer", "Basic realm=\"Kagami\""));
+		assertThat(response.getHeaders().asMultiValueMap()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
+			assertThat(values).hasSize(2);
+			assertThat(values.getFirst()).startsWith("Bearer");
+			assertThat(values.getLast()).isEqualTo("Basic realm=\"Kagami\"");
+		});
 	}
 
 	@Test
@@ -106,7 +109,10 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-		assertThat(response.getHeaders()).containsEntry(HttpHeaders.WWW_AUTHENTICATE, List.of("Bearer"));
+		assertThat(response.getHeaders().asMultiValueMap()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
+			assertThat(values).hasSize(1);
+			assertThat(values.getFirst()).startsWith("Bearer");
+		});
 	}
 
 	@Test
@@ -119,7 +125,10 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-		assertThat(response.getHeaders()).containsEntry(HttpHeaders.WWW_AUTHENTICATE, List.of("Bearer"));
+		assertThat(response.getHeaders().asMultiValueMap()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
+			assertThat(values).hasSize(1);
+			assertThat(values.getFirst()).startsWith("Bearer");
+		});
 	}
 
 	@Test
@@ -134,7 +143,7 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-		assertThat(response.getHeaders()).containsEntry(HttpHeaders.CACHE_CONTROL,
+		assertThat(response.getHeaders().asMultiValueMap()).containsEntry(HttpHeaders.CACHE_CONTROL,
 				List.of("max-age=31536000, private"));
 	}
 
@@ -161,7 +170,7 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-		assertThat(response.getHeaders()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
+		assertThat(response.getHeaders().asMultiValueMap()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
 			assertThat(values).hasSize(2);
 			assertThat(values.getFirst()).contains("invalid_token");
 			assertThat(values.getLast()).isEqualTo("Basic realm=\"Kagami\"");
@@ -177,7 +186,7 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-		assertThat(response.getHeaders()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
+		assertThat(response.getHeaders().asMultiValueMap()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
 			assertThat(values).hasSize(2);
 			assertThat(values.getFirst())
 				.contains("Token does not contain the repository 'mock' in 'kagami:repositories' claim");
@@ -193,7 +202,7 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-		assertThat(response.getHeaders()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
+		assertThat(response.getHeaders().asMultiValueMap()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
 			assertThat(values).hasSize(1);
 			assertThat(values.getFirst())
 				.contains("The request requires higher privileges than provided by the access token.");
@@ -207,8 +216,11 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-		assertThat(response.getHeaders()).containsEntry(HttpHeaders.WWW_AUTHENTICATE,
-				List.of("Bearer", "Basic realm=\"Kagami\""));
+		assertThat(response.getHeaders().asMultiValueMap()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
+			assertThat(values).hasSize(2);
+			assertThat(values.getFirst()).startsWith("Bearer");
+			assertThat(values.getLast()).isEqualTo("Basic realm=\"Kagami\"");
+		});
 	}
 
 	@Test
@@ -239,7 +251,7 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-		assertThat(response.getHeaders()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
+		assertThat(response.getHeaders().asMultiValueMap()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
 			assertThat(values).hasSize(2);
 			assertThat(values.getFirst())
 				.contains("Token does not contain the repository 'mock' in 'kagami:repositories' claim");
@@ -255,7 +267,7 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-		assertThat(response.getHeaders()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
+		assertThat(response.getHeaders().asMultiValueMap()).hasEntrySatisfying(HttpHeaders.WWW_AUTHENTICATE, values -> {
 			assertThat(values).hasSize(1);
 			assertThat(values.getFirst())
 				.contains("The request requires higher privileges than provided by the access token.");
