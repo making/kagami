@@ -4,7 +4,7 @@ import com.samskivert.mustache.Mustache;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.boot.web.servlet.view.MustacheViewResolver;
+import org.springframework.boot.mustache.servlet.view.MustacheViewResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
