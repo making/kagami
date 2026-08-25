@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
@@ -324,7 +325,7 @@ public class RemoteRepositoryService {
 			// Walk up the directory tree and remove empty directories
 			while (artifactDir != null && artifactDir.startsWith(storagePath) && !artifactDir.equals(storagePath)) {
 				if (Files.exists(artifactDir) && Files.isDirectory(artifactDir)) {
-					try (var stream = Files.list(artifactDir)) {
+					try (Stream<Path> stream = Files.list(artifactDir)) {
 						if (stream.findFirst().isEmpty()) {
 							// Directory is empty, remove it
 							Files.delete(artifactDir);

@@ -11,6 +11,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -56,7 +57,7 @@ class BrowserControllerTest {
 		Files.createDirectories(springDir);
 		Files.writeString(springDir.resolve("test-file.jar"), "dummy jar content");
 
-		var result = this.mockMvc.perform(get("/repositories/test-repo/browse").param("path", "org"))
+		ResultActions result = this.mockMvc.perform(get("/repositories/test-repo/browse").param("path", "org"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.repositoryId").value("test-repo"))
 			.andExpect(jsonPath("$.currentPath").value("org"))
@@ -68,7 +69,7 @@ class BrowserControllerTest {
 		System.out.println("Directory Response: " + result.andReturn().getResponse().getContentAsString());
 
 		// Also browse into springframework to see file entries
-		var fileResult = this.mockMvc
+		ResultActions fileResult = this.mockMvc
 			.perform(get("/repositories/test-repo/browse").param("path", "org/springframework"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.entries[0].name").value("test-file.jar"))

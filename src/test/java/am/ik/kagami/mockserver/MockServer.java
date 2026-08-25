@@ -7,6 +7,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -205,8 +206,8 @@ public class MockServer implements AutoCloseable {
 
 		@Override
 		public void handle(HttpExchange exchange) throws IOException {
-			var request = Request.from(exchange);
-			var response = findMatchingResponse(request);
+			Request request = Request.from(exchange);
+			Response response = findMatchingResponse(request);
 			sendResponse(exchange, response);
 		}
 
@@ -220,9 +221,9 @@ public class MockServer implements AutoCloseable {
 
 		private void sendResponse(HttpExchange exchange, Response response) throws IOException {
 			response.headers().forEach((key, value) -> exchange.getResponseHeaders().set(key, value));
-			var responseBody = response.body().getBytes();
+			byte[] responseBody = response.body().getBytes();
 			exchange.sendResponseHeaders(response.status(), responseBody.length);
-			try (var os = exchange.getResponseBody()) {
+			try (OutputStream os = exchange.getResponseBody()) {
 				os.write(responseBody);
 			}
 		}

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.util.TestSocketUtils;
@@ -102,7 +103,7 @@ class LegacyProxyIntegrationTest {
 			.GET("/am/ik/kagami/kagami/1.0.0/kagami-1.0.0.pom.sha1",
 					req -> Response.ok("147ddc4bbee044878ea3f8341a40e770e4b92f4e"));
 
-		var response = this.restClient.get()
+		ResponseEntity<String> response = this.restClient.get()
 			.uri("/artifacts/mock/am/ik/kagami/kagami/1.0.0/kagami-1.0.0.pom")
 			.retrieve()
 			.toEntity(String.class);
@@ -121,7 +122,7 @@ class LegacyProxyIntegrationTest {
 		mockServer.GET("/am/ik/kagami/kagami/maven-metadata.xml",
 				req -> Response.ok("<metadata></metadata>", "text/xml"));
 
-		var response = this.restClient.get()
+		ResponseEntity<String> response = this.restClient.get()
 			.uri("/artifacts/mock/am/ik/kagami/kagami/maven-metadata.xml")
 			.retrieve()
 			.toEntity(String.class);
@@ -138,7 +139,7 @@ class LegacyProxyIntegrationTest {
 			.GET("/am/ik/kagami/kagami/2.0.0/kagami-2.0.0.pom.sha1",
 					req -> Response.ok("147ddc4bbee044878ea3f8341a40e770e4b92f4e"));
 
-		var response = this.restClient.get()
+		ResponseEntity<String> response = this.restClient.get()
 			.uri("/artifacts/direct/am/ik/kagami/kagami/2.0.0/kagami-2.0.0.pom")
 			.retrieve()
 			.toEntity(String.class);
