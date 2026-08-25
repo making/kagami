@@ -81,7 +81,7 @@ cd ui && npm run dev                                            # Start developm
 
 - Properties use Map structure for repositories: `kagami.repositories.{id}.url`
 - Supports username/password for Basic auth per repository
-- HTTP proxy configurable via properties or environment variables (http_proxy, HTTP_PROXY)
+- HTTP proxy configurable via `kagami.proxy.*` properties or environment variables (`http_proxy`, `https_proxy`, `no_proxy`, also in upper case)
 - Frontend development server proxies `/repositories`, `/artifacts`, `/login` requests to backend at `http://localhost:8080`
 - Web UI authentication modes:
   - Simple: `spring.security.user.name/password` (default: demo/demo)
@@ -134,6 +134,9 @@ Current package structure:
     - `browser` - Repository browsing feature
         - `BrowserService` - Repository exploration and statistics
         - `web.BrowserController` - REST API for repository browsing
+    - `proxy` - HTTP proxy settings for outgoing connections
+        - `ProxySettings` - Proxy resolution from properties and environment variables
+        - `ProxyConfig` - Applies the proxy to the auto-configured HTTP clients
     - `repository` - Remote repository management
         - `RemoteRepositoryService` - Maven Resolver integration
     - `storage` - Storage abstraction layer

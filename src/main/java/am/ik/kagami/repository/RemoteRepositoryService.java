@@ -1,14 +1,14 @@
 package am.ik.kagami.repository;
 
 import am.ik.kagami.KagamiProperties;
+import am.ik.kagami.proxy.HttpProxy;
+import am.ik.kagami.proxy.ProxySettings;
 import am.ik.kagami.storage.StorageService;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -56,7 +56,7 @@ public class RemoteRepositoryService {
 	private final KagamiProperties kagamiProperties;
 
 	public RemoteRepositoryService(KagamiProperties properties, StorageService storageService,
-			RestClient.Builder restClientBuilder) {
+			RestClient.Builder restClientBuilder, ProxySettings proxySettings) {
 		this.storageService = storageService;
 		this.repositories = new ConcurrentHashMap<>();
 		this.sessions = new ConcurrentHashMap<>();
@@ -64,8 +64,8 @@ public class RemoteRepositoryService {
 		// Store properties for later use in RestClient requests
 		this.kagamiProperties = properties;
 
-		// Determine proxy configuration early for both Maven Resolver and RestClient
-		String proxyUrl = determineProxyUrl(properties);
+		// The RestClient is already routed through the proxy by the auto-configured
+		// request factory
 		this.restClient = restClientBuilder.build();
 
 		// Initialize Maven Resolver components
@@ -87,16 +87,10 @@ public class RemoteRepositoryService {
 					}
 
 					// Add proxy support if configured
-					if (StringUtils.hasText(proxyUrl)) {
-						try {
-							URL url = URI.create(proxyUrl).toURL();
-							repoBuilder.setProxy(new Proxy(url.getProtocol(), url.getHost(), url.getPort()));
-							logger.debug("Using proxy {} for repository {}", proxyUrl, repoId);
-						}
-						catch (MalformedURLException e) {
-							logger.warn("Invalid proxy URL: {}", proxyUrl, e);
-						}
-					}
+					proxySettings.proxyFor(repo.url()).ifPresent(proxy -> {
+						repoBuilder.setProxy(toResolverProxy(proxy));
+						logger.debug("Using proxy {} for repository {}", proxy, repoId);
+					});
 
 					RemoteRepository remoteRepo = repoBuilder.build();
 					this.repositories.put(repoId, remoteRepo);
@@ -173,8 +167,10 @@ public class RemoteRepositoryService {
 		try {
 			// Get repository configuration for authentication
 			KagamiProperties.Repository repoConfig = this.kagamiProperties.repositories().get(repositoryId);
+			// The artifact path is already encoded and must be sent as is, its path
+			// separators must not be encoded into "%2F"
 			byte[] responseBytes = this.restClient.get()
-				.uri(repository.getUrl() + "/{artifactPath}", artifactPath)
+				.uri(URI.create(repository.getUrl() + "/" + artifactPath))
 				.headers(headers -> {
 					if (repoConfig != null && StringUtils.hasText(repoConfig.username())
 							&& StringUtils.hasText(repoConfig.password())) {
@@ -228,31 +224,17 @@ public class RemoteRepositoryService {
 	}
 
 	/**
-	 * Determine proxy URL from configuration or environment variables Priority: 1.
-	 * kagami.proxy.url property, 2. http_proxy env var, 3. HTTP_PROXY env var
+	 * Convert the resolved proxy into the Maven Resolver representation, including the
+	 * credentials required by proxies that challenge with Basic authentication.
 	 */
-	private String determineProxyUrl(KagamiProperties properties) {
-		// 1. Check configuration property
-		if (properties.proxy() != null && StringUtils.hasText(properties.proxy().url())) {
-			logger.debug("Using proxy from configuration: {}", properties.proxy().url());
-			return properties.proxy().url();
+	private static Proxy toResolverProxy(HttpProxy proxy) {
+		if (!proxy.hasCredentials()) {
+			return new Proxy(proxy.scheme(), proxy.host(), proxy.port());
 		}
-
-		// 2. Check lowercase http_proxy environment variable
-		String httpProxy = System.getenv("http_proxy");
-		if (StringUtils.hasText(httpProxy)) {
-			logger.debug("Using proxy from http_proxy environment variable: {}", httpProxy);
-			return httpProxy;
-		}
-
-		// 3. Check uppercase HTTP_PROXY environment variable
-		String httpProxyUpper = System.getenv("HTTP_PROXY");
-		if (StringUtils.hasText(httpProxyUpper)) {
-			logger.debug("Using proxy from HTTP_PROXY environment variable: {}", httpProxyUpper);
-			return httpProxyUpper;
-		}
-
-		return null;
+		Authentication authentication = new AuthenticationBuilder().addUsername(proxy.username())
+			.addPassword(proxy.password())
+			.build();
+		return new Proxy(proxy.scheme(), proxy.host(), proxy.port(), authentication);
 	}
 
 	/**

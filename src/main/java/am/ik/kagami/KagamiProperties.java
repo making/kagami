@@ -36,7 +36,20 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	public record Repository(String url, String username, String password, @DefaultValue("false") boolean isPrivate) {
 	}
 
-	public record Proxy(String url) {
+	/**
+	 * HTTP proxy settings for outgoing connections to remote repositories.
+	 *
+	 * @param url proxy used for {@code http} repositories and, unless {@code httpsUrl} is
+	 * set, for {@code https} repositories as well
+	 * @param httpsUrl proxy used for {@code https} repositories
+	 * @param username user name for proxy authentication, unless the credentials are
+	 * embedded in the proxy URL
+	 * @param password password for proxy authentication, unless the credentials are
+	 * embedded in the proxy URL
+	 * @param nonProxyHosts hosts that must be reached without going through the proxy
+	 */
+	public record Proxy(String url, String httpsUrl, String username, String password,
+			@DefaultValue List<String> nonProxyHosts) {
 	}
 
 	public static class Jwt {
