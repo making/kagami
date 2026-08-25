@@ -33,17 +33,15 @@ public class LocalStorageService implements StorageService {
 	}
 
 	@Override
-	public void store(String repositoryId, String artifactPath, InputStream inputStream) throws IOException {
-		validatePath(artifactPath);
-		Path targetPath = resolvePath(repositoryId, artifactPath);
+	public void store(ArtifactLocation location, InputStream inputStream) throws IOException {
+		Path targetPath = resolvePath(location);
 		Files.createDirectories(targetPath.getParent());
 		Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
 	}
 
 	@Override
-	public Optional<Resource> retrieve(String repositoryId, String artifactPath) {
-		validatePath(artifactPath);
-		Path targetPath = resolvePath(repositoryId, artifactPath);
+	public Optional<Resource> retrieve(ArtifactLocation location) {
+		Path targetPath = resolvePath(location);
 		if (Files.exists(targetPath) && Files.isRegularFile(targetPath)) {
 			return Optional.of(new PathResource(targetPath));
 		}
@@ -51,9 +49,8 @@ public class LocalStorageService implements StorageService {
 	}
 
 	@Override
-	public boolean delete(String repositoryId, String artifactPath) throws IOException {
-		validatePath(artifactPath);
-		Path targetPath = resolvePath(repositoryId, artifactPath);
+	public boolean delete(ArtifactLocation location) throws IOException {
+		Path targetPath = resolvePath(location);
 
 		if (!Files.exists(targetPath)) {
 			return false;
@@ -80,9 +77,12 @@ public class LocalStorageService implements StorageService {
 		return true;
 	}
 
-	private Path resolvePath(String repositoryId, String artifactPath) {
+	private Path resolvePath(ArtifactLocation location) {
+		String artifactPath = location.artifactPath();
+		validatePath(artifactPath);
+
 		// Resolve and normalize to prevent path traversal
-		Path resolved = this.basePath.resolve(repositoryId).resolve(artifactPath).normalize();
+		Path resolved = this.basePath.resolve(location.repositoryId()).resolve(artifactPath).normalize();
 
 		// Ensure the resolved path is within the base path
 		if (!resolved.startsWith(this.basePath)) {

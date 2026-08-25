@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
@@ -36,7 +37,7 @@ public final class ProxySettings {
 
 	private static final Logger logger = LoggerFactory.getLogger(ProxySettings.class);
 
-	private static final ProxySettings NONE = new ProxySettings(null, null, List.of());
+	private static final ProxySettings NONE = builder().build();
 
 	private final @Nullable HttpProxy httpProxy;
 
@@ -44,10 +45,46 @@ public final class ProxySettings {
 
 	private final List<String> nonProxyHosts;
 
-	private ProxySettings(@Nullable HttpProxy httpProxy, @Nullable HttpProxy httpsProxy, List<String> nonProxyHosts) {
-		this.httpProxy = httpProxy;
-		this.httpsProxy = httpsProxy;
-		this.nonProxyHosts = nonProxyHosts;
+	private ProxySettings(Builder builder) {
+		this.httpProxy = builder.httpProxy;
+		this.httpsProxy = builder.httpsProxy;
+		this.nonProxyHosts = builder.nonProxyHosts;
+	}
+
+	private static Builder builder() {
+		return new Builder();
+	}
+
+	private static final class Builder {
+
+		@Nullable private HttpProxy httpProxy;
+
+		@Nullable private HttpProxy httpsProxy;
+
+		private List<String> nonProxyHosts = List.of();
+
+		private Builder() {
+		}
+
+		private Builder httpProxy(@Nullable HttpProxy httpProxy) {
+			this.httpProxy = httpProxy;
+			return this;
+		}
+
+		private Builder httpsProxy(@Nullable HttpProxy httpsProxy) {
+			this.httpsProxy = httpsProxy;
+			return this;
+		}
+
+		private Builder nonProxyHosts(List<String> nonProxyHosts) {
+			this.nonProxyHosts = Objects.requireNonNull(nonProxyHosts, "nonProxyHosts is required");
+			return this;
+		}
+
+		private ProxySettings build() {
+			return new ProxySettings(this);
+		}
+
 	}
 
 	/**
@@ -68,12 +105,10 @@ public final class ProxySettings {
 	 */
 	public static ProxySettings from(KagamiProperties.@Nullable Proxy proxy,
 			Function<String, @Nullable String> environment) {
-		String username = proxy != null ? proxy.username() : null;
-		String password = proxy != null ? proxy.password() : null;
 		HttpProxy httpProxy = parse(firstWithText(proxy != null ? proxy.url() : null, environment.apply("http_proxy"),
-				environment.apply("HTTP_PROXY")), username, password);
+				environment.apply("HTTP_PROXY")), proxy);
 		HttpProxy httpsProxy = parse(firstWithText(proxy != null ? proxy.httpsUrl() : null,
-				environment.apply("https_proxy"), environment.apply("HTTPS_PROXY")), username, password);
+				environment.apply("https_proxy"), environment.apply("HTTPS_PROXY")), proxy);
 		if (httpsProxy == null) {
 			httpsProxy = httpProxy;
 		}
@@ -83,7 +118,7 @@ public final class ProxySettings {
 			return NONE;
 		}
 		logger.info("Using HTTP proxy http={} https={} nonProxyHosts={}", httpProxy, httpsProxy, nonProxyHosts);
-		return new ProxySettings(httpProxy, httpsProxy, nonProxyHosts);
+		return builder().httpProxy(httpProxy).httpsProxy(httpsProxy).nonProxyHosts(nonProxyHosts).build();
 	}
 
 	/**
@@ -199,8 +234,7 @@ public final class ProxySettings {
 		return false;
 	}
 
-	private static @Nullable HttpProxy parse(@Nullable String url, @Nullable String username,
-			@Nullable String password) {
+	private static @Nullable HttpProxy parse(@Nullable String url, KagamiProperties.@Nullable Proxy proxy) {
 		if (!StringUtils.hasText(url)) {
 			return null;
 		}
@@ -225,13 +259,16 @@ public final class ProxySettings {
 					host);
 		}
 		int port = uri.getPort() != -1 ? uri.getPort() : ("https".equals(scheme) ? 443 : 80);
+		String username = proxy != null ? proxy.username() : null;
+		String password = proxy != null ? proxy.password() : null;
 		String userInfo = uri.getUserInfo();
 		if (userInfo != null) {
+			// Credentials embedded in the URL take precedence over the configured ones
 			int colonIndex = userInfo.indexOf(':');
 			username = decode(colonIndex < 0 ? userInfo : userInfo.substring(0, colonIndex));
 			password = colonIndex < 0 ? null : decode(userInfo.substring(colonIndex + 1));
 		}
-		return new HttpProxy(scheme, host, port, username, password);
+		return HttpProxy.builder().scheme(scheme).host(host).port(port).username(username).password(password).build();
 	}
 
 	private static String decode(String value) {

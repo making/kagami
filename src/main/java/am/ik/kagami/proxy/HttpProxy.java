@@ -2,6 +2,7 @@ package am.ik.kagami.proxy;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import org.springframework.util.StringUtils;
 
@@ -15,6 +16,57 @@ import org.springframework.util.StringUtils;
  * @param password password for proxy authentication, may be {@code null}
  */
 public record HttpProxy(String scheme, String host, int port, @Nullable String username, @Nullable String password) {
+
+	public static Builder builder() {
+		return new Builder();
+	}
+
+	public static final class Builder {
+
+		@Nullable private String scheme;
+
+		@Nullable private String host;
+
+		private int port;
+
+		@Nullable private String username;
+
+		@Nullable private String password;
+
+		private Builder() {
+		}
+
+		public Builder scheme(String scheme) {
+			this.scheme = scheme;
+			return this;
+		}
+
+		public Builder host(String host) {
+			this.host = host;
+			return this;
+		}
+
+		public Builder port(int port) {
+			this.port = port;
+			return this;
+		}
+
+		public Builder username(@Nullable String username) {
+			this.username = username;
+			return this;
+		}
+
+		public Builder password(@Nullable String password) {
+			this.password = password;
+			return this;
+		}
+
+		public HttpProxy build() {
+			return new HttpProxy(Objects.requireNonNull(this.scheme, "scheme is required"),
+					Objects.requireNonNull(this.host, "host is required"), this.port, this.username, this.password);
+		}
+
+	}
 
 	public boolean hasCredentials() {
 		return StringUtils.hasText(this.username);

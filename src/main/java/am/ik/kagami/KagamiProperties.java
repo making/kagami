@@ -32,11 +32,109 @@ import org.springframework.util.StreamUtils;
 public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<String, Repository> repositories,
 		@Nullable Proxy proxy, @DefaultValue Jwt jwt, @DefaultValue Authentication authentication) {
 
+	public static Builder builder() {
+		return new Builder();
+	}
+
+	public static final class Builder {
+
+		@Nullable private Storage storage;
+
+		@Nullable private Map<String, Repository> repositories;
+
+		@Nullable private Proxy proxy;
+
+		@Nullable private Jwt jwt;
+
+		@Nullable private Authentication authentication;
+
+		private Builder() {
+		}
+
+		public Builder storage(Storage storage) {
+			this.storage = storage;
+			return this;
+		}
+
+		public Builder repositories(Map<String, Repository> repositories) {
+			this.repositories = repositories;
+			return this;
+		}
+
+		public Builder proxy(@Nullable Proxy proxy) {
+			this.proxy = proxy;
+			return this;
+		}
+
+		public Builder jwt(Jwt jwt) {
+			this.jwt = jwt;
+			return this;
+		}
+
+		public Builder authentication(Authentication authentication) {
+			this.authentication = authentication;
+			return this;
+		}
+
+		public KagamiProperties build() {
+			return new KagamiProperties(Objects.requireNonNull(this.storage, "storage is required"),
+					Objects.requireNonNull(this.repositories, "repositories is required"), this.proxy,
+					Objects.requireNonNull(this.jwt, "jwt is required"),
+					Objects.requireNonNull(this.authentication, "authentication is required"));
+		}
+
+	}
+
 	public record Storage(String path) {
 	}
 
 	public record Repository(String url, @Nullable String username, @Nullable String password,
 			@DefaultValue("false") boolean isPrivate) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			@Nullable private String url;
+
+			@Nullable private String username;
+
+			@Nullable private String password;
+
+			private boolean isPrivate;
+
+			private Builder() {
+			}
+
+			public Builder url(String url) {
+				this.url = url;
+				return this;
+			}
+
+			public Builder username(@Nullable String username) {
+				this.username = username;
+				return this;
+			}
+
+			public Builder password(@Nullable String password) {
+				this.password = password;
+				return this;
+			}
+
+			public Builder isPrivate(boolean isPrivate) {
+				this.isPrivate = isPrivate;
+				return this;
+			}
+
+			public Repository build() {
+				return new Repository(Objects.requireNonNull(this.url, "url is required"), this.username, this.password,
+						this.isPrivate);
+			}
+
+		}
+
 	}
 
 	/**
@@ -53,6 +151,57 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 */
 	public record Proxy(@Nullable String url, @Nullable String httpsUrl, @Nullable String username,
 			@Nullable String password, @DefaultValue List<String> nonProxyHosts) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			@Nullable private String url;
+
+			@Nullable private String httpsUrl;
+
+			@Nullable private String username;
+
+			@Nullable private String password;
+
+			private List<String> nonProxyHosts = List.of();
+
+			private Builder() {
+			}
+
+			public Builder url(@Nullable String url) {
+				this.url = url;
+				return this;
+			}
+
+			public Builder httpsUrl(@Nullable String httpsUrl) {
+				this.httpsUrl = httpsUrl;
+				return this;
+			}
+
+			public Builder username(@Nullable String username) {
+				this.username = username;
+				return this;
+			}
+
+			public Builder password(@Nullable String password) {
+				this.password = password;
+				return this;
+			}
+
+			public Builder nonProxyHosts(List<String> nonProxyHosts) {
+				this.nonProxyHosts = nonProxyHosts;
+				return this;
+			}
+
+			public Proxy build() {
+				return new Proxy(this.url, this.httpsUrl, this.username, this.password, this.nonProxyHosts);
+			}
+
+		}
+
 	}
 
 	public static class Jwt {

@@ -22,51 +22,68 @@ class RemoteRepositoryServiceTest {
 	@Mock
 	private StorageService storageService;
 
+	private static KagamiProperties properties(Map<String, KagamiProperties.Repository> repositories,
+			KagamiProperties.Proxy proxy) {
+		return KagamiProperties.builder()
+			.storage(new KagamiProperties.Storage("/tmp"))
+			.repositories(repositories)
+			.proxy(proxy)
+			.jwt(new KagamiProperties.Jwt(null, null))
+			.authentication(new KagamiProperties.Authentication(KagamiProperties.AuthenticationType.SIMPLE, List.of()))
+			.build();
+	}
+
+	private RemoteRepositoryService service(KagamiProperties properties) {
+		return new RemoteRepositoryService(properties, this.storageService, RestClient.builder(),
+				ProxySettings.from(properties.proxy(), name -> null));
+	}
+
 	@Test
 	void testProxyConfigurationPrecedence() {
 		// Test property-based proxy configuration
-		var properties = new KagamiProperties(new KagamiProperties.Storage("/tmp"),
-				Map.of("test", new KagamiProperties.Repository("http://example.com", "", "", true)),
-				new KagamiProperties.Proxy("http://config-proxy:8080", null, null, null, List.of()),
-				new KagamiProperties.Jwt(null, null),
-				new KagamiProperties.Authentication(KagamiProperties.AuthenticationType.SIMPLE, List.of()));
-
-		var service = new RemoteRepositoryService(properties, storageService, RestClient.builder(),
-				ProxySettings.from(properties.proxy(), name -> null));
+		KagamiProperties properties = properties(Map.of("test",
+				KagamiProperties.Repository.builder()
+					.url("http://example.com")
+					.username("")
+					.password("")
+					.isPrivate(true)
+					.build()),
+				KagamiProperties.Proxy.builder().url("http://config-proxy:8080").build());
 
 		// Verify service was created successfully
-		assertThat(service.isRepositoryConfigured("test")).isTrue();
+		assertThat(service(properties).isRepositoryConfigured("test")).isTrue();
 	}
 
 	@Test
 	void testEmptyProxyConfiguration() {
 		// Test with no proxy configuration
-		var properties = new KagamiProperties(new KagamiProperties.Storage("/tmp"),
-				Map.of("test", new KagamiProperties.Repository("http://example.com", "", "", true)),
-				new KagamiProperties.Proxy("", null, null, null, List.of()), new KagamiProperties.Jwt(null, null),
-				new KagamiProperties.Authentication(KagamiProperties.AuthenticationType.SIMPLE, List.of()));
-
-		var service = new RemoteRepositoryService(properties, storageService, RestClient.builder(),
-				ProxySettings.from(properties.proxy(), name -> null));
+		KagamiProperties properties = properties(Map.of("test",
+				KagamiProperties.Repository.builder()
+					.url("http://example.com")
+					.username("")
+					.password("")
+					.isPrivate(true)
+					.build()),
+				KagamiProperties.Proxy.builder().url("").build());
 
 		// Verify service was created successfully
-		assertThat(service.isRepositoryConfigured("test")).isTrue();
+		assertThat(service(properties).isRepositoryConfigured("test")).isTrue();
 	}
 
 	@Test
 	void testBasicAuthConfiguration() {
 		// Test Basic authentication configuration
-		var properties = new KagamiProperties(new KagamiProperties.Storage("/tmp"),
-				Map.of("authenticated-repo",
-						new KagamiProperties.Repository("http://private.example.com", "user", "pass", true)),
-				new KagamiProperties.Proxy("", null, null, null, List.of()), new KagamiProperties.Jwt(null, null),
-				new KagamiProperties.Authentication(KagamiProperties.AuthenticationType.SIMPLE, List.of()));
-
-		var service = new RemoteRepositoryService(properties, storageService, RestClient.builder(),
-				ProxySettings.from(properties.proxy(), name -> null));
+		KagamiProperties properties = properties(Map.of("authenticated-repo",
+				KagamiProperties.Repository.builder()
+					.url("http://private.example.com")
+					.username("user")
+					.password("pass")
+					.isPrivate(true)
+					.build()),
+				KagamiProperties.Proxy.builder().url("").build());
 
 		// Verify service was created successfully
-		assertThat(service.isRepositoryConfigured("authenticated-repo")).isTrue();
+		assertThat(service(properties).isRepositoryConfigured("authenticated-repo")).isTrue();
 	}
 
 }

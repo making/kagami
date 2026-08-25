@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
@@ -62,7 +63,14 @@ public class BrowserService {
 					}
 				}
 
-				repositories.add(new RepositoryInfo(repoId, url, artifactCount, totalSize, lastUpdated, isPrivate));
+				repositories.add(RepositoryInfo.builder()
+					.id(repoId)
+					.url(url)
+					.artifactCount(artifactCount)
+					.totalSize(totalSize)
+					.lastUpdated(lastUpdated)
+					.isPrivate(isPrivate)
+					.build());
 			}
 		}
 
@@ -97,7 +105,12 @@ public class BrowserService {
 
 		// Check if path exists
 		if (!Files.exists(targetPath)) {
-			return new BrowseResult(repositoryId, normalizedPath, getParentPath(normalizedPath), List.of());
+			return BrowseResult.builder()
+				.repositoryId(repositoryId)
+				.currentPath(normalizedPath)
+				.parentPath(getParentPath(normalizedPath))
+				.entries(List.of())
+				.build();
 		}
 
 		// List directory contents
@@ -105,7 +118,7 @@ public class BrowserService {
 		try (Stream<Path> stream = Files.list(targetPath)) {
 			stream.sorted(Comparator.comparing(Path::getFileName)).forEach(entryPath -> {
 				try {
-					RepositoryEntry entry = createRepositoryEntry(repositoryId, repoRoot, entryPath);
+					RepositoryEntry entry = createRepositoryEntry(repoRoot, entryPath);
 					entries.add(entry);
 				}
 				catch (IOException e) {
@@ -114,7 +127,12 @@ public class BrowserService {
 			});
 		}
 
-		return new BrowseResult(repositoryId, normalizedPath, getParentPath(normalizedPath), entries);
+		return BrowseResult.builder()
+			.repositoryId(repositoryId)
+			.currentPath(normalizedPath)
+			.parentPath(getParentPath(normalizedPath))
+			.entries(entries)
+			.build();
 	}
 
 	/**
@@ -168,24 +186,34 @@ public class BrowserService {
 			sha256 = Files.readString(sha256Path).trim();
 		}
 
-		return new FileInfo(repositoryId, normalizedPath, fileName, "file", size, lastModified, contentType, sha1,
-				sha256);
+		return FileInfo.builder()
+			.repositoryId(repositoryId)
+			.path(normalizedPath)
+			.name(fileName)
+			.type("file")
+			.size(size)
+			.lastModified(lastModified)
+			.contentType(contentType)
+			.sha1(sha1)
+			.sha256(sha256)
+			.build();
 	}
 
-	private RepositoryEntry createRepositoryEntry(String repositoryId, Path repoRoot, Path entryPath)
-			throws IOException {
+	private RepositoryEntry createRepositoryEntry(Path repoRoot, Path entryPath) throws IOException {
 		String relativePath = repoRoot.relativize(entryPath).toString().replace('\\', '/');
 		String name = entryPath.getFileName().toString();
 		String type = Files.isDirectory(entryPath) ? "directory" : "file";
 		Instant lastModified = Files.getLastModifiedTime(entryPath).toInstant();
 
+		RepositoryEntry.Builder builder = RepositoryEntry.builder()
+			.name(name)
+			.type(type)
+			.path(relativePath)
+			.lastModified(lastModified);
 		if ("file".equals(type)) {
-			long size = Files.size(entryPath);
-			return new RepositoryEntry(name, type, relativePath, size, lastModified);
+			builder.size(Files.size(entryPath));
 		}
-		else {
-			return new RepositoryEntry(name, type, relativePath, null, lastModified);
-		}
+		return builder.build();
 	}
 
 	private RepositoryStats calculateRepositoryStats(Path repoPath) throws IOException {
@@ -212,7 +240,11 @@ public class BrowserService {
 			}
 		}
 
-		return new RepositoryStats(artifactCount, totalSize, lastUpdated.equals(Instant.MIN) ? null : lastUpdated);
+		return RepositoryStats.builder()
+			.artifactCount(artifactCount)
+			.totalSize(totalSize)
+			.lastUpdated(lastUpdated.equals(Instant.MIN) ? null : lastUpdated)
+			.build();
 	}
 
 	private String normalizePath(@Nullable String path) {
@@ -256,22 +288,303 @@ public class BrowserService {
 	// Response DTOs
 	public record RepositoryInfo(String id, String url, long artifactCount, long totalSize,
 			@Nullable Instant lastUpdated, boolean isPrivate) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			@Nullable private String id;
+
+			@Nullable private String url;
+
+			private long artifactCount;
+
+			private long totalSize;
+
+			@Nullable private Instant lastUpdated;
+
+			private boolean isPrivate;
+
+			private Builder() {
+			}
+
+			public Builder id(String id) {
+				this.id = id;
+				return this;
+			}
+
+			public Builder url(String url) {
+				this.url = url;
+				return this;
+			}
+
+			public Builder artifactCount(long artifactCount) {
+				this.artifactCount = artifactCount;
+				return this;
+			}
+
+			public Builder totalSize(long totalSize) {
+				this.totalSize = totalSize;
+				return this;
+			}
+
+			public Builder lastUpdated(@Nullable Instant lastUpdated) {
+				this.lastUpdated = lastUpdated;
+				return this;
+			}
+
+			public Builder isPrivate(boolean isPrivate) {
+				this.isPrivate = isPrivate;
+				return this;
+			}
+
+			public RepositoryInfo build() {
+				return new RepositoryInfo(Objects.requireNonNull(this.id, "id is required"),
+						Objects.requireNonNull(this.url, "url is required"), this.artifactCount, this.totalSize,
+						this.lastUpdated, this.isPrivate);
+			}
+
+		}
+
 	}
 
 	public record BrowseResult(String repositoryId, String currentPath, @Nullable String parentPath,
 			List<RepositoryEntry> entries) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			@Nullable private String repositoryId;
+
+			@Nullable private String currentPath;
+
+			@Nullable private String parentPath;
+
+			@Nullable private List<RepositoryEntry> entries;
+
+			private Builder() {
+			}
+
+			public Builder repositoryId(String repositoryId) {
+				this.repositoryId = repositoryId;
+				return this;
+			}
+
+			public Builder currentPath(String currentPath) {
+				this.currentPath = currentPath;
+				return this;
+			}
+
+			public Builder parentPath(@Nullable String parentPath) {
+				this.parentPath = parentPath;
+				return this;
+			}
+
+			public Builder entries(List<RepositoryEntry> entries) {
+				this.entries = entries;
+				return this;
+			}
+
+			public BrowseResult build() {
+				return new BrowseResult(Objects.requireNonNull(this.repositoryId, "repositoryId is required"),
+						Objects.requireNonNull(this.currentPath, "currentPath is required"), this.parentPath,
+						Objects.requireNonNull(this.entries, "entries is required"));
+			}
+
+		}
+
 	}
 
 	public record RepositoryEntry(String name, String type, String path,
 			@JsonInclude(JsonInclude.Include.NON_NULL) @Nullable Long size, Instant lastModified) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			@Nullable private String name;
+
+			@Nullable private String type;
+
+			@Nullable private String path;
+
+			@Nullable private Long size;
+
+			@Nullable private Instant lastModified;
+
+			private Builder() {
+			}
+
+			public Builder name(String name) {
+				this.name = name;
+				return this;
+			}
+
+			public Builder type(String type) {
+				this.type = type;
+				return this;
+			}
+
+			public Builder path(String path) {
+				this.path = path;
+				return this;
+			}
+
+			public Builder size(@Nullable Long size) {
+				this.size = size;
+				return this;
+			}
+
+			public Builder lastModified(Instant lastModified) {
+				this.lastModified = lastModified;
+				return this;
+			}
+
+			public RepositoryEntry build() {
+				return new RepositoryEntry(Objects.requireNonNull(this.name, "name is required"),
+						Objects.requireNonNull(this.type, "type is required"),
+						Objects.requireNonNull(this.path, "path is required"), this.size,
+						Objects.requireNonNull(this.lastModified, "lastModified is required"));
+			}
+
+		}
+
 	}
 
 	public record FileInfo(String repositoryId, String path, String name, String type, long size, Instant lastModified,
 			String contentType, @JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String sha1,
 			@JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String sha256) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			@Nullable private String repositoryId;
+
+			@Nullable private String path;
+
+			@Nullable private String name;
+
+			@Nullable private String type;
+
+			private long size;
+
+			@Nullable private Instant lastModified;
+
+			@Nullable private String contentType;
+
+			@Nullable private String sha1;
+
+			@Nullable private String sha256;
+
+			private Builder() {
+			}
+
+			public Builder repositoryId(String repositoryId) {
+				this.repositoryId = repositoryId;
+				return this;
+			}
+
+			public Builder path(String path) {
+				this.path = path;
+				return this;
+			}
+
+			public Builder name(String name) {
+				this.name = name;
+				return this;
+			}
+
+			public Builder type(String type) {
+				this.type = type;
+				return this;
+			}
+
+			public Builder size(long size) {
+				this.size = size;
+				return this;
+			}
+
+			public Builder lastModified(Instant lastModified) {
+				this.lastModified = lastModified;
+				return this;
+			}
+
+			public Builder contentType(String contentType) {
+				this.contentType = contentType;
+				return this;
+			}
+
+			public Builder sha1(@Nullable String sha1) {
+				this.sha1 = sha1;
+				return this;
+			}
+
+			public Builder sha256(@Nullable String sha256) {
+				this.sha256 = sha256;
+				return this;
+			}
+
+			public FileInfo build() {
+				return new FileInfo(Objects.requireNonNull(this.repositoryId, "repositoryId is required"),
+						Objects.requireNonNull(this.path, "path is required"),
+						Objects.requireNonNull(this.name, "name is required"),
+						Objects.requireNonNull(this.type, "type is required"), this.size,
+						Objects.requireNonNull(this.lastModified, "lastModified is required"),
+						Objects.requireNonNull(this.contentType, "contentType is required"), this.sha1, this.sha256);
+			}
+
+		}
+
 	}
 
 	private record RepositoryStats(long artifactCount, long totalSize, @Nullable Instant lastUpdated) {
+
+		static Builder builder() {
+			return new Builder();
+		}
+
+		static final class Builder {
+
+			private long artifactCount;
+
+			private long totalSize;
+
+			@Nullable private Instant lastUpdated;
+
+			private Builder() {
+			}
+
+			Builder artifactCount(long artifactCount) {
+				this.artifactCount = artifactCount;
+				return this;
+			}
+
+			Builder totalSize(long totalSize) {
+				this.totalSize = totalSize;
+				return this;
+			}
+
+			Builder lastUpdated(@Nullable Instant lastUpdated) {
+				this.lastUpdated = lastUpdated;
+				return this;
+			}
+
+			RepositoryStats build() {
+				return new RepositoryStats(this.artifactCount, this.totalSize, this.lastUpdated);
+			}
+
+		}
+
 	}
 
 }

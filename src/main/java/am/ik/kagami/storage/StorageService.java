@@ -12,28 +12,25 @@ public interface StorageService {
 
 	/**
 	 * Store an artifact from an input stream
-	 * @param repositoryId the repository identifier
-	 * @param artifactPath the relative path of the artifact
+	 * @param location the location of the artifact
 	 * @param inputStream the input stream to read from
 	 * @throws IOException if an I/O error occurs
 	 */
-	void store(String repositoryId, String artifactPath, InputStream inputStream) throws IOException;
+	void store(ArtifactLocation location, InputStream inputStream) throws IOException;
 
 	/**
 	 * Retrieve an artifact as a Resource
-	 * @param repositoryId the repository identifier
-	 * @param artifactPath the relative path of the artifact
+	 * @param location the location of the artifact
 	 * @return the artifact as a Resource, or {@link Optional#empty()} if not found
 	 */
-	Optional<Resource> retrieve(String repositoryId, String artifactPath);
+	Optional<Resource> retrieve(ArtifactLocation location);
 
 	/**
 	 * Delete an artifact or directory from storage
-	 * @param repositoryId the repository identifier
-	 * @param artifactPath the relative path of the artifact or directory
+	 * @param location the location of the artifact or directory
 	 * @return true if deletion was successful, false if the path didn't exist
 	 * @throws IOException if an I/O error occurs during deletion
 	 */
-	boolean delete(String repositoryId, String artifactPath) throws IOException;
+	boolean delete(ArtifactLocation location) throws IOException;
 
 }

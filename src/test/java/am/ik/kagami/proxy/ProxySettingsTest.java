@@ -25,7 +25,7 @@ class ProxySettingsTest {
 	}
 
 	static KagamiProperties.Proxy proxy(@Nullable String url) {
-		return new KagamiProperties.Proxy(url, null, null, null, List.of());
+		return KagamiProperties.Proxy.builder().url(url).build();
 	}
 
 	@Test
@@ -77,7 +77,7 @@ class ProxySettingsTest {
 	@Test
 	void httpsProxyIsUsedForSecureRepositories() {
 		ProxySettings settings = ProxySettings.from(
-				new KagamiProperties.Proxy("http://proxy:8080", "http://secure-proxy:8443", null, null, List.of()),
+				KagamiProperties.Proxy.builder().url("http://proxy:8080").httpsUrl("http://secure-proxy:8443").build(),
 				noEnvironment());
 
 		assertThat(settings.proxyFor("http://example.com/maven2"))
@@ -99,7 +99,7 @@ class ProxySettingsTest {
 		ProxySettings settings = ProxySettings.from(proxy("proxy.company.com:8080"), noEnvironment());
 
 		assertThat(settings.proxyFor("http://example.com/maven2"))
-			.hasValue(new HttpProxy("http", "proxy.company.com", 8080, null, null));
+			.hasValue(HttpProxy.builder().scheme("http").host("proxy.company.com").port(8080).build());
 	}
 
 	@Test
@@ -125,9 +125,11 @@ class ProxySettingsTest {
 
 	@Test
 	void credentialsAreReadFromTheProperties() {
-		ProxySettings settings = ProxySettings.from(
-				new KagamiProperties.Proxy("http://proxy.company.com:8080", null, "user", "secret", List.of()),
-				noEnvironment());
+		ProxySettings settings = ProxySettings.from(KagamiProperties.Proxy.builder()
+			.url("http://proxy.company.com:8080")
+			.username("user")
+			.password("secret")
+			.build(), noEnvironment());
 
 		assertThat(settings.proxyFor("http://example.com/maven2")).hasValueSatisfying(httpProxy -> {
 			assertThat(httpProxy.username()).isEqualTo("user");
@@ -148,9 +150,10 @@ class ProxySettingsTest {
 
 	@Test
 	void nonProxyHostsMatchTheHostAndItsSubDomains() {
-		ProxySettings settings = ProxySettings.from(
-				new KagamiProperties.Proxy("http://proxy:8080", null, null, null, List.of("localhost", "example.com")),
-				noEnvironment());
+		ProxySettings settings = ProxySettings.from(KagamiProperties.Proxy.builder()
+			.url("http://proxy:8080")
+			.nonProxyHosts(List.of("localhost", "example.com"))
+			.build(), noEnvironment());
 
 		assertThat(settings.proxyFor("http://localhost:8080/maven2")).isEmpty();
 		assertThat(settings.proxyFor("http://example.com/maven2")).isEmpty();
@@ -160,8 +163,10 @@ class ProxySettingsTest {
 
 	@Test
 	void nonProxyHostsAcceptWildcardAndLeadingDotNotations() {
-		ProxySettings settings = ProxySettings.from(new KagamiProperties.Proxy("http://proxy:8080", null, null, null,
-				List.of("*.example.com", ".example.org")), noEnvironment());
+		ProxySettings settings = ProxySettings.from(KagamiProperties.Proxy.builder()
+			.url("http://proxy:8080")
+			.nonProxyHosts(List.of("*.example.com", ".example.org"))
+			.build(), noEnvironment());
 
 		assertThat(settings.proxyFor("http://repo.example.com/maven2")).isEmpty();
 		assertThat(settings.proxyFor("http://repo.example.org/maven2")).isEmpty();
@@ -170,9 +175,10 @@ class ProxySettingsTest {
 
 	@Test
 	void nonProxyHostsCanBeQualifiedWithAPort() {
-		ProxySettings settings = ProxySettings.from(
-				new KagamiProperties.Proxy("http://proxy:8080", null, null, null, List.of("example.com:8081")),
-				noEnvironment());
+		ProxySettings settings = ProxySettings.from(KagamiProperties.Proxy.builder()
+			.url("http://proxy:8080")
+			.nonProxyHosts(List.of("example.com:8081"))
+			.build(), noEnvironment());
 
 		assertThat(settings.proxyFor("http://example.com:8081/maven2")).isEmpty();
 		assertThat(settings.proxyFor("http://example.com/maven2")).isPresent();
@@ -191,7 +197,7 @@ class ProxySettingsTest {
 	@Test
 	void nonProxyHostsPropertyTakesPrecedenceOverTheEnvironment() {
 		ProxySettings settings = ProxySettings.from(
-				new KagamiProperties.Proxy("http://proxy:8080", null, null, null, List.of("example.net")),
+				KagamiProperties.Proxy.builder().url("http://proxy:8080").nonProxyHosts(List.of("example.net")).build(),
 				environment(Map.of("no_proxy", "example.com")));
 
 		assertThat(settings.proxyFor("http://example.net/maven2")).isEmpty();
@@ -210,7 +216,7 @@ class ProxySettingsTest {
 	@Test
 	void proxySelectorReflectsTheSettings() {
 		ProxySettings settings = ProxySettings.from(
-				new KagamiProperties.Proxy("http://proxy:8080", null, null, null, List.of("localhost")),
+				KagamiProperties.Proxy.builder().url("http://proxy:8080").nonProxyHosts(List.of("localhost")).build(),
 				noEnvironment());
 
 		assertThat(settings.toProxySelector().select(URI.create("http://example.com/maven2"))).singleElement()

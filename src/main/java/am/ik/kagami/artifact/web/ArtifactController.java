@@ -3,6 +3,7 @@ package am.ik.kagami.artifact.web;
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.KagamiProperties.Repository;
 import am.ik.kagami.repository.RemoteRepositoryService;
+import am.ik.kagami.storage.ArtifactLocation;
 import am.ik.kagami.storage.StorageService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -53,15 +54,16 @@ public class ArtifactController {
 		}
 		// Extract artifact path from request
 		String artifactPath = extractArtifactPath(request, repositoryId);
+		ArtifactLocation location = new ArtifactLocation(repositoryId, artifactPath);
 
 		// Try to retrieve from local storage first
-		Optional<Resource> retrieved = this.storageService.retrieve(repositoryId, artifactPath);
+		Optional<Resource> retrieved = this.storageService.retrieve(location);
 
 		if (retrieved.isEmpty()) {
 			// Not in local storage, try to fetch from remote
-			boolean fetched = this.remoteRepositoryService.fetchArtifact(repositoryId, artifactPath);
+			boolean fetched = this.remoteRepositoryService.fetchArtifact(location);
 			if (fetched) {
-				retrieved = this.storageService.retrieve(repositoryId, artifactPath);
+				retrieved = this.storageService.retrieve(location);
 			}
 		}
 
@@ -94,7 +96,7 @@ public class ArtifactController {
 		String artifactPath = extractArtifactPath(request, repositoryId);
 
 		try {
-			boolean deleted = this.storageService.delete(repositoryId, artifactPath);
+			boolean deleted = this.storageService.delete(new ArtifactLocation(repositoryId, artifactPath));
 			if (deleted) {
 				return ResponseEntity.noContent().build();
 			}
