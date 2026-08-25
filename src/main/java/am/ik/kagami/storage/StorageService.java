@@ -2,6 +2,7 @@ package am.ik.kagami.storage;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Optional;
 import org.springframework.core.io.Resource;
 
 /**
@@ -22,9 +23,9 @@ public interface StorageService {
 	 * Retrieve an artifact as a Resource
 	 * @param repositoryId the repository identifier
 	 * @param artifactPath the relative path of the artifact
-	 * @return the artifact as a Resource, or null if not found
+	 * @return the artifact as a Resource, or {@link Optional#empty()} if not found
 	 */
-	Resource retrieve(String repositoryId, String artifactPath);
+	Optional<Resource> retrieve(String repositoryId, String artifactPath);
 
 	/**
 	 * Delete an artifact or directory from storage

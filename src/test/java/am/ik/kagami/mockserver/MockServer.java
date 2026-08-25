@@ -1,5 +1,6 @@
 package am.ik.kagami.mockserver;
 
+import org.jspecify.annotations.Nullable;
 import com.sun.net.httpserver.Filter;
 import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
@@ -124,7 +125,7 @@ public class MockServer implements AutoCloseable {
 			return params;
 		}
 
-		public String queryParam(String name) {
+		public @Nullable String queryParam(String name) {
 			return queryParams.get(name);
 		}
 	}

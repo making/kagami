@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -54,17 +55,18 @@ public class ArtifactController {
 		String artifactPath = extractArtifactPath(request, repositoryId);
 
 		// Try to retrieve from local storage first
-		Resource resource = this.storageService.retrieve(repositoryId, artifactPath);
+		Optional<Resource> retrieved = this.storageService.retrieve(repositoryId, artifactPath);
 
-		if (resource == null) {
+		if (retrieved.isEmpty()) {
 			// Not in local storage, try to fetch from remote
 			boolean fetched = this.remoteRepositoryService.fetchArtifact(repositoryId, artifactPath);
 			if (fetched) {
-				resource = this.storageService.retrieve(repositoryId, artifactPath);
+				retrieved = this.storageService.retrieve(repositoryId, artifactPath);
 			}
 		}
 
-		if (resource != null && resource.exists()) {
+		if (retrieved.isPresent() && retrieved.get().exists()) {
+			Resource resource = retrieved.get();
 			try {
 				CacheControl cacheControl = CacheControl.maxAge(Duration.ofSeconds(31536000));
 				return ResponseEntity.ok()

@@ -2,6 +2,7 @@ package am.ik.kagami.token.web;
 
 import am.ik.kagami.token.KagamiJwtClaims;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -34,9 +35,9 @@ public class RepositoryTokenValidator implements OAuth2TokenValidator<Jwt> {
 			String[] pathSegments = requestURI.split("/");
 			if (pathSegments.length > 1) {
 				String repositoryId = pathSegments[2];
-				boolean isValidRepository = token.getClaimAsStringList(KagamiJwtClaims.REPOSITORIES)
-					.stream()
-					.anyMatch(repo -> matcher.match(repo, repositoryId));
+				List<String> allowedRepositories = token.getClaimAsStringList(KagamiJwtClaims.REPOSITORIES);
+				boolean isValidRepository = allowedRepositories != null
+						&& allowedRepositories.stream().anyMatch(repo -> matcher.match(repo, repositoryId));
 				if (!isValidRepository) {
 					return OAuth2TokenValidatorResult.failure(new OAuth2Error(BearerTokenErrorCodes.INSUFFICIENT_SCOPE,
 							"Token does not contain the repository '%s' in '%s' claim".formatted(repositoryId,

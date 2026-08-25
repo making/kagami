@@ -65,6 +65,7 @@ public class KagamiIntegrationTest {
 			throw new IllegalStateException("CSRF token not found in the login form");
 		}
 		String csrfToken = matcher.group(1);
+		assertThat(loginFormResponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE)).isNotNull();
 		String cookie = loginFormResponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE).split(";")[0];
 		ResponseEntity<String> loginResponse = this.restClient.post()
 			.uri("/login")
@@ -74,6 +75,7 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toEntity(String.class);
 		assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+		assertThat(loginResponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE)).isNotNull();
 		cookie = loginResponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE).split(";")[0];
 		ResponseEntity<String> tokenResponse = this.restClient.post()
 			.uri("/token")
@@ -83,6 +85,7 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toEntity(String.class);
 		assertThat(tokenResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(tokenResponse.getBody()).isNotNull();
 		return tokenResponse.getBody();
 	}
 

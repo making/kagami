@@ -14,7 +14,9 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.boot.io.ApplicationResourceLoader;
@@ -28,12 +30,13 @@ import org.springframework.util.StreamUtils;
  */
 @ConfigurationProperties(prefix = "kagami")
 public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<String, Repository> repositories,
-		Proxy proxy, @DefaultValue Jwt jwt, @DefaultValue Authentication authentication) {
+		@Nullable Proxy proxy, @DefaultValue Jwt jwt, @DefaultValue Authentication authentication) {
 
 	public record Storage(String path) {
 	}
 
-	public record Repository(String url, String username, String password, @DefaultValue("false") boolean isPrivate) {
+	public record Repository(String url, @Nullable String username, @Nullable String password,
+			@DefaultValue("false") boolean isPrivate) {
 	}
 
 	/**
@@ -48,34 +51,34 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * embedded in the proxy URL
 	 * @param nonProxyHosts hosts that must be reached without going through the proxy
 	 */
-	public record Proxy(String url, String httpsUrl, String username, String password,
-			@DefaultValue List<String> nonProxyHosts) {
+	public record Proxy(@Nullable String url, @Nullable String httpsUrl, @Nullable String username,
+			@Nullable String password, @DefaultValue List<String> nonProxyHosts) {
 	}
 
 	public static class Jwt {
 
-		private final RSAPublicKey publicKey;
+		private final @Nullable RSAPublicKey publicKey;
 
-		private final RSAPrivateKey privateKey;
+		private final @Nullable RSAPrivateKey privateKey;
 
 		// to support `base64:` prefix
 		private static final ResourceLoader resourceLoader = ApplicationResourceLoader.get();
 
-		public Jwt(String publicKey, String privateKey) {
+		public Jwt(@Nullable String publicKey, @Nullable String privateKey) {
 			this.publicKey = publicKey == null ? null : resourceToPublicKey(resourceLoader.getResource(publicKey));
 			this.privateKey = privateKey == null ? null : resourceToPrivateKey(resourceLoader.getResource(privateKey));
 		}
 
 		public RSAPublicKey publicKey() {
-			return publicKey;
+			return Objects.requireNonNull(this.publicKey, "'kagami.jwt.public-key' is not configured");
 		}
 
 		public RSAPrivateKey privateKey() {
-			return privateKey;
+			return Objects.requireNonNull(this.privateKey, "'kagami.jwt.private-key' is not configured");
 		}
 
 		public String keyId() {
-			byte[] publicKeyDERBytes = publicKey.getEncoded();
+			byte[] publicKeyDERBytes = publicKey().getEncoded();
 			try {
 				MessageDigest hasher = MessageDigest.getInstance("SHA-256");
 				byte[] publicKeyDERHash = hasher.digest(publicKeyDERBytes);
@@ -106,8 +109,11 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 		static RSAPrivateKey resourceToPrivateKey(Resource resource) {
 			try (InputStream stream = resource.getInputStream()) {
-				return (RSAPrivateKey) PemContent.of(StreamUtils.copyToString(stream, StandardCharsets.UTF_8))
-					.getPrivateKey();
+				PemContent pemContent = Objects.requireNonNull(
+						PemContent.of(StreamUtils.copyToString(stream, StandardCharsets.UTF_8)),
+						"No PEM content found in " + resource);
+				return (RSAPrivateKey) Objects.requireNonNull(pemContent.getPrivateKey(),
+						"No private key found in " + resource);
 			}
 			catch (IOException e) {
 				throw new UncheckedIOException(e);

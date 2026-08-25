@@ -15,7 +15,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.function.UnaryOperator;
+import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -37,13 +38,13 @@ public final class ProxySettings {
 
 	private static final ProxySettings NONE = new ProxySettings(null, null, List.of());
 
-	private final HttpProxy httpProxy;
+	private final @Nullable HttpProxy httpProxy;
 
-	private final HttpProxy httpsProxy;
+	private final @Nullable HttpProxy httpsProxy;
 
 	private final List<String> nonProxyHosts;
 
-	private ProxySettings(HttpProxy httpProxy, HttpProxy httpsProxy, List<String> nonProxyHosts) {
+	private ProxySettings(@Nullable HttpProxy httpProxy, @Nullable HttpProxy httpsProxy, List<String> nonProxyHosts) {
 		this.httpProxy = httpProxy;
 		this.httpsProxy = httpsProxy;
 		this.nonProxyHosts = nonProxyHosts;
@@ -55,7 +56,7 @@ public final class ProxySettings {
 	 * @param proxy proxy properties, may be {@code null}
 	 * @return resolved proxy settings
 	 */
-	public static ProxySettings from(KagamiProperties.Proxy proxy) {
+	public static ProxySettings from(KagamiProperties.@Nullable Proxy proxy) {
 		return from(proxy, System::getenv);
 	}
 
@@ -65,7 +66,8 @@ public final class ProxySettings {
 	 * @param environment lookup function for environment variables
 	 * @return resolved proxy settings
 	 */
-	public static ProxySettings from(KagamiProperties.Proxy proxy, UnaryOperator<String> environment) {
+	public static ProxySettings from(KagamiProperties.@Nullable Proxy proxy,
+			Function<String, @Nullable String> environment) {
 		String username = proxy != null ? proxy.username() : null;
 		String password = proxy != null ? proxy.password() : null;
 		HttpProxy httpProxy = parse(firstWithText(proxy != null ? proxy.url() : null, environment.apply("http_proxy"),
@@ -149,7 +151,7 @@ public final class ProxySettings {
 		return hasCredentials ? Optional.of(new ProxySettingsAuthenticator(this)) : Optional.empty();
 	}
 
-	Optional<PasswordAuthentication> credentialsFor(String host, int port) {
+	Optional<PasswordAuthentication> credentialsFor(@Nullable String host, int port) {
 		if (host == null) {
 			return Optional.empty();
 		}
@@ -157,7 +159,11 @@ public final class ProxySettings {
 			.filter(proxy -> proxy.matches(host, port) && proxy.hasCredentials())
 			.or(() -> Optional.ofNullable(this.httpsProxy)
 				.filter(proxy -> proxy.matches(host, port) && proxy.hasCredentials()))
-			.map(proxy -> new PasswordAuthentication(proxy.username(), proxy.password().toCharArray()));
+			.map(proxy -> {
+				String password = proxy.password();
+				return new PasswordAuthentication(proxy.username(),
+						password != null ? password.toCharArray() : new char[0]);
+			});
 	}
 
 	/**
@@ -193,7 +199,8 @@ public final class ProxySettings {
 		return false;
 	}
 
-	private static HttpProxy parse(String url, String username, String password) {
+	private static @Nullable HttpProxy parse(@Nullable String url, @Nullable String username,
+			@Nullable String password) {
 		if (!StringUtils.hasText(url)) {
 			return null;
 		}
@@ -231,7 +238,7 @@ public final class ProxySettings {
 		return URLDecoder.decode(value, StandardCharsets.UTF_8);
 	}
 
-	private static List<String> splitNonProxyHosts(String nonProxyHosts) {
+	private static List<String> splitNonProxyHosts(@Nullable String nonProxyHosts) {
 		if (!StringUtils.hasText(nonProxyHosts)) {
 			return List.of();
 		}
@@ -239,7 +246,7 @@ public final class ProxySettings {
 		return Arrays.stream(nonProxyHosts.split("[,|]")).map(String::trim).filter(StringUtils::hasText).toList();
 	}
 
-	private static String firstWithText(String... values) {
+	private static @Nullable String firstWithText(@Nullable String... values) {
 		return Arrays.stream(values).filter(StringUtils::hasText).findFirst().orElse(null);
 	}
 
@@ -274,7 +281,7 @@ public final class ProxySettings {
 		}
 
 		@Override
-		protected PasswordAuthentication getPasswordAuthentication() {
+		protected @Nullable PasswordAuthentication getPasswordAuthentication() {
 			if (getRequestorType() != RequestorType.PROXY) {
 				return null;
 			}

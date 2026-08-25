@@ -5,7 +5,8 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import java.util.function.UnaryOperator;
+import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,15 +16,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ProxySettingsTest {
 
-	static UnaryOperator<String> environment(Map<String, String> variables) {
+	static Function<String, @Nullable String> environment(Map<String, String> variables) {
 		return variables::get;
 	}
 
-	static UnaryOperator<String> noEnvironment() {
+	static Function<String, @Nullable String> noEnvironment() {
 		return environment(Map.of());
 	}
 
-	static KagamiProperties.Proxy proxy(String url) {
+	static KagamiProperties.Proxy proxy(@Nullable String url) {
 		return new KagamiProperties.Proxy(url, null, null, null, List.of());
 	}
 

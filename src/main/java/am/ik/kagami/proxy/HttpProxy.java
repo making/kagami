@@ -2,6 +2,7 @@ package am.ik.kagami.proxy;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import org.jspecify.annotations.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
@@ -13,7 +14,7 @@ import org.springframework.util.StringUtils;
  * @param username user name for proxy authentication, may be {@code null}
  * @param password password for proxy authentication, may be {@code null}
  */
-public record HttpProxy(String scheme, String host, int port, String username, String password) {
+public record HttpProxy(String scheme, String host, int port, @Nullable String username, @Nullable String password) {
 
 	public boolean hasCredentials() {
 		return StringUtils.hasText(this.username);

@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 import org.eclipse.aether.DefaultRepositorySystemSession;
@@ -117,8 +118,8 @@ public class RemoteRepositoryService {
 
 		try {
 			// Parse artifact path to create artifact coordinates
-			ArtifactCoordinates coords = parseArtifactPath(artifactPath);
-			if (coords == null) {
+			Optional<ArtifactCoordinates> parsed = parseArtifactPath(artifactPath);
+			if (parsed.isEmpty()) {
 				// If it's not a standard artifact path, fall back to direct HTTP download
 				logger.debug("Path is not a standard artifact, using HTTP for: {}", artifactPath);
 				boolean success = fetchNonStandardFile(repositoryId, artifactPath, repository);
@@ -129,6 +130,7 @@ public class RemoteRepositoryService {
 			}
 
 			// Create artifact
+			ArtifactCoordinates coords = parsed.get();
 			Artifact artifact = new DefaultArtifact(coords.groupId(), coords.artifactId(), coords.classifier(),
 					coords.extension(), coords.version());
 
@@ -240,14 +242,14 @@ public class RemoteRepositoryService {
 	/**
 	 * Parse artifact path to extract Maven coordinates
 	 */
-	private ArtifactCoordinates parseArtifactPath(String path) {
+	private Optional<ArtifactCoordinates> parseArtifactPath(String path) {
 		// Example: org/springframework/spring-core/6.1.3/spring-core-6.1.3.jar
 		// Example: org/springframework/spring-core/6.1.3/spring-core-6.1.3-sources.jar
 		// Example: org/springframework/spring-core/6.1.3/spring-core-6.1.3.pom
 
 		String[] parts = path.split("/");
 		if (parts.length < 4) {
-			return null; // Not a standard Maven path
+			return Optional.empty(); // Not a standard Maven path
 		}
 
 		// Extract version and filename
@@ -269,7 +271,7 @@ public class RemoteRepositoryService {
 		// Parse filename to get classifier and extension
 		String expectedPrefix = artifactId + "-" + version;
 		if (!filename.startsWith(expectedPrefix)) {
-			return null; // Filename doesn't match expected pattern
+			return Optional.empty(); // Filename doesn't match expected pattern
 		}
 
 		String remainder = filename.substring(expectedPrefix.length());
@@ -292,12 +294,12 @@ public class RemoteRepositoryService {
 
 		// Handle checksum files
 		if (extension.contains(".")) {
-			// e.g., jar.sha1 -> extension is jar, but we'll return null for checksum
-			// files
-			return null;
+			// e.g., jar.sha1 -> extension is jar, but checksum files are not standard
+			// artifacts
+			return Optional.empty();
 		}
 
-		return new ArtifactCoordinates(groupId.toString(), artifactId, version, classifier, extension);
+		return Optional.of(new ArtifactCoordinates(groupId.toString(), artifactId, version, classifier, extension));
 	}
 
 	/**

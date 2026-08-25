@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -74,7 +75,7 @@ public class BrowserService {
 	 * @param path the path within the repository (null or empty for root)
 	 * @return browse result with entries
 	 */
-	public BrowseResult browseRepository(String repositoryId, String path) throws IOException {
+	public BrowseResult browseRepository(String repositoryId, @Nullable String path) throws IOException {
 		// Validate repository exists
 		if (!properties.repositories().containsKey(repositoryId)) {
 			throw new IllegalArgumentException("Repository not found: " + repositoryId);
@@ -214,7 +215,7 @@ public class BrowserService {
 		return new RepositoryStats(artifactCount, totalSize, lastUpdated.equals(Instant.MIN) ? null : lastUpdated);
 	}
 
-	private String normalizePath(String path) {
+	private String normalizePath(@Nullable String path) {
 		if (path == null || path.trim().isEmpty() || path.equals("/")) {
 			return "";
 		}
@@ -222,7 +223,7 @@ public class BrowserService {
 		return path.trim().replaceAll("^/+", "").replaceAll("/+$", "");
 	}
 
-	private String getParentPath(String path) {
+	private @Nullable String getParentPath(String path) {
 		if (!StringUtils.hasText(path)) {
 			return null;
 		}
@@ -253,24 +254,24 @@ public class BrowserService {
 	}
 
 	// Response DTOs
-	public record RepositoryInfo(String id, String url, long artifactCount, long totalSize, Instant lastUpdated,
-			boolean isPrivate) {
+	public record RepositoryInfo(String id, String url, long artifactCount, long totalSize,
+			@Nullable Instant lastUpdated, boolean isPrivate) {
 	}
 
-	public record BrowseResult(String repositoryId, String currentPath, String parentPath,
+	public record BrowseResult(String repositoryId, String currentPath, @Nullable String parentPath,
 			List<RepositoryEntry> entries) {
 	}
 
 	public record RepositoryEntry(String name, String type, String path,
-			@JsonInclude(JsonInclude.Include.NON_NULL) Long size, Instant lastModified) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) @Nullable Long size, Instant lastModified) {
 	}
 
 	public record FileInfo(String repositoryId, String path, String name, String type, long size, Instant lastModified,
-			String contentType, @JsonInclude(JsonInclude.Include.NON_NULL) String sha1,
-			@JsonInclude(JsonInclude.Include.NON_NULL) String sha256) {
+			String contentType, @JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String sha1,
+			@JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String sha256) {
 	}
 
-	private record RepositoryStats(long artifactCount, long totalSize, Instant lastUpdated) {
+	private record RepositoryStats(long artifactCount, long totalSize, @Nullable Instant lastUpdated) {
 	}
 
 }

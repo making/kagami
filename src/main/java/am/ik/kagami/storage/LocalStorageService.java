@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
@@ -40,13 +41,13 @@ public class LocalStorageService implements StorageService {
 	}
 
 	@Override
-	public Resource retrieve(String repositoryId, String artifactPath) {
+	public Optional<Resource> retrieve(String repositoryId, String artifactPath) {
 		validatePath(artifactPath);
 		Path targetPath = resolvePath(repositoryId, artifactPath);
 		if (Files.exists(targetPath) && Files.isRegularFile(targetPath)) {
-			return new PathResource(targetPath);
+			return Optional.of(new PathResource(targetPath));
 		}
-		return null;
+		return Optional.empty();
 	}
 
 	@Override

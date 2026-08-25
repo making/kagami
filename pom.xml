@@ -144,6 +144,12 @@
       <version>1.62.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>1.5.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -151,6 +157,23 @@
       <plugin>
         <groupId>io.github.git-commit-id</groupId>
         <artifactId>git-commit-id-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>am.ik.maven</groupId>
+        <artifactId>nullability-maven-plugin</artifactId>
+        <version>0.5.0</version>
+        <extensions>true</extensions>
+        <executions>
+          <execution>
+            <goals>
+              <goal>configure</goal>
+              <goal>generate-package-info</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <checking>tests</checking>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>io.spring.javaformat</groupId>

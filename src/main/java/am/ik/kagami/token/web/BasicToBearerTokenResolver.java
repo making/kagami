@@ -3,6 +3,7 @@ package am.ik.kagami.token.web;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
@@ -21,7 +22,7 @@ public class BasicToBearerTokenResolver implements BearerTokenResolver {
 	private final BearerTokenResolver delegate = new DefaultBearerTokenResolver();
 
 	@Override
-	public String resolve(HttpServletRequest request) {
+	public @Nullable String resolve(HttpServletRequest request) {
 		String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
 		if (authorization != null && authorization.regionMatches(true, 0, BASIC_PREFIX, 0, BASIC_PREFIX.length())) {
 			return resolveFromBasic(authorization.substring(BASIC_PREFIX.length()));
@@ -29,7 +30,7 @@ public class BasicToBearerTokenResolver implements BearerTokenResolver {
 		return this.delegate.resolve(request);
 	}
 
-	private String resolveFromBasic(String encodedCredentials) {
+	private @Nullable String resolveFromBasic(String encodedCredentials) {
 		byte[] decoded;
 		try {
 			decoded = Base64.getDecoder().decode(encodedCredentials.trim());
