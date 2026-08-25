@@ -277,18 +277,44 @@ spring.security.oauth2.client.registration.microsoft-entra-id.scope=openid,email
 
 See the [Spring Boot documentation](https://docs.spring.io/spring-boot/reference/web/spring-security.html#web.security.oauth2.client) for more details on configuring OIDC authentication.
 
-### HTTP Proxy Configuration (Experimental)
+### HTTP Proxy Configuration
+
+Kagami sends every outgoing request through the configured proxy, both the artifact
+downloads performed by Maven Resolver and the direct downloads of the files Maven Resolver
+does not handle, such as `maven-metadata.xml`.
 
 ```properties
-# Configure HTTP proxy
+# Proxy for http repositories, also used for https repositories unless kagami.proxy.https-url is set
 kagami.proxy.url=http://proxy.company.com:8080
+# Proxy for https repositories
+kagami.proxy.https-url=http://proxy.company.com:8443
+# Credentials for proxies that require Basic authentication
+kagami.proxy.username=user
+kagami.proxy.password=password
+# Hosts to reach without the proxy, sub domains included
+kagami.proxy.non-proxy-hosts=localhost,127.0.0.1,.internal.company.com
 ```
 
-Alternatively, use environment variables:
+Alternatively, use the standard environment variables:
+
 ```bash
 export http_proxy=http://proxy.company.com:8080
-export HTTP_PROXY=http://proxy.company.com:8080
+export https_proxy=http://proxy.company.com:8080
+export no_proxy=localhost,127.0.0.1,.internal.company.com
 ```
+
+**Notes**:
+- Properties take precedence over environment variables, and lower case environment
+  variables take precedence over upper case ones (`http_proxy` before `HTTP_PROXY`)
+- Credentials can also be embedded in the URL, e.g.
+  `kagami.proxy.url=http://user:password@proxy.company.com:8080`. Reserved characters must
+  be percent encoded
+- The scheme may be omitted, e.g. `kagami.proxy.url=proxy.company.com:8080`
+- Only `http` proxies are supported, which is what legacy proxies use even for `https`
+  repositories, where the connection is tunneled with `CONNECT`
+- The JDK refuses to send Basic credentials over a tunneled connection by default. If an
+  https repository is behind a proxy requiring authentication, start Kagami with
+  `-Djdk.http.auth.tunneling.disabledSchemes=`
 
 ## API Usage
 
