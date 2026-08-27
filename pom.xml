@@ -149,6 +149,12 @@
       <groupId>am.ik.spring.logbook</groupId>
       <artifactId>access-logger-logbook</artifactId>
       <version>0.4.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.zalando</groupId>
+          <artifactId>logbook-spring-boot-ecs-autoconfigure</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.maven.resolver</groupId>
