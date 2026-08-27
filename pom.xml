@@ -84,7 +84,7 @@
     <dependency>
       <groupId>io.opentelemetry.contrib</groupId>
       <artifactId>opentelemetry-samplers</artifactId>
-      <version>1.52.0-alpha</version>
+      <version>1.59.0-alpha</version>
     </dependency>
     <dependency>
       <groupId>am.ik.spring.logbook</groupId>
