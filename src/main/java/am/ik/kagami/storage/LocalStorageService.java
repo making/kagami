@@ -3,6 +3,7 @@ package am.ik.kagami.storage;
 import am.ik.kagami.KagamiProperties;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -35,8 +36,36 @@ public class LocalStorageService implements StorageService {
 	@Override
 	public void store(ArtifactLocation location, InputStream inputStream) throws IOException {
 		Path targetPath = resolvePath(location);
-		Files.createDirectories(targetPath.getParent());
-		Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+		Path directory = targetPath.getParent();
+		Files.createDirectories(directory);
+		// Write to a temporary file in the same directory and swap it in atomically, so
+		// that a concurrent request never reads a half-written artifact and never has the
+		// file it is streaming truncated underneath it
+		Path temporaryPath = Files.createTempFile(directory, "." + targetPath.getFileName(), ".tmp");
+		try {
+			Files.copy(inputStream, temporaryPath, StandardCopyOption.REPLACE_EXISTING);
+			moveIntoPlace(temporaryPath, targetPath);
+		}
+		finally {
+			Files.deleteIfExists(temporaryPath);
+		}
+	}
+
+	/**
+	 * Move the fully written temporary file onto the target path, replacing any artifact
+	 * stored earlier.
+	 * @param temporaryPath the temporary file holding the complete artifact
+	 * @param targetPath the final path of the artifact
+	 * @throws IOException if an I/O error occurs
+	 */
+	private void moveIntoPlace(Path temporaryPath, Path targetPath) throws IOException {
+		try {
+			Files.move(temporaryPath, targetPath, StandardCopyOption.ATOMIC_MOVE);
+		}
+		catch (AtomicMoveNotSupportedException e) {
+			// Fall back for file systems that cannot rename atomically
+			Files.move(temporaryPath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+		}
 	}
 
 	@Override

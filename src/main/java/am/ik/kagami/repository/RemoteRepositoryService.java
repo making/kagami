@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
@@ -56,6 +59,8 @@ public class RemoteRepositoryService {
 
 	private final Map<String, RepositorySystemSession> sessions;
 
+	private final Map<ArtifactLocation, CompletableFuture<Boolean>> inFlightFetches;
+
 	private final RestClient restClient;
 
 	private final KagamiProperties kagamiProperties;
@@ -65,6 +70,7 @@ public class RemoteRepositoryService {
 		this.storageService = storageService;
 		this.repositories = new ConcurrentHashMap<>();
 		this.sessions = new ConcurrentHashMap<>();
+		this.inFlightFetches = new ConcurrentHashMap<>();
 
 		// Store properties for later use in RestClient requests
 		this.kagamiProperties = properties;
@@ -108,18 +114,61 @@ public class RemoteRepositoryService {
 	}
 
 	/**
-	 * Fetch an artifact from a remote repository using Maven Resolver
+	 * Fetch an artifact from a remote repository using Maven Resolver.
+	 * <p>
+	 * Requests that arrive for the same artifact while a fetch is already running share
+	 * that fetch instead of starting their own. Concurrent downloads would otherwise
+	 * write to the same file, which can truncate a response that has already sent its
+	 * {@code Content-Length} header for the previous content of that file.
 	 * @param location the location of the artifact
 	 * @return true if the artifact was successfully fetched and stored, false otherwise
 	 */
 	public boolean fetchArtifact(ArtifactLocation location) {
-		String artifactPath = location.artifactPath();
 		RemoteRepository repository = this.repositories.get(location.repositoryId());
 		RepositorySystemSession session = this.sessions.get(location.repositoryId());
 		if (repository == null || session == null) {
 			return false;
 		}
 
+		CompletableFuture<Boolean> fetch = new CompletableFuture<>();
+		CompletableFuture<Boolean> inFlight = this.inFlightFetches.putIfAbsent(location, fetch);
+		if (inFlight != null) {
+			// The same artifact is already being fetched, wait for that result
+			logger.debug("Waiting for an in-flight fetch of: {}", location.artifactPath());
+			return awaitFetch(inFlight);
+		}
+		try {
+			boolean fetched = doFetchArtifact(location, repository, session);
+			fetch.complete(fetched);
+			return fetched;
+		}
+		catch (RuntimeException | Error e) {
+			fetch.complete(false);
+			throw e;
+		}
+		finally {
+			this.inFlightFetches.remove(location, fetch);
+		}
+	}
+
+	/**
+	 * Wait for a fetch started by another request to finish.
+	 * @param inFlight the fetch that is already running
+	 * @return the result of that fetch, or false if it could not be awaited
+	 */
+	private boolean awaitFetch(CompletableFuture<Boolean> inFlight) {
+		try {
+			return inFlight.join();
+		}
+		catch (CancellationException | CompletionException e) {
+			logger.debug("An in-flight fetch of the same artifact failed", e);
+			return false;
+		}
+	}
+
+	private boolean doFetchArtifact(ArtifactLocation location, RemoteRepository repository,
+			RepositorySystemSession session) {
+		String artifactPath = location.artifactPath();
 		try {
 			// Parse artifact path to create artifact coordinates
 			Optional<ArtifactCoordinates> parsed = parseArtifactPath(artifactPath);
