@@ -23,8 +23,10 @@ Kagami is a mirror server of Maven repositories.
   package touches the filesystem or S3, so a new backend touches no other package.
 - `StorageConfig` picks the backend from `kagami.storage.type`: `LocalStorageService` (default)
   or `S3StorageService` (Spring Cloud AWS, client settings under `spring.cloud.aws.*`).
-  `StorageEnvironmentPostProcessor` derives the follow-on properties: the S3 auto-configuration
-  is off for `local`, the disk space health indicator and metric are off for `s3`.
+  `StorageEnvironmentPostProcessor` contributes every property that can only be derived from the
+  storage type, as overridable defaults: the S3 auto-configuration is off for `local` and the disk
+  space health indicator and metric watch `kagami.storage.path`; for `s3` both are off. Such values
+  belong there, not in `application.properties`, which cannot branch on the type.
 - `ArtifactContentType` is the one content type table. Object storage keeps the content type with
   the object, so the backend decides it at upload time and the web layer reads the same table.
 - S3 timestamps are truncated to seconds so that `ListObjectsV2` and `HeadObject` agree.

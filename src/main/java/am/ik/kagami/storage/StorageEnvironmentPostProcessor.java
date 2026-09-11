@@ -1,59 +1,57 @@
 package am.ik.kagami.storage;
 
 import am.ik.kagami.KagamiProperties.StorageType;
+import java.util.HashMap;
 import java.util.Map;
+import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor;
 import org.springframework.boot.context.properties.bind.Binder;
-import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
-import org.springframework.core.env.MutablePropertySources;
-import org.springframework.core.env.StandardEnvironment;
 
 /**
- * Derives the settings that follow from {@code kagami.storage.type} so that a single
+ * Contributes the settings that follow from {@code kagami.storage.type} so that a single
  * property switches the backend:
  * <ul>
  * <li>{@code local}: the S3 client is not needed, so the Spring Cloud AWS S3
- * auto-configuration is switched off and no region or credentials have to be
- * present.</li>
- * <li>{@code s3}: the disk space health indicator and metric point at
- * {@code kagami.storage.path}, which is meaningless for object storage, so they are
- * switched off (the metric falls back to the working directory).</li>
+ * auto-configuration is switched off and no region or credentials have to be present. The
+ * disk space health indicator and metric are pointed at {@code kagami.storage.path}.</li>
+ * <li>{@code s3}: there is no storage directory to watch, so the disk space health
+ * indicator and metric are switched off.</li>
  * </ul>
- * The derived values sit below system properties, environment variables and test
- * properties, so they can still be overridden explicitly, but above the configuration
- * files that supply the defaults.
+ * Everything is contributed as a default, below every other property source, so explicit
+ * configuration always wins. Values that can only be derived from the storage type belong
+ * here rather than in {@code application.properties}, which cannot branch on it.
  */
 public class StorageEnvironmentPostProcessor implements EnvironmentPostProcessor, Ordered {
 
-	static final String PROPERTY_SOURCE_NAME = "kagamiStorage";
+	static final String PROPERTY_SOURCE_NAME = "kagamiStorageDefaults";
 
 	@Override
 	public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-		StorageType type = Binder.get(environment)
-			.bind("kagami.storage.type", StorageType.class)
-			.orElse(StorageType.LOCAL);
-		Map<String, Object> derived = switch (type) {
-			case LOCAL -> Map.of("spring.cloud.aws.s3.enabled", "false");
-			case S3 -> Map.of("management.health.diskspace.enabled", "false",
-					"management.metrics.system.diskspace.paths", ".");
-		};
-		MutablePropertySources propertySources = environment.getPropertySources();
-		MapPropertySource propertySource = new MapPropertySource(PROPERTY_SOURCE_NAME, derived);
-		if (propertySources.contains(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME)) {
-			propertySources.addAfter(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, propertySource);
+		Binder binder = Binder.get(environment);
+		StorageType type = binder.bind("kagami.storage.type", StorageType.class).orElse(StorageType.LOCAL);
+		Map<String, Object> defaults = new HashMap<>();
+		if (type == StorageType.S3) {
+			defaults.put("management.health.diskspace.enabled", "false");
+			defaults.put("management.metrics.enable.disk", "false");
 		}
 		else {
-			propertySources.addFirst(propertySource);
+			defaults.put("spring.cloud.aws.s3.enabled", "false");
+			binder.bind("kagami.storage.path", String.class).ifBound(path -> {
+				defaults.put("management.health.diskspace.path", path);
+				defaults.put("management.metrics.system.diskspace.paths", ".," + path);
+			});
 		}
+		environment.getPropertySources().addLast(new MapPropertySource(PROPERTY_SOURCE_NAME, defaults));
 	}
 
 	@Override
 	public int getOrder() {
-		// After the configuration files have been loaded
+		// After the configuration files have been loaded, so that kagami.storage.* is
+		// visible
 		return ConfigDataEnvironmentPostProcessor.ORDER + 1;
 	}
 
