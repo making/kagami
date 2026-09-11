@@ -69,6 +69,16 @@ docker run --rm --pull always -p 8080:8080 \
   -e spring.security.user.name=admin \
   -e spring.security.user.password='{noop}mypassword' \
   ghcr.io/making/kagami:jvm
+
+# With S3 storage instead of a mounted volume
+docker run --rm --pull always -p 8080:8080 \
+  -e kagami.storage.type=s3 \
+  -e kagami.storage.s3.bucket=kagami-mirror \
+  -e spring.cloud.aws.region.static=ap-northeast-1 \
+  -e spring.cloud.aws.credentials.access-key=your-access-key \
+  -e spring.cloud.aws.credentials.secret-key=your-secret-key \
+  -e kagami.repositories.central.url=https://repo.maven.apache.org/maven2 \
+  ghcr.io/making/kagami:jvm
 ```
 
 **Using Docker Compose:**
