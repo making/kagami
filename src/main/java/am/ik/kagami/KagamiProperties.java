@@ -85,7 +85,68 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 	}
 
-	public record Storage(String path) {
+	/**
+	 * Storage settings.
+	 *
+	 * @param type the storage backend to use
+	 * @param path the base directory of the {@link StorageType#LOCAL} backend
+	 * @param s3 the settings of the {@link StorageType#S3} backend
+	 */
+	public record Storage(@DefaultValue("local") StorageType type, String path, @DefaultValue S3 s3) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			private StorageType type = StorageType.LOCAL;
+
+			@Nullable private String path;
+
+			private S3 s3 = new S3(null, "");
+
+			private Builder() {
+			}
+
+			public Builder type(StorageType type) {
+				this.type = type;
+				return this;
+			}
+
+			public Builder path(String path) {
+				this.path = path;
+				return this;
+			}
+
+			public Builder s3(S3 s3) {
+				this.s3 = s3;
+				return this;
+			}
+
+			public Storage build() {
+				return new Storage(this.type, Objects.requireNonNull(this.path, "path is required"), this.s3);
+			}
+
+		}
+
+		/**
+		 * Settings of the S3 backend. The endpoint, the region and the credentials are
+		 * configured with the {@code spring.cloud.aws.*} properties.
+		 *
+		 * @param bucket the bucket every artifact is stored in, required for
+		 * {@link StorageType#S3}
+		 * @param keyPrefix the prefix prepended to the {@code {repositoryId}/...} key,
+		 * empty by default
+		 */
+		public record S3(@Nullable String bucket, @DefaultValue("") String keyPrefix) {
+
+			public String requiredBucket() {
+				return Objects.requireNonNull(this.bucket, "'kagami.storage.s3.bucket' is not configured");
+			}
+
+		}
+
 	}
 
 	public record Repository(String url, @Nullable String username, @Nullable String password,
@@ -278,6 +339,15 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	public enum AuthenticationType {
 
 		SIMPLE, OIDC
+
+	}
+
+	/**
+	 * The storage backend artifacts are mirrored into.
+	 */
+	public enum StorageType {
+
+		LOCAL, S3
 
 	}
 }

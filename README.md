@@ -13,6 +13,7 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 ## Features
 
 - **Local Caching**: Automatically caches artifacts from remote repositories to reduce download times
+- **Storage Backends**: Local file system or Amazon S3 / S3-compatible object storage (MinIO, Cloudflare R2, etc.)
 - **Multiple Repository Support**: Configure multiple remote repositories with individual settings
 - **Private Repository Support**: JWT-based authentication for secure repository access
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
@@ -67,6 +68,16 @@ docker run --rm --pull always -p 8080:8080 \
   -e kagami.repositories.central.url=https://repo.maven.apache.org/maven2 \
   -e spring.security.user.name=admin \
   -e spring.security.user.password='{noop}mypassword' \
+  ghcr.io/making/kagami:jvm
+
+# With S3 storage instead of a mounted volume
+docker run --rm --pull always -p 8080:8080 \
+  -e kagami.storage.type=s3 \
+  -e kagami.storage.s3.bucket=kagami-artifacts \
+  -e spring.cloud.aws.region.static=ap-northeast-1 \
+  -e spring.cloud.aws.credentials.access-key=your-access-key \
+  -e spring.cloud.aws.credentials.secret-key=your-secret-key \
+  -e kagami.repositories.central.url=https://repo.maven.apache.org/maven2 \
   ghcr.io/making/kagami:jvm
 ```
 
@@ -157,6 +168,45 @@ kagami.storage.path=/var/kagami/storage
 kagami.repositories.central.url=https://repo.maven.apache.org/maven2
 kagami.repositories.jcenter.url=https://jcenter.bintray.com
 ```
+
+### Storage Configuration
+
+Artifacts are mirrored into the local file system by default:
+
+```properties
+kagami.storage.type=local
+kagami.storage.path=/var/kagami/storage
+```
+
+Amazon S3 and any S3-compatible object storage can be used instead:
+
+```properties
+kagami.storage.type=s3
+kagami.storage.s3.bucket=kagami-artifacts
+# Optional prefix prepended to the "{repositoryId}/..." object key
+kagami.storage.s3.key-prefix=mirror
+```
+
+The endpoint, the region and the credentials are the standard Spring Cloud AWS settings:
+
+```properties
+spring.cloud.aws.region.static=ap-northeast-1
+# Omit the credentials to use the default AWS chain: environment, profile, IAM role, ...
+spring.cloud.aws.credentials.access-key=your-access-key
+spring.cloud.aws.credentials.secret-key=your-secret-key
+```
+
+An S3-compatible server additionally needs its endpoint and path style access:
+
+```properties
+spring.cloud.aws.s3.endpoint=http://minio.example.com:9000
+spring.cloud.aws.s3.path-style-access-enabled=true
+```
+
+**Notes**:
+- The bucket has to exist, Kagami never creates it
+- `kagami.storage.path` is unused with `s3`, and the disk space health indicator and metric
+  are disabled because there is no storage directory to watch
 
 ### Repository with Authentication
 
@@ -712,13 +762,6 @@ curl http://localhost:8080/actuator/health
 # Prometheus metrics
 curl http://localhost:8080/actuator/prometheus
 ```
-
-## Roadmap
-
-The following features are planned for future releases:
-
-### Storage Backends
-- **S3 Storage**: Amazon S3 and S3-compatible storage backends (MinIO, etc.)
 
 ## License
 
