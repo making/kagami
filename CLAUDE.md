@@ -20,7 +20,17 @@ Kagami is a mirror server of Maven repositories.
 ## Architecture Constraints
 
 - `StorageService` (`am.ik.kagami.storage`) is the single path to stored artifacts; no other
-  package touches the filesystem, so a new backend touches no other package.
+  package touches the filesystem or S3, so a new backend touches no other package.
+- `StorageConfig` picks the backend from `kagami.storage.type`: `LocalStorageService` (default)
+  or `S3StorageService` (Spring Cloud AWS, client settings under `spring.cloud.aws.*`).
+  `StorageEnvironmentPostProcessor` derives the follow-on properties: the S3 auto-configuration
+  is off for `local`, the disk space health indicator and metric are off for `s3`.
+- S3 timestamps are truncated to seconds so that `ListObjectsV2` and `HeadObject` agree.
+- Tests that need S3 import `TestcontainersConfiguration` and set `kagami.storage.type=s3` as a
+  static test property; the RustFS container and the `spring.cloud.aws.*` properties follow.
+- `spring.http.clients.imperative.factory=jdk` is pinned: `ProxyConfig` applies the proxy settings to the JDK
+  client only, and the AWS SDK puts Apache HttpClient 5 on the classpath, which Spring Boot would
+  otherwise pick for `RestClient`.
 - `ArtifactLocation` rejects `..`, `~` and absolute paths; an empty path is the repository root.
 - No `Path` / `File` in the `StorageService` interface; `delete` removes everything at or under
   a location.
@@ -78,7 +88,7 @@ domain objects should be clean and not contain external layers like web or datab
 - **Contract Tests**: `StorageServiceContractTest` is the abstract contract every `StorageService`
   backend test must extend
 - **E2E Tests**: `BrowserE2ETestBase` drives the built UI with Playwright (Chromium); each backend
-  has a subclass
+  has a subclass, as do `KagamiIntegrationTestBase` and `BrowserControllerTestBase`
 - Use `@TempDir` for filesystem testing, maintain test independence
 - All tests must pass consistently; use specific MockMvc expectations
 - All tests must pass before completing tasks

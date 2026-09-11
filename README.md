@@ -13,6 +13,7 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 ## Features
 
 - **Local Caching**: Automatically caches artifacts from remote repositories to reduce download times
+- **Pluggable Storage**: Local file system (default) or Amazon S3 / S3-compatible object storage
 - **Multiple Repository Support**: Configure multiple remote repositories with individual settings
 - **Private Repository Support**: JWT-based authentication for secure repository access
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
@@ -157,6 +158,40 @@ kagami.storage.path=/var/kagami/storage
 kagami.repositories.central.url=https://repo.maven.apache.org/maven2
 kagami.repositories.jcenter.url=https://jcenter.bintray.com
 ```
+
+### S3 Storage
+
+Artifacts can be mirrored into Amazon S3 or any S3-compatible object storage (MinIO, RustFS, etc.)
+instead of the local file system. The bucket must exist; Kagami does not create it.
+
+```properties
+kagami.storage.type=s3
+kagami.storage.s3.bucket=kagami-mirror
+# Optional prefix in front of every key, which is <prefix>/<repository id>/<artifact path>
+kagami.storage.s3.key-prefix=mirror
+
+# Region and credentials are resolved by Spring Cloud AWS; the default chain
+# (environment variables, instance profile, ...) works without any of these.
+spring.cloud.aws.region.static=ap-northeast-1
+spring.cloud.aws.credentials.access-key=...
+spring.cloud.aws.credentials.secret-key=...
+```
+
+For an S3-compatible server, point the client at its endpoint and use path-style access:
+
+```properties
+spring.cloud.aws.s3.endpoint=http://minio.example.com:9000
+spring.cloud.aws.s3.path-style-access-enabled=true
+```
+
+Notes:
+
+- `kagami.storage.type` defaults to `local`; then the S3 client is not created and no AWS
+  settings are needed.
+- With `s3`, the disk space health indicator and metric that point at `kagami.storage.path` are
+  disabled automatically.
+- The storage type is a bean condition, so a GraalVM native image is bound to the type it was
+  built with. Set `kagami.storage.type=s3` at build time to build a native image for S3.
 
 ### Repository with Authentication
 
@@ -712,13 +747,6 @@ curl http://localhost:8080/actuator/health
 # Prometheus metrics
 curl http://localhost:8080/actuator/prometheus
 ```
-
-## Roadmap
-
-The following features are planned for future releases:
-
-### Storage Backends
-- **S3 Storage**: Amazon S3 and S3-compatible storage backends (MinIO, etc.)
 
 ## License
 
