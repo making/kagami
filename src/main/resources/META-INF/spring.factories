@@ -1,0 +1,2 @@
+# Storage
+org.springframework.boot.EnvironmentPostProcessor=am.ik.kagami.storage.StorageEnvironmentPostProcessor

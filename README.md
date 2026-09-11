@@ -13,6 +13,7 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 ## Features
 
 - **Local Caching**: Automatically caches artifacts from remote repositories to reduce download times
+- **S3 Storage**: Optionally mirrors artifacts to Amazon S3 or any S3-compatible object storage
 - **Multiple Repository Support**: Configure multiple remote repositories with individual settings
 - **Private Repository Support**: JWT-based authentication for secure repository access
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
@@ -157,6 +158,35 @@ kagami.storage.path=/var/kagami/storage
 kagami.repositories.central.url=https://repo.maven.apache.org/maven2
 kagami.repositories.jcenter.url=https://jcenter.bintray.com
 ```
+
+### S3 Storage
+
+By default Kagami stores mirrored artifacts on the local file system under
+`kagami.storage.path`. Set `kagami.storage.type=s3` to store them in Amazon S3 or any
+S3-compatible object storage (MinIO, rustfs, ...) instead.
+
+```properties
+# Use the S3 storage backend instead of the local file system (default: local)
+kagami.storage.type=s3
+
+# Bucket that holds the mirrored artifacts (required for S3)
+kagami.storage.s3.bucket=my-kagami-bucket
+
+# Optional prefix prepended to every object key
+kagami.storage.s3.key-prefix=kagami
+
+# Endpoint, region and credentials come from the Spring Cloud AWS properties
+spring.cloud.aws.s3.endpoint=http://localhost:9000
+spring.cloud.aws.s3.path-style-access-enabled=true
+spring.cloud.aws.region.static=us-east-1
+spring.cloud.aws.credentials.access-key=minioadmin
+spring.cloud.aws.credentials.secret-key=minioadmin
+```
+
+Objects are stored under `[key-prefix/]{repository-id}/{artifact-path}`, so the bucket
+can be inspected with a normal S3 console. For AWS itself, omit
+`spring.cloud.aws.s3.endpoint` and `spring.cloud.aws.s3.path-style-access-enabled` and
+provide the region and IAM credentials (or execute in a role) instead.
 
 ### Repository with Authentication
 
@@ -712,13 +742,6 @@ curl http://localhost:8080/actuator/health
 # Prometheus metrics
 curl http://localhost:8080/actuator/prometheus
 ```
-
-## Roadmap
-
-The following features are planned for future releases:
-
-### Storage Backends
-- **S3 Storage**: Amazon S3 and S3-compatible storage backends (MinIO, etc.)
 
 ## License
 

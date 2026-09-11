@@ -10,22 +10,23 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Service;
 
 /**
  * Local file system implementation of StorageService
  */
-@Service
 public class LocalStorageService implements StorageService {
 
 	private final Path basePath;
 
 	public LocalStorageService(KagamiProperties properties) {
-		this.basePath = Path.of(properties.storage().path()).toAbsolutePath().normalize();
+		String path = Objects.requireNonNull(properties.storage().path(),
+				"'kagami.storage.path' is required for the local storage backend");
+		this.basePath = Path.of(path).toAbsolutePath().normalize();
 		try {
 			Files.createDirectories(this.basePath);
 		}

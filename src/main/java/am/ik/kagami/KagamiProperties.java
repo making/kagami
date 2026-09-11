@@ -85,7 +85,35 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 	}
 
-	public record Storage(String path) {
+	/**
+	 * Storage backend selection and settings.
+	 *
+	 * @param type the storage backend, {@code LOCAL} by default
+	 * @param path the base directory used by the {@code LOCAL} backend
+	 * @param s3 the settings used by the {@code S3} backend
+	 */
+	public record Storage(@DefaultValue("local") StorageType type, @Nullable String path, @DefaultValue S3 s3) {
+
+		/**
+		 * Settings of the S3 storage backend. Endpoint, region and credentials are read
+		 * from the {@code spring.cloud.aws.*} properties.
+		 *
+		 * @param bucket the bucket that holds the mirrored artifacts, required for
+		 * {@code S3}
+		 * @param keyPrefix an optional prefix prepended to every object key
+		 */
+		public record S3(@Nullable String bucket, @Nullable String keyPrefix) {
+		}
+
+	}
+
+	/**
+	 * The kind of storage backend.
+	 */
+	public enum StorageType {
+
+		LOCAL, S3
+
 	}
 
 	public record Repository(String url, @Nullable String username, @Nullable String password,

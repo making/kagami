@@ -25,7 +25,8 @@ class RemoteRepositoryServiceTest {
 	private static KagamiProperties properties(Map<String, KagamiProperties.Repository> repositories,
 			KagamiProperties.Proxy proxy) {
 		return KagamiProperties.builder()
-			.storage(new KagamiProperties.Storage("/tmp"))
+			.storage(new KagamiProperties.Storage(KagamiProperties.StorageType.LOCAL, "/tmp",
+					new KagamiProperties.Storage.S3(null, null)))
 			.repositories(repositories)
 			.proxy(proxy)
 			.jwt(new KagamiProperties.Jwt(null, null))
