@@ -1,15 +1,16 @@
 package am.ik.kagami.browser.web;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+import am.ik.kagami.storage.ArtifactLocation;
+import am.ik.kagami.storage.StorageService;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -18,25 +19,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Integration tests for BrowserController
+ * Integration tests for BrowserController. The storage backend is supplied by the
+ * subclass; the repository content is seeded through {@link StorageService} so that the
+ * same expectations hold for every backend.
  */
 @SpringBootTest(properties = { "kagami.repositories.test-repo.url=https://repo.maven.apache.org/maven2",
 		"logging.level.am.ik.kagami=DEBUG", "spring.security.user.name=test-user",
 		"spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
 @WithMockUser(username = "test-user", password = "test-password", roles = "USER")
-class BrowserControllerTest {
-
-	@TempDir
-	static Path tempDir;
-
-	@DynamicPropertySource
-	static void configureProperties(DynamicPropertyRegistry registry) {
-		registry.add("kagami.storage.path", () -> tempDir.toString());
-	}
+public abstract class BrowserControllerTestBase {
 
 	@Autowired
 	private MockMvc mockMvc;
+
+	@Autowired
+	private StorageService storageService;
+
+	void seed(String path, String content) throws IOException {
+		try (InputStream inputStream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))) {
+			this.storageService.store(new ArtifactLocation("test-repo", path), inputStream);
+		}
+	}
 
 	@Test
 	void getRepositories_shouldReturnConfiguredRepositories() throws Exception {
@@ -50,20 +54,18 @@ class BrowserControllerTest {
 
 	@Test
 	void browseRepository_whenRepositoryExists_shouldReturnBrowseResult() throws Exception {
-		// Create some test directory structure
-		Path repoDir = tempDir.resolve("test-repo");
-		Path orgDir = repoDir.resolve("org");
-		Path springDir = orgDir.resolve("springframework");
-		Files.createDirectories(springDir);
-		Files.writeString(springDir.resolve("test-file.jar"), "dummy jar content");
+		seed("org/springframework/test-file.jar", "dummy jar content");
 
 		ResultActions result = this.mockMvc.perform(get("/repositories/test-repo/browse").param("path", "org"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.repositoryId").value("test-repo"))
 			.andExpect(jsonPath("$.currentPath").value("org"))
+			.andExpect(jsonPath("$.parentPath").value(""))
 			.andExpect(jsonPath("$.entries").isArray())
 			.andExpect(jsonPath("$.entries[0].name").value("springframework"))
-			.andExpect(jsonPath("$.entries[0].type").value("directory"));
+			.andExpect(jsonPath("$.entries[0].type").value("directory"))
+			.andExpect(jsonPath("$.entries[0].path").value("org/springframework"))
+			.andExpect(jsonPath("$.entries[0].size").doesNotExist());
 
 		// Debug: Print the actual response
 		System.out.println("Directory Response: " + result.andReturn().getResponse().getContentAsString());
@@ -72,9 +74,13 @@ class BrowserControllerTest {
 		ResultActions fileResult = this.mockMvc
 			.perform(get("/repositories/test-repo/browse").param("path", "org/springframework"))
 			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.currentPath").value("org/springframework"))
+			.andExpect(jsonPath("$.parentPath").value("org"))
 			.andExpect(jsonPath("$.entries[0].name").value("test-file.jar"))
 			.andExpect(jsonPath("$.entries[0].type").value("file"))
-			.andExpect(jsonPath("$.entries[0].size").value(17));
+			.andExpect(jsonPath("$.entries[0].path").value("org/springframework/test-file.jar"))
+			.andExpect(jsonPath("$.entries[0].size").value(17))
+			.andExpect(jsonPath("$.entries[0].lastModified").exists());
 
 		System.out.println("File Response: " + fileResult.andReturn().getResponse().getContentAsString());
 	}
@@ -86,19 +92,20 @@ class BrowserControllerTest {
 
 	@Test
 	void getFileInfo_whenFileExists_shouldReturnFileInfo() throws Exception {
-		// Create test file with checksum
-		Path repoDir = tempDir.resolve("test-repo");
-		Path testFile = repoDir.resolve("test.jar");
-		Files.createDirectories(repoDir);
-		Files.writeString(testFile, "test content");
-		Files.writeString(repoDir.resolve("test.jar.sha1"), "abc123");
+		seed("test.jar", "test content");
+		seed("test.jar.sha1", "abc123");
+		seed("test.jar.sha256", "def456\n");
 
 		this.mockMvc.perform(get("/repositories/test-repo/info").param("path", "test.jar"))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.name").value("test.jar"))
+			.andExpect(jsonPath("$.path").value("test.jar"))
 			.andExpect(jsonPath("$.type").value("file"))
+			.andExpect(jsonPath("$.size").value(12))
+			.andExpect(jsonPath("$.lastModified").exists())
 			.andExpect(jsonPath("$.contentType").value("application/java-archive"))
-			.andExpect(jsonPath("$.sha1").value("abc123"));
+			.andExpect(jsonPath("$.sha1").value("abc123"))
+			.andExpect(jsonPath("$.sha256").value("def456"));
 	}
 
 	@Test
