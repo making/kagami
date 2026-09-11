@@ -85,7 +85,69 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 	}
 
-	public record Storage(String path) {
+	/**
+	 * Storage backend settings.
+	 *
+	 * @param type the backend that holds the mirrored artifacts
+	 * @param path the base directory of the {@link StorageType#LOCAL} backend
+	 * @param s3 the {@link StorageType#S3} backend settings, required when {@code type}
+	 * is {@code S3}
+	 */
+	public record Storage(@DefaultValue("local") StorageType type, @Nullable String path, @Nullable S3 s3) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		/**
+		 * Amazon S3 or S3-compatible object storage settings. Endpoint, region and
+		 * credentials are configured through {@code spring.cloud.aws.*}.
+		 *
+		 * @param bucket the bucket that holds the mirrored artifacts
+		 * @param keyPrefix optional prefix prepended to every object key, in front of the
+		 * repository id
+		 */
+		public record S3(String bucket, @Nullable String keyPrefix) {
+		}
+
+		public static final class Builder {
+
+			private StorageType type = StorageType.LOCAL;
+
+			@Nullable private String path;
+
+			@Nullable private S3 s3;
+
+			private Builder() {
+			}
+
+			public Builder type(StorageType type) {
+				this.type = type;
+				return this;
+			}
+
+			public Builder path(@Nullable String path) {
+				this.path = path;
+				return this;
+			}
+
+			public Builder s3(@Nullable S3 s3) {
+				this.s3 = s3;
+				return this;
+			}
+
+			public Storage build() {
+				return new Storage(this.type, this.path, this.s3);
+			}
+
+		}
+
+	}
+
+	public enum StorageType {
+
+		LOCAL, S3
+
 	}
 
 	public record Repository(String url, @Nullable String username, @Nullable String password,

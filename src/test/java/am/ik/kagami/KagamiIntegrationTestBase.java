@@ -2,14 +2,13 @@ package am.ik.kagami;
 
 import am.ik.kagami.mockserver.MockServer;
 import am.ik.kagami.mockserver.MockServer.Response;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -18,8 +17,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,20 +25,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 		properties = { "kagami.repositories.mock.is-private=true", "spring.security.user.name=test",
 				"spring.security.user.password={noop}pass", "spring.http.clients.redirects=dont_follow" })
 @Import(MockConfig.class)
-public class KagamiIntegrationTest {
+public abstract class KagamiIntegrationTestBase {
 
 	RestClient restClient;
 
 	@Autowired
 	MockServer mockServer;
-
-	@TempDir
-	static Path tempDir;
-
-	@DynamicPropertySource
-	static void configureProperties(DynamicPropertyRegistry registry) {
-		registry.add("kagami.storage.path", () -> tempDir.toString());
-	}
 
 	@BeforeEach
 	void setUp(@Autowired RestClient.Builder restClientBuilder, @LocalServerPort int port) {
@@ -49,6 +38,23 @@ public class KagamiIntegrationTest {
 			.defaultStatusHandler(__ -> true, (req, res) -> {
 			})
 			.build();
+	}
+
+	/**
+	 * Serve the artifact and its checksum from the mock remote, counting how often the
+	 * remote is asked for the artifact itself.
+	 * @param version the artifact version, unique per test so that tests do not share
+	 * stored objects
+	 * @return the number of remote hits on the artifact
+	 */
+	AtomicInteger mockRemoteArtifact(String version) {
+		AtomicInteger remoteHits = new AtomicInteger();
+		String path = "/am/ik/kagami/kagami/%s/kagami-%s.pom".formatted(version, version);
+		this.mockServer.GET(path, req -> {
+			remoteHits.incrementAndGet();
+			return Response.ok("<project></project>");
+		}).GET(path + ".sha1", req -> Response.ok("147ddc4bbee044878ea3f8341a40e770e4b92f4e"));
+		return remoteHits;
 	}
 
 	String issueToken(List<String> repositories, List<String> scope) {
@@ -243,6 +249,73 @@ public class KagamiIntegrationTest {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+	}
+
+	@Test
+	void getArtifactsShouldBeServedFromStorageOnSecondRequest() {
+		AtomicInteger remoteHits = mockRemoteArtifact("0.0.5");
+		String token = issueToken(List.of("mock"), List.of("artifacts:read"));
+		String uri = "/artifacts/mock/am/ik/kagami/kagami/0.0.5/kagami-0.0.5.pom";
+
+		ResponseEntity<String> first = this.restClient.get()
+			.uri(uri)
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
+			.retrieve()
+			.toEntity(String.class);
+		assertThat(first.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(first.getBody()).isEqualTo("<project></project>");
+		assertThat(remoteHits).hasValue(1);
+
+		ResponseEntity<String> second = this.restClient.get()
+			.uri(uri)
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
+			.retrieve()
+			.toEntity(String.class);
+		assertThat(second.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(second.getBody()).isEqualTo("<project></project>");
+		assertThat(second.getHeaders().getContentLength()).isEqualTo("<project></project>".length());
+		assertThat(second.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_XML);
+		assertThat(second.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION))
+			.isEqualTo("attachment;filename=kagami-0.0.5.pom");
+		// The mirror served the second request without asking the remote again
+		assertThat(remoteHits).hasValue(1);
+	}
+
+	@Test
+	void deleteArtifactsShouldRemoveTheArtifactFromStorage() {
+		AtomicInteger remoteHits = mockRemoteArtifact("0.0.6");
+		String token = issueToken(List.of("mock"), List.of("artifacts:read", "artifacts:delete"));
+		String uri = "/artifacts/mock/am/ik/kagami/kagami/0.0.6/kagami-0.0.6.pom";
+
+		this.restClient.get()
+			.uri(uri)
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
+			.retrieve()
+			.toBodilessEntity();
+		assertThat(remoteHits).hasValue(1);
+
+		ResponseEntity<Void> deleted = this.restClient.delete()
+			.uri(uri)
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
+			.retrieve()
+			.toBodilessEntity();
+		assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+		ResponseEntity<Void> deletedAgain = this.restClient.delete()
+			.uri(uri)
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
+			.retrieve()
+			.toBodilessEntity();
+		assertThat(deletedAgain.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+		// The artifact is gone from storage, so the next request goes to the remote again
+		ResponseEntity<Void> refetched = this.restClient.get()
+			.uri(uri)
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
+			.retrieve()
+			.toBodilessEntity();
+		assertThat(refetched.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(remoteHits).hasValue(2);
 	}
 
 	@Test
