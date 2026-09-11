@@ -13,8 +13,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.Resource;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -27,11 +25,9 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  * Runs the storage contract against S3-compatible object storage, plus the S3-specific
  * key layout. Every test gets a fresh bucket.
  */
-@Testcontainers
 class S3StorageServiceTest extends StorageServiceContractTest {
 
-	@Container
-	static final RustFsContainer rustFs = new RustFsContainer();
+	static final RustFsContainer rustFs = RustFsContainer.shared();
 
 	static S3Client s3Client;
 

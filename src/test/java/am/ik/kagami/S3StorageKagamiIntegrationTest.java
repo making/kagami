@@ -43,7 +43,7 @@ class S3StorageKagamiIntegrationTest extends KagamiIntegrationTestBase {
 		assertThat(remoteHits).hasValue(1);
 
 		HeadObjectResponse object = this.s3Client
-			.headObject(request -> request.bucket(TestcontainersConfiguration.BUCKET).key(key));
+			.headObject(request -> request.bucket(RustFsContainer.BUCKET).key(key));
 		assertThat(object.contentLength()).isEqualTo("<project></project>".length());
 		assertThat(object.contentType()).isEqualTo("application/xml");
 
@@ -53,8 +53,8 @@ class S3StorageKagamiIntegrationTest extends KagamiIntegrationTestBase {
 			.retrieve()
 			.toBodilessEntity();
 		assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-		assertThatExceptionOfType(NoSuchKeyException.class).isThrownBy(
-				() -> this.s3Client.headObject(request -> request.bucket(TestcontainersConfiguration.BUCKET).key(key)));
+		assertThatExceptionOfType(NoSuchKeyException.class)
+			.isThrownBy(() -> this.s3Client.headObject(request -> request.bucket(RustFsContainer.BUCKET).key(key)));
 	}
 
 }

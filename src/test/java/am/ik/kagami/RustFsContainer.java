@@ -4,6 +4,7 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
@@ -29,7 +30,31 @@ public class RustFsContainer extends GenericContainer<RustFsContainer> {
 
 	public static final String REGION = "us-east-1";
 
+	/**
+	 * The bucket the application is pointed at by {@code TestcontainersConfiguration}.
+	 */
+	public static final String BUCKET = "kagami";
+
+	private static @Nullable RustFsContainer shared;
+
 	private final List<String> buckets = new ArrayList<>();
+
+	/**
+	 * The one container every S3 test shares, started on first use and left running for
+	 * the test JVM; Testcontainers' Ryuk removes it afterwards. Spring must not own it: a
+	 * container bean is started and stopped per application context, and the S3 tests
+	 * span several contexts, which would otherwise mean one container each.
+	 * @return the running container
+	 */
+	public static synchronized RustFsContainer shared() {
+		RustFsContainer container = shared;
+		if (container == null) {
+			container = new RustFsContainer().withBucket(BUCKET);
+			container.start();
+			shared = container;
+		}
+		return container;
+	}
 
 	public RustFsContainer() {
 		super(IMAGE);
