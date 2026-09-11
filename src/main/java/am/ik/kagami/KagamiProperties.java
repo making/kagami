@@ -85,7 +85,38 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 	}
 
-	public record Storage(String path) {
+	public record Storage(@DefaultValue("local") StorageType type, String path, @Nullable S3 s3) {
+
+		public Storage {
+			if (s3 == null) {
+				s3 = new S3(null, "");
+			}
+		}
+
+		/**
+		 * The storage backend selected by {@code kagami.storage.type}.
+		 */
+		public enum StorageType {
+
+			LOCAL, S3
+
+		}
+
+		/**
+		 * S3 specific settings. Endpoint, region and credentials are configured through
+		 * Spring Cloud AWS ({@code spring.cloud.aws.*}), not here.
+		 *
+		 * @param bucket the bucket to store artifacts in; required for S3 storage
+		 * @param keyPrefix an optional prefix prepended to {@code {repositoryId}/...}
+		 */
+		public record S3(@Nullable String bucket, @DefaultValue("") String keyPrefix) {
+
+			public S3 {
+				if (keyPrefix == null) {
+					keyPrefix = "";
+				}
+			}
+		}
 	}
 
 	public record Repository(String url, @Nullable String username, @Nullable String password,
