@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public abstract class BrowserControllerTestBase {
 
 	@Autowired
-	private MockMvc mockMvc;
+	MockMvc mockMvc;
 
 	@Autowired
 	private StorageService storageService;
