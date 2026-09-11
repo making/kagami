@@ -1,6 +1,5 @@
 package am.ik.kagami.storage;
 
-import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.RustFsContainer;
 import io.awspring.cloud.s3.InMemoryBufferingS3OutputStreamProvider;
 import java.io.ByteArrayInputStream;
@@ -60,8 +59,12 @@ class S3StorageServiceTest extends StorageServiceContractTest {
 	}
 
 	S3StorageService storageService(@Nullable String keyPrefix) {
-		return new S3StorageService(new KagamiProperties.Storage.S3(this.bucket, keyPrefix), s3Client,
-				new InMemoryBufferingS3OutputStreamProvider(s3Client, null));
+		return S3StorageService.builder()
+			.s3Client(s3Client)
+			.outputStreamProvider(new InMemoryBufferingS3OutputStreamProvider(s3Client, null))
+			.bucket(this.bucket)
+			.keyPrefix(keyPrefix)
+			.build();
 	}
 
 	@Test
@@ -163,8 +166,11 @@ class S3StorageServiceTest extends StorageServiceContractTest {
 	@Test
 	void bucketIsRequired() {
 		assertThatIllegalStateException()
-			.isThrownBy(() -> new S3StorageService(new KagamiProperties.Storage.S3(" ", null), s3Client,
-					new InMemoryBufferingS3OutputStreamProvider(s3Client, null)))
+			.isThrownBy(() -> S3StorageService.builder()
+				.s3Client(s3Client)
+				.outputStreamProvider(new InMemoryBufferingS3OutputStreamProvider(s3Client, null))
+				.bucket(" ")
+				.build())
 			.withMessageContaining("kagami.storage.s3.bucket");
 	}
 

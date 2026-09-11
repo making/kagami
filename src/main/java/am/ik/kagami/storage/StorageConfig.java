@@ -31,7 +31,12 @@ class StorageConfig {
 			S3OutputStreamProvider s3OutputStreamProvider) {
 		KagamiProperties.Storage.S3 s3 = Objects.requireNonNull(properties.storage().s3(),
 				"'kagami.storage.s3.bucket' is required when 'kagami.storage.type' is s3");
-		return new S3StorageService(s3, s3Client, s3OutputStreamProvider);
+		return S3StorageService.builder()
+			.s3Client(s3Client)
+			.outputStreamProvider(s3OutputStreamProvider)
+			.bucket(s3.bucket())
+			.keyPrefix(s3.keyPrefix())
+			.build();
 	}
 
 }

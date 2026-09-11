@@ -1,6 +1,5 @@
 package am.ik.kagami.storage;
 
-import am.ik.kagami.KagamiProperties;
 import io.awspring.cloud.s3.ObjectMetadata;
 import io.awspring.cloud.s3.S3OutputStream;
 import io.awspring.cloud.s3.S3OutputStreamProvider;
@@ -11,6 +10,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.io.Resource;
@@ -58,15 +58,16 @@ public class S3StorageService implements StorageService {
 	 */
 	private final String keyPrefix;
 
-	public S3StorageService(KagamiProperties.Storage.S3 properties, S3Client s3Client,
-			S3OutputStreamProvider outputStreamProvider) {
-		if (!StringUtils.hasText(properties.bucket())) {
-			throw new IllegalStateException("'kagami.storage.s3.bucket' is required when 'kagami.storage.type' is s3");
-		}
-		this.bucket = properties.bucket();
-		this.keyPrefix = normalizeKeyPrefix(properties.keyPrefix());
+	private S3StorageService(S3Client s3Client, S3OutputStreamProvider outputStreamProvider, String bucket,
+			@Nullable String keyPrefix) {
 		this.s3Client = s3Client;
 		this.outputStreamProvider = outputStreamProvider;
+		this.bucket = bucket;
+		this.keyPrefix = normalizeKeyPrefix(keyPrefix);
+	}
+
+	public static Builder builder() {
+		return new Builder();
 	}
 
 	@Override
@@ -297,6 +298,51 @@ public class S3StorageService implements StorageService {
 			prefix = prefix.substring(0, prefix.length() - 1);
 		}
 		return prefix.isEmpty() ? "" : prefix + "/";
+	}
+
+	public static final class Builder {
+
+		@Nullable private S3Client s3Client;
+
+		@Nullable private S3OutputStreamProvider outputStreamProvider;
+
+		@Nullable private String bucket;
+
+		@Nullable private String keyPrefix;
+
+		private Builder() {
+		}
+
+		public Builder s3Client(S3Client s3Client) {
+			this.s3Client = s3Client;
+			return this;
+		}
+
+		public Builder outputStreamProvider(S3OutputStreamProvider outputStreamProvider) {
+			this.outputStreamProvider = outputStreamProvider;
+			return this;
+		}
+
+		public Builder bucket(@Nullable String bucket) {
+			this.bucket = bucket;
+			return this;
+		}
+
+		public Builder keyPrefix(@Nullable String keyPrefix) {
+			this.keyPrefix = keyPrefix;
+			return this;
+		}
+
+		public S3StorageService build() {
+			if (!StringUtils.hasText(this.bucket)) {
+				throw new IllegalStateException(
+						"'kagami.storage.s3.bucket' is required when 'kagami.storage.type' is s3");
+			}
+			return new S3StorageService(Objects.requireNonNull(this.s3Client, "s3Client is required"),
+					Objects.requireNonNull(this.outputStreamProvider, "outputStreamProvider is required"), this.bucket,
+					this.keyPrefix);
+		}
+
 	}
 
 }
