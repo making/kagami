@@ -21,6 +21,13 @@ Kagami is a mirror server of Maven repositories.
 
 - `StorageService` (`am.ik.kagami.storage`) is the single path to stored artifacts; no other
   package touches the filesystem, so a new backend touches no other package.
+- `StorageConfig` selects the backend from `kagami.storage.type`: `LocalStorageService` (default)
+  or `S3StorageService`. `S3StorageService` lays objects out as
+  `[keyPrefix/]{repositoryId}/{artifactPath}` and uses the synchronous `S3Client`; a "directory"
+  is a common key prefix, so its `lastModified` is absent.
+- `StorageEnvironmentPostProcessor` enables the Spring Cloud AWS S3 auto-configuration and disables
+  the disk space health indicator and metric only when the type is `s3`, keeping the S3 client out
+  of a local deployment.
 - `ArtifactLocation` rejects `..`, `~` and absolute paths; an empty path is the repository root.
 - No `Path` / `File` in the `StorageService` interface; `delete` removes everything at or under
   a location.
@@ -67,6 +74,9 @@ Main package is `am.ik.kagami`.
 Package structure should follow the "package by feature" principle, grouping related classes
 together. Not by technical layers.
 
+Storage backends and their selection live in `am.ik.kagami.storage`; `LocalStorageService` and
+`S3StorageService` are the two implementations, picked by `StorageConfig`.
+
 For DTOs, use inner record classes in the appropriate classes. For example, if you have a
 `UserController`, define the request/response class inside that controller class.
 
@@ -79,6 +89,8 @@ domain objects should be clean and not contain external layers like web or datab
   backend test must extend
 - **E2E Tests**: `BrowserE2ETestBase` drives the built UI with Playwright (Chromium); each backend
   has a subclass
+- **S3 Tests**: a shared `rustfs` Testcontainers container backs the S3 contract, browser API,
+  integration and Playwright tests
 - Use `@TempDir` for filesystem testing, maintain test independence
 - All tests must pass consistently; use specific MockMvc expectations
 - All tests must pass before completing tasks
