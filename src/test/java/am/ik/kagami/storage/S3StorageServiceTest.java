@@ -2,6 +2,7 @@ package am.ik.kagami.storage;
 
 import am.ik.kagami.RustFsContainer;
 import io.awspring.cloud.s3.InMemoryBufferingS3OutputStreamProvider;
+import io.awspring.cloud.s3.PropertiesS3ObjectContentTypeResolver;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,7 +58,7 @@ class S3StorageServiceTest extends StorageServiceContractTest {
 	S3StorageService storageService(@Nullable String keyPrefix) {
 		return S3StorageService.builder()
 			.s3Client(s3Client)
-			.outputStreamProvider(new InMemoryBufferingS3OutputStreamProvider(s3Client, null))
+			.outputStreamProvider(outputStreamProvider())
 			.bucket(this.bucket)
 			.keyPrefix(keyPrefix)
 			.build();
@@ -164,10 +165,19 @@ class S3StorageServiceTest extends StorageServiceContractTest {
 		assertThatIllegalStateException()
 			.isThrownBy(() -> S3StorageService.builder()
 				.s3Client(s3Client)
-				.outputStreamProvider(new InMemoryBufferingS3OutputStreamProvider(s3Client, null))
+				.outputStreamProvider(outputStreamProvider())
 				.bucket(" ")
 				.build())
 			.withMessageContaining("kagami.storage.s3.bucket");
+	}
+
+	/**
+	 * The upload strategy Spring Cloud AWS auto-configures, content type resolver
+	 * included.
+	 * @return the provider
+	 */
+	static InMemoryBufferingS3OutputStreamProvider outputStreamProvider() {
+		return new InMemoryBufferingS3OutputStreamProvider(s3Client, new PropertiesS3ObjectContentTypeResolver());
 	}
 
 	HeadObjectResponse head(String key) {
