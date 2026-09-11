@@ -65,6 +65,19 @@ class S3StorageServiceTest extends StorageServiceContractTest {
 	}
 
 	@Test
+	void deleteStopsAtTheDirectoryBoundary() throws IOException {
+		StorageService storage = storageService();
+		store(storage, location("org/example/lib/1.0/lib-1.0.jar"), "jar");
+		store(storage, location("org/example/library.jar"), "sibling");
+
+		assertThat(storage.delete(location("org/example/lib"))).isTrue();
+		assertThat(storage.retrieve(location("org/example/lib/1.0/lib-1.0.jar"))).isEmpty();
+		// "org/example/lib" is a key prefix of "org/example/library.jar" without being
+		// its directory
+		assertThat(storage.retrieve(location("org/example/library.jar"))).isPresent();
+	}
+
+	@Test
 	void storeWritesObjectUnderKeyPrefixWithContentType() throws IOException {
 		StorageService storage = storageService();
 		store(storage, location("org/example/lib/1.0/lib-1.0.jar"), "jar content");

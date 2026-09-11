@@ -30,6 +30,8 @@ Kagami is a mirror server of Maven repositories.
 - `ArtifactContentType` is the one content type table. Object storage keeps the content type with
   the object, so the backend decides it at upload time and the web layer reads the same table.
 - S3 timestamps are truncated to seconds so that `ListObjectsV2` and `HeadObject` agree.
+- `S3StorageService#delete` lists once with the key itself as the prefix and keeps only keys that
+  are the key or sit under `<key>/`, so `org/example/lib` never takes `org/example/library.jar`.
 - Tests that need S3 import `TestcontainersConfiguration` and set `kagami.storage.type=s3` as a
   static test property; the RustFS container and the `spring.cloud.aws.*` properties follow.
 - `spring.http.clients.imperative.factory=jdk` is pinned: `ProxyConfig` applies the proxy settings to the JDK

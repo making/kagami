@@ -42,6 +42,11 @@ import software.amazon.awssdk.services.s3.model.S3Object;
  */
 public class S3StorageService implements StorageService {
 
+	/**
+	 * The maximum number of keys a single {@code DeleteObjects} request accepts.
+	 */
+	private static final int DELETE_BATCH_SIZE = 1000;
+
 	private final S3Client s3Client;
 
 	private final S3OutputStreamProvider outputStreamProvider;
@@ -104,14 +109,23 @@ public class S3StorageService implements StorageService {
 	@Override
 	public boolean delete(ArtifactLocation location) throws IOException {
 		String key = key(location.requireArtifactPath());
+		String directoryPrefix = key + "/";
 		try {
+			// A single listing covers the object itself and, when the location denotes a
+			// directory, every object underneath it
+			List<ObjectIdentifier> batch = new ArrayList<>(DELETE_BATCH_SIZE);
 			boolean deleted = false;
-			if (headObject(key).isPresent()) {
-				this.s3Client.deleteObject(request -> request.bucket(this.bucket).key(key));
-				deleted = true;
+			for (ListObjectsV2Response page : this.s3Client.listObjectsV2Paginator(
+					request -> request.bucket(this.bucket).prefix(key).maxKeys(DELETE_BATCH_SIZE))) {
+				for (S3Object object : page.contents()) {
+					// "org/example/lib" must not take "org/example/library.jar" with it
+					if (object.key().equals(key) || object.key().startsWith(directoryPrefix)) {
+						batch.add(ObjectIdentifier.builder().key(object.key()).build());
+					}
+				}
+				deleted |= deleteBatch(batch, key);
 			}
-			// The same name may also denote a directory; remove everything underneath
-			return deleteAll(key + "/") || deleted;
+			return deleted;
 		}
 		catch (SdkException e) {
 			throw new IOException("Failed to delete s3://%s/%s".formatted(this.bucket, key), e);
@@ -213,30 +227,25 @@ public class S3StorageService implements StorageService {
 	}
 
 	/**
-	 * Delete every object under the prefix in batches of one listing page.
-	 * @param prefix the prefix ending with {@code /}
-	 * @return {@code true} if at least one object was deleted
+	 * Delete the collected objects in one request and empty the batch.
+	 * @param batch the objects to delete; emptied by this call
+	 * @param key the key the deletion started from, for the error message
+	 * @return {@code true} if anything was deleted
 	 */
-	private boolean deleteAll(String prefix) throws IOException {
-		boolean deleted = false;
-		for (ListObjectsV2Response page : this.s3Client
-			.listObjectsV2Paginator(request -> request.bucket(this.bucket).prefix(prefix))) {
-			if (page.contents().isEmpty()) {
-				continue;
-			}
-			List<ObjectIdentifier> objects = page.contents()
-				.stream()
-				.map(object -> ObjectIdentifier.builder().key(object.key()).build())
-				.toList();
-			DeleteObjectsResponse response = this.s3Client
-				.deleteObjects(request -> request.bucket(this.bucket).delete(delete -> delete.objects(objects)));
-			if (response.hasErrors() && !response.errors().isEmpty()) {
-				throw new IOException("Failed to delete objects under s3://%s/%s: %s".formatted(this.bucket, prefix,
-						response.errors()));
-			}
-			deleted = true;
+	private boolean deleteBatch(List<ObjectIdentifier> batch, String key) throws IOException {
+		if (batch.isEmpty()) {
+			return false;
 		}
-		return deleted;
+		List<ObjectIdentifier> objects = List.copyOf(batch);
+		batch.clear();
+		DeleteObjectsResponse response = this.s3Client
+			.deleteObjects(request -> request.bucket(this.bucket).delete(delete -> delete.objects(objects)));
+		// A batched delete reports the keys it could not remove instead of failing
+		if (!response.errors().isEmpty()) {
+			throw new IOException("Failed to delete %d object(s) under s3://%s/%s: %s"
+				.formatted(response.errors().size(), this.bucket, key, response.errors()));
+		}
+		return true;
 	}
 
 	private String key(ArtifactLocation location) {
