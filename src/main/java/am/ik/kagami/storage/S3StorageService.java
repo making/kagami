@@ -67,7 +67,7 @@ public class S3StorageService implements StorageService {
 	@Override
 	public void store(ArtifactLocation location, InputStream inputStream) throws IOException {
 		String key = key(location.requireArtifactPath());
-		ObjectMetadata metadata = ObjectMetadata.builder().contentType(contentType(location.name())).build();
+		ObjectMetadata metadata = ObjectMetadata.builder().contentType(ArtifactContentType.of(location.name())).build();
 		try {
 			S3OutputStream outputStream = this.outputStreamProvider.create(this.bucket, key, metadata);
 			try {
@@ -288,25 +288,6 @@ public class S3StorageService implements StorageService {
 			prefix = prefix.substring(0, prefix.length() - 1);
 		}
 		return prefix.isEmpty() ? "" : prefix + "/";
-	}
-
-	private static String contentType(String fileName) {
-		if (fileName.endsWith(".jar")) {
-			return "application/java-archive";
-		}
-		else if (fileName.endsWith(".pom") || fileName.endsWith(".xml")) {
-			return "application/xml";
-		}
-		else if (fileName.endsWith(".sha1") || fileName.endsWith(".md5") || fileName.endsWith(".sha256")
-				|| fileName.endsWith(".sha512")) {
-			return "text/plain";
-		}
-		else if (fileName.endsWith(".asc")) {
-			return "application/pgp-signature";
-		}
-		else {
-			return "application/octet-stream";
-		}
 	}
 
 }

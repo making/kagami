@@ -25,6 +25,8 @@ Kagami is a mirror server of Maven repositories.
   or `S3StorageService` (Spring Cloud AWS, client settings under `spring.cloud.aws.*`).
   `StorageEnvironmentPostProcessor` derives the follow-on properties: the S3 auto-configuration
   is off for `local`, the disk space health indicator and metric are off for `s3`.
+- `ArtifactContentType` is the one content type table. Object storage keeps the content type with
+  the object, so the backend decides it at upload time and the web layer reads the same table.
 - S3 timestamps are truncated to seconds so that `ListObjectsV2` and `HeadObject` agree.
 - Tests that need S3 import `TestcontainersConfiguration` and set `kagami.storage.type=s3` as a
   static test property; the RustFS container and the `spring.cloud.aws.*` properties follow.
