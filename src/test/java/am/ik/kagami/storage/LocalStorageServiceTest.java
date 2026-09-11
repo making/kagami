@@ -17,7 +17,7 @@ class LocalStorageServiceTest extends StorageServiceContractTest {
 	@Override
 	protected StorageService storageService() {
 		KagamiProperties properties = KagamiProperties.builder()
-			.storage(new KagamiProperties.Storage(this.tempDir.toString()))
+			.storage(KagamiProperties.Storage.builder().path(this.tempDir.toString()).build())
 			.repositories(Map.of())
 			.jwt(new KagamiProperties.Jwt(null, null))
 			.authentication(new KagamiProperties.Authentication(KagamiProperties.AuthenticationType.SIMPLE, List.of()))

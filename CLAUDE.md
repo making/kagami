@@ -21,6 +21,14 @@ Kagami is a mirror server of Maven repositories.
 
 - `StorageService` (`am.ik.kagami.storage`) is the single path to stored artifacts; no other
   package touches the filesystem, so a new backend touches no other package.
+- `kagami.storage.type` (`local` / `s3`) picks the backend in `StorageConfig`; the backends
+  themselves are not Spring beans.
+- The S3 client resolves its region eagerly and fails when none is configured, so
+  `StorageDefaultsEnvironmentPostProcessor` turns the Spring Cloud AWS S3 auto-configuration
+  off unless the type is `s3`, and turns the disk space health indicator and metric off when
+  it is. Defaults derived from the storage type belong there, not in `application.properties`.
+- `spring.http.clients.imperative.factory=jdk` is pinned because `kagami.proxy.*` is only
+  applied to the JDK client, and the AWS SDK puts Apache HttpClient 5 on the classpath.
 - `ArtifactLocation` rejects `..`, `~` and absolute paths; an empty path is the repository root.
 - No `Path` / `File` in the `StorageService` interface; `delete` removes everything at or under
   a location.
@@ -79,6 +87,10 @@ domain objects should be clean and not contain external layers like web or datab
   backend test must extend
 - **E2E Tests**: `BrowserE2ETestBase` drives the built UI with Playwright (Chromium); each backend
   has a subclass
+- **S3 Tests**: `RustfsContainer` starts one S3-compatible server per JVM; isolation comes from a
+  fresh bucket per test. `kagami.storage.type` has to be set with `@TestPropertySource`, not
+  `@DynamicPropertySource`, because the environment is post-processed before the dynamic
+  properties are added
 - Use `@TempDir` for filesystem testing, maintain test independence
 - All tests must pass consistently; use specific MockMvc expectations
 - All tests must pass before completing tasks
