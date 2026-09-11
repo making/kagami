@@ -20,7 +20,14 @@ Kagami is a mirror server of Maven repositories.
 ## Architecture Constraints
 
 - `StorageService` (`am.ik.kagami.storage`) is the single path to stored artifacts; no other
-  package touches the filesystem, so a new backend touches no other package.
+  package touches the filesystem, so a new backend touches no other package. Backends are
+  `LocalStorageService` (default) and `S3StorageService` (Amazon S3 / S3-compatible object
+  storage), selected by `kagami.storage.type` (`local` | `s3`) in `StorageConfiguration`.
+- `S3AutoConfiguration` and the diskspace health indicator are excluded in `KagamiApplication`
+  and re-imported by the matching `StorageConfiguration` branch, so local storage needs no AWS
+  region/credentials/endpoint and the diskspace health/metric (meaningless for S3) stay off there.
+- S3 objects live under `[<key-prefix>/]<repository-id>/<artifact-path>`; endpoint, region and
+  credentials come from Spring Cloud AWS (`spring.cloud.aws.*`), not `kagami.*`.
 - `ArtifactLocation` rejects `..`, `~` and absolute paths; an empty path is the repository root.
 - No `Path` / `File` in the `StorageService` interface; `delete` removes everything at or under
   a location.
@@ -79,6 +86,9 @@ domain objects should be clean and not contain external layers like web or datab
   backend test must extend
 - **E2E Tests**: `BrowserE2ETestBase` drives the built UI with Playwright (Chromium); each backend
   has a subclass
+- **S3 backend tests**: run against `rustfs/rustfs` (S3-compatible) via Testcontainers, wired by
+  `S3TestSupport`; the container is shared across test classes and each isolates its objects with
+  its own `kagami.storage.s3.key-prefix`
 - Use `@TempDir` for filesystem testing, maintain test independence
 - All tests must pass consistently; use specific MockMvc expectations
 - All tests must pass before completing tasks

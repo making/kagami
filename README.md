@@ -158,6 +158,33 @@ kagami.repositories.central.url=https://repo.maven.apache.org/maven2
 kagami.repositories.jcenter.url=https://jcenter.bintray.com
 ```
 
+### Storage Backend
+
+Artifacts are stored on the local filesystem by default. To mirror them into Amazon S3 or
+any S3-compatible object storage, set the type and bucket:
+
+```properties
+kagami.storage.type=s3
+kagami.storage.s3.bucket=my-mirror-bucket
+# Optional prefix prepended to every key: <prefix>/<repository-id>/<artifact-path>
+kagami.storage.s3.key-prefix=kagami
+```
+
+Endpoint, region and credentials are configured through Spring Cloud AWS, not `kagami.*`:
+
+```properties
+# Any S3-compatible endpoint (leave unset for AWS S3)
+spring.cloud.aws.s3.endpoint=https://s3.example.com
+spring.cloud.aws.s3.path-style-access-enabled=true
+spring.cloud.aws.region.static=us-east-1
+spring.cloud.aws.credentials.access-key=your-access-key
+spring.cloud.aws.credentials.secret-key=your-secret-key
+```
+
+Credentials, region and endpoint also work through the standard AWS mechanisms (environment
+variables, `~/.aws/*`, instance profiles, etc.). With `kagami.storage.type=s3` the diskspace
+health indicator and metric are disabled, since they are meaningless for object storage.
+
 ### Repository with Authentication
 
 ```properties
@@ -712,13 +739,6 @@ curl http://localhost:8080/actuator/health
 # Prometheus metrics
 curl http://localhost:8080/actuator/prometheus
 ```
-
-## Roadmap
-
-The following features are planned for future releases:
-
-### Storage Backends
-- **S3 Storage**: Amazon S3 and S3-compatible storage backends (MinIO, etc.)
 
 ## License
 
