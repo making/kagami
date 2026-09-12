@@ -1,0 +1,2 @@
+org.springframework.boot.env.EnvironmentPostProcessor=\
+am.ik.kagami.config.S3StorageEnvironmentPostProcessor

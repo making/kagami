@@ -85,7 +85,53 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 	}
 
-	public record Storage(String path) {
+	public record Storage(@DefaultValue("LOCAL") StorageType type, @Nullable String path, @Nullable S3 s3) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			@Nullable private StorageType type;
+
+			@Nullable private String path;
+
+			@Nullable private S3 s3;
+
+			private Builder() {
+			}
+
+			public Builder type(StorageType type) {
+				this.type = type;
+				return this;
+			}
+
+			public Builder path(@Nullable String path) {
+				this.path = path;
+				return this;
+			}
+
+			public Builder s3(@Nullable S3 s3) {
+				this.s3 = s3;
+				return this;
+			}
+
+			public Storage build() {
+				return new Storage(this.type == null ? StorageType.LOCAL : this.type, this.path, this.s3);
+			}
+
+		}
+
+	}
+
+	public record S3(@Nullable String bucket, @Nullable String keyPrefix) {
+	}
+
+	public enum StorageType {
+
+		LOCAL, S3
+
 	}
 
 	public record Repository(String url, @Nullable String username, @Nullable String password,

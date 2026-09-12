@@ -20,7 +20,9 @@ Kagami is a mirror server of Maven repositories.
 ## Architecture Constraints
 
 - `StorageService` (`am.ik.kagami.storage`) is the single path to stored artifacts; no other
-  package touches the filesystem, so a new backend touches no other package.
+  package touches storage, so a new backend touches no other package. The backend is selected
+  from `kagami.storage.type` (`local`, default, or `s3`) in `StorageConfig`. The S3 backend uses
+  Spring Cloud AWS (`spring.cloud.aws.*`), which is off by default and enabled only for `s3`.
 - `ArtifactLocation` rejects `..`, `~` and absolute paths; an empty path is the repository root.
 - No `Path` / `File` in the `StorageService` interface; `delete` removes everything at or under
   a location.
