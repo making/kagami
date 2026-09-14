@@ -29,7 +29,19 @@
   </scm>
   <properties>
     <java.version>21</java.version>
+    <spring-cloud-aws.version>4.1.1</spring-cloud-aws.version>
   </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.awspring.cloud</groupId>
+        <artifactId>spring-cloud-aws-dependencies</artifactId>
+        <version>${spring-cloud-aws.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -101,6 +113,27 @@
       <groupId>org.apache.maven.resolver</groupId>
       <artifactId>maven-resolver-supplier</artifactId>
       <version>1.9.27</version>
+    </dependency>
+    <dependency>
+      <groupId>io.awspring.cloud</groupId>
+      <artifactId>spring-cloud-aws-starter-s3</artifactId>
+      <exclusions>
+        <!-- Only the synchronous S3Client over the JDK HTTP client is used: the Netty
+          client serves the async client, and the Apache client would make Spring Boot
+          prefer it over the JDK client that the proxy support customizes -->
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>netty-nio-client</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>apache5-client</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>url-connection-client</artifactId>
     </dependency>
 
     <dependency>

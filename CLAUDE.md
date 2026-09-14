@@ -21,6 +21,12 @@ Kagami is a mirror server of Maven repositories.
 
 - `StorageService` (`am.ik.kagami.storage`) is the single path to stored artifacts; no other
   package touches the filesystem, so a new backend touches no other package.
+- Storage backends: `LOCAL` (default, `LocalStorageService`) or `S3` (`S3StorageService`,
+  sync `S3Client` over the JDK HTTP client only, no netty/apache clients so that Boot keeps
+  the JDK client the proxy support customizes). `StorageConfiguration` selects the backend
+  from `kagami.storage.type` and re-imports the globally excluded `S3AutoConfiguration` /
+  `DiskSpaceHealthContributorAutoConfiguration` per branch, so local runs without AWS
+  config and S3 runs without the diskspace health indicator and metric.
 - `ArtifactLocation` rejects `..`, `~` and absolute paths; an empty path is the repository root.
 - No `Path` / `File` in the `StorageService` interface; `delete` removes everything at or under
   a location.
