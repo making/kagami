@@ -158,6 +158,32 @@ kagami.repositories.central.url=https://repo.maven.apache.org/maven2
 kagami.repositories.jcenter.url=https://jcenter.bintray.com
 ```
 
+### S3 Storage
+
+By default Kagami caches artifacts on the local file system at `kagami.storage.path`. To mirror
+them into Amazon S3 or any S3-compatible object storage (MinIO, rustfs, ...), set
+`kagami.storage.type` to `s3`:
+
+```properties
+# Select the S3 storage backend
+kagami.storage.type=s3
+kagami.storage.s3.bucket=my-kagami-bucket
+# Optional prefix prepended to every stored object key
+# kagami.storage.s3.key-prefix=mirror/
+
+# Endpoint, region and credentials come from Spring Cloud AWS
+spring.cloud.aws.s3.endpoint=http://localhost:9000
+spring.cloud.aws.s3.path-style-access-enabled=true
+spring.cloud.aws.region.static=us-east-1
+spring.cloud.aws.credentials.access-key=...
+spring.cloud.aws.credentials.secret-key=...
+```
+
+`kagami.storage.path` and the diskspace health/metric (`management.health.diskspace.*`,
+`management.metrics.system.diskspace.*`) are only meaningful for the local backend; set
+`management.health.diskspace.enabled=false` and `management.metrics.system.diskspace.enabled=false`
+when using S3.
+
 ### Repository with Authentication
 
 ```properties
@@ -712,13 +738,6 @@ curl http://localhost:8080/actuator/health
 # Prometheus metrics
 curl http://localhost:8080/actuator/prometheus
 ```
-
-## Roadmap
-
-The following features are planned for future releases:
-
-### Storage Backends
-- **S3 Storage**: Amazon S3 and S3-compatible storage backends (MinIO, etc.)
 
 ## License
 

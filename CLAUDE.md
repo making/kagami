@@ -21,6 +21,11 @@ Kagami is a mirror server of Maven repositories.
 
 - `StorageService` (`am.ik.kagami.storage`) is the single path to stored artifacts; no other
   package touches the filesystem, so a new backend touches no other package.
+- The backend is selected by `kagami.storage.type` (`LOCAL`, the default, or `S3`) in
+  `StorageConfig` via `@ConditionalOnProperty`; `LocalStorageService` and `S3StorageService` are
+  plain classes, not Spring components. S3 relies on Spring Cloud AWS (`spring-cloud-aws-starter-s3`):
+  endpoint, region and credentials come from `spring.cloud.aws.*`, the bucket and key prefix from
+  `kagami.storage.s3.*`.
 - `ArtifactLocation` rejects `..`, `~` and absolute paths; an empty path is the repository root.
 - No `Path` / `File` in the `StorageService` interface; `delete` removes everything at or under
   a location.
@@ -76,7 +81,8 @@ domain objects should be clean and not contain external layers like web or datab
 ### Testing Strategy
 
 - **Contract Tests**: `StorageServiceContractTest` is the abstract contract every `StorageService`
-  backend test must extend
+  backend test must extend; the S3 backend additionally spins up a `rustfs/rustfs` container with
+  Testcontainers
 - **E2E Tests**: `BrowserE2ETestBase` drives the built UI with Playwright (Chromium); each backend
   has a subclass
 - Use `@TempDir` for filesystem testing, maintain test independence

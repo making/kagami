@@ -14,12 +14,10 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.stereotype.Service;
 
 /**
  * Local file system implementation of StorageService
  */
-@Service
 public class LocalStorageService implements StorageService {
 
 	private final Path basePath;

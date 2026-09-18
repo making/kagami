@@ -85,7 +85,17 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 	}
 
-	public record Storage(String path) {
+	public record Storage(@DefaultValue("local") StorageType type, @Nullable String path, @DefaultValue S3 s3) {
+
+		public record S3(@Nullable String bucket, @Nullable String keyPrefix) {
+		}
+
+	}
+
+	public enum StorageType {
+
+		LOCAL, S3
+
 	}
 
 	public record Repository(String url, @Nullable String username, @Nullable String password,
