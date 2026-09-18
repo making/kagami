@@ -5,6 +5,7 @@ import am.ik.kagami.mockserver.MockServer.Response;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +41,18 @@ public class KagamiIntegrationTest {
 
 	@DynamicPropertySource
 	static void configureProperties(DynamicPropertyRegistry registry) {
-		registry.add("kagami.storage.path", () -> tempDir.toString());
+		configureStorageProperties(registry, () -> tempDir.toString());
+	}
+
+	/**
+	 * Registers the storage backend properties. Storage backend subclasses override this
+	 * to point the application at their own backend; the later registration of the same
+	 * key wins.
+	 * @param registry the property registry
+	 * @param path the storage path supplier
+	 */
+	static void configureStorageProperties(DynamicPropertyRegistry registry, Supplier<Object> path) {
+		registry.add("kagami.storage.path", path);
 	}
 
 	@BeforeEach

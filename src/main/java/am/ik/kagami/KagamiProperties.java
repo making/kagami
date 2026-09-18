@@ -85,7 +85,36 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 	}
 
-	public record Storage(String path) {
+	/**
+	 * Storage settings.
+	 *
+	 * @param type the storage backend type, {@link StorageType#LOCAL} by default
+	 * @param path the base path of the local file system storage, used only when
+	 * {@code type} is {@link StorageType#LOCAL}
+	 * @param s3 the S3 settings, required only when {@code type} is
+	 * {@link StorageType#S3}
+	 */
+	public record Storage(@DefaultValue("LOCAL") StorageType type, @DefaultValue("/tmp/kagami-storage") String path,
+			@Nullable S3 s3) {
+
+		public enum StorageType {
+
+			LOCAL, S3
+
+		}
+
+		/**
+		 * S3 storage settings. Endpoint, region and credentials are resolved from the
+		 * Spring Cloud AWS properties ({@code spring.cloud.aws.*}), not from
+		 * {@code kagami.*}.
+		 *
+		 * @param bucket the target bucket, required when {@code type} is
+		 * {@link StorageType#S3}
+		 * @param keyPrefix optional prefix prepended to {@code {repositoryId}/...} keys
+		 */
+		public record S3(String bucket, @Nullable String keyPrefix) {
+		}
+
 	}
 
 	public record Repository(String url, @Nullable String username, @Nullable String password,

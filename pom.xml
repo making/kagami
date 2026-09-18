@@ -29,7 +29,19 @@
   </scm>
   <properties>
     <java.version>21</java.version>
+    <spring-cloud-aws.version>4.1.1</spring-cloud-aws.version>
   </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.awspring.cloud</groupId>
+        <artifactId>spring-cloud-aws-dependencies</artifactId>
+        <version>${spring-cloud-aws.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -101,6 +113,31 @@
       <groupId>org.apache.maven.resolver</groupId>
       <artifactId>maven-resolver-supplier</artifactId>
       <version>1.9.27</version>
+    </dependency>
+    <dependency>
+      <groupId>io.awspring.cloud</groupId>
+      <artifactId>spring-cloud-aws-starter-s3</artifactId>
+      <exclusions>
+        <exclusion>
+          <!-- Only the synchronous S3Client is used; the async client needs the Netty
+               runtime which is unnecessary weight (and problematic for GraalVM native) -->
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>netty-nio-client</artifactId>
+        </exclusion>
+        <exclusion>
+          <!-- The Apache HttpClient 5 that comes with the AWS SDK would change the
+               client factory Spring Boot selects for RestClient away from the JDK one,
+               which ProxyConfig requires to apply kagami.proxy.* settings -->
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>apache5-client</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- A synchronous HTTP client implementation for the AWS SDK; url-connection is
+         used because it adds no further dependencies -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>url-connection-client</artifactId>
     </dependency>
 
     <dependency>
