@@ -22,6 +22,10 @@ public class MockConfig {
 		return registry -> {
 			int port = mockServer.port();
 			registry.add("kagami.repositories.mock.url", () -> "http://127.0.0.1:%d".formatted(port));
+			// A private repository pointing at the same upstream, so that the private
+			// repository UI is exercised in the browser E2E scenario
+			registry.add("kagami.repositories.secret.url", () -> "http://127.0.0.1:%d".formatted(port));
+			registry.add("kagami.repositories.secret.is-private", () -> "true");
 		};
 	}
 
