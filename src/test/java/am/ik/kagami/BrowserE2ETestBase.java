@@ -19,8 +19,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.Queue;
 import java.util.regex.Pattern;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -116,6 +118,22 @@ public abstract class BrowserE2ETestBase {
 	}
 
 	/**
+	 * The name of the logged in user as shown in the header. Depends on the
+	 * authentication type, so subclasses can override it.
+	 */
+	String loggedInUser() {
+		return "test";
+	}
+
+	/**
+	 * Whether form login is available. Only the SIMPLE authentication type shows the
+	 * username / password form.
+	 */
+	boolean formLoginAvailable() {
+		return true;
+	}
+
+	/**
 	 * Logs in through the login form and waits for the home page.
 	 */
 	void login() {
@@ -189,6 +207,8 @@ public abstract class BrowserE2ETestBase {
 
 	@Test
 	void loginFailureShowsError() {
+		// Skipped under OIDC, where the login page has no username/password form
+		Assumptions.assumeTrue(formLoginAvailable());
 		this.page.navigate("http://localhost:" + this.port + "/");
 		assertThat(this.page).hasURL(Pattern.compile("/login$"));
 		this.page.fill("#username", "test");
@@ -204,7 +224,7 @@ public abstract class BrowserE2ETestBase {
 		login();
 
 		// The header shows the logged in user and the logout link
-		assertThat(this.page.locator("header").getByText("test")).isVisible();
+		assertThat(this.page.locator("header").getByText(loggedInUser())).isVisible();
 
 		// The logout page asks for confirmation before ending the session
 		this.page.locator("header a", new Page.LocatorOptions().setHasText("Logout")).click();
@@ -333,8 +353,8 @@ public abstract class BrowserE2ETestBase {
 				this.page.waitForTimeout(100);
 			}
 		}
-		org.assertj.core.api.Assertions.assertThat(download).as("download").isNotNull();
-		org.assertj.core.api.Assertions.assertThat(download.url()).isEqualTo(baseUrl + "/artifacts/mock/" + path);
+		Assertions.assertThat(download).as("download").isNotNull();
+		Assertions.assertThat(download.url()).isEqualTo(baseUrl + "/artifacts/mock/" + path);
 		download.delete();
 
 		// Dismissing the delete confirmation keeps the file
