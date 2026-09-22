@@ -3,6 +3,7 @@ package am.ik.kagami.artifact.web;
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.KagamiProperties.Repository;
 import am.ik.kagami.repository.RemoteRepositoryService;
+import am.ik.kagami.storage.ArtifactContentType;
 import am.ik.kagami.storage.ArtifactLocation;
 import am.ik.kagami.storage.StorageService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -121,22 +122,7 @@ public class ArtifactController {
 	}
 
 	private MediaType determineContentType(String artifactPath) {
-		if (artifactPath.endsWith(".jar")) {
-			return MediaType.parseMediaType("application/java-archive");
-		}
-		else if (artifactPath.endsWith(".pom") || artifactPath.endsWith(".xml")) {
-			return MediaType.APPLICATION_XML;
-		}
-		else if (artifactPath.endsWith(".sha1") || artifactPath.endsWith(".md5") || artifactPath.endsWith(".sha256")
-				|| artifactPath.endsWith(".sha512")) {
-			return MediaType.TEXT_PLAIN;
-		}
-		else if (artifactPath.endsWith(".asc")) {
-			return MediaType.parseMediaType("application/pgp-signature");
-		}
-		else {
-			return MediaType.APPLICATION_OCTET_STREAM;
-		}
+		return MediaType.parseMediaType(ArtifactContentType.of(artifactPath));
 	}
 
 }

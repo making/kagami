@@ -1,6 +1,7 @@
 package am.ik.kagami.browser;
 
 import am.ik.kagami.KagamiProperties;
+import am.ik.kagami.storage.ArtifactContentType;
 import am.ik.kagami.storage.ArtifactLocation;
 import am.ik.kagami.storage.StorageEntry;
 import am.ik.kagami.storage.StorageService;
@@ -111,7 +112,7 @@ public class BrowserService {
 			.type("file")
 			.size(Objects.requireNonNullElse(entry.size(), 0L))
 			.lastModified(Objects.requireNonNull(entry.lastModified(), "lastModified is required for a file"))
-			.contentType(determineContentType(fileName))
+			.contentType(ArtifactContentType.of(fileName))
 			.sha1(readChecksum(location.sibling(fileName + ".sha1")))
 			.sha256(readChecksum(location.sibling(fileName + ".sha256")))
 			.build();
@@ -161,25 +162,6 @@ public class BrowserService {
 			return "";
 		}
 		return path.substring(0, lastSlash);
-	}
-
-	private static String determineContentType(String fileName) {
-		if (fileName.endsWith(".jar")) {
-			return "application/java-archive";
-		}
-		else if (fileName.endsWith(".pom") || fileName.endsWith(".xml")) {
-			return "application/xml";
-		}
-		else if (fileName.endsWith(".sha1") || fileName.endsWith(".md5") || fileName.endsWith(".sha256")
-				|| fileName.endsWith(".sha512")) {
-			return "text/plain";
-		}
-		else if (fileName.endsWith(".asc")) {
-			return "application/pgp-signature";
-		}
-		else {
-			return "application/octet-stream";
-		}
 	}
 
 	// Response DTOs
