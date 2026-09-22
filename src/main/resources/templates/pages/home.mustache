@@ -52,7 +52,7 @@
             {{^hasUpdated}}<span class="row-value row-value-muted">&mdash;</span>{{/hasUpdated}}
           </td>
           <td class="text-right">
-            <button type="button" class="registry-label button-small"
+            <button type="button" class="registry-label button-small button-loading"
                     hx-get="/fragments/repositories/{{id}}/config"
                     hx-target="body" hx-swap="beforeend">Config</button>
           </td>

@@ -42,7 +42,7 @@
       {{^hasUpdated}}<span class="entry-updated"></span>{{/hasUpdated}}
       <div class="action-buttons">
         {{#isFile}}
-        <button type="button" class="registry-label button-small"
+        <button type="button" class="registry-label button-small button-loading"
                 hx-get="{{infoPath}}"
                 hx-target="body" hx-swap="beforeend">Info</button>
         <a class="registry-label button-small" role="button" href="{{downloadPath}}" target="_blank">Get</a>
