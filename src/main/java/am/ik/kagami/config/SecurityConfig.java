@@ -30,8 +30,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.AccessDeniedHandlerImpl;
+import org.springframework.security.oauth2.server.resource.web.access.BearerTokenAccessDeniedHandler;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.RequestHeaderRequestMatcher;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 import static org.springframework.http.HttpMethod.DELETE;
@@ -64,8 +69,7 @@ class SecurityConfig {
 					authz.requestMatchers(DELETE, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope("artifacts:delete"), hasRole("USER")));
 				});
 				authz.requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
-					.requestMatchers("/", "/login", "/logout", "/*.css", "/assets/**", "/fonts/**", "/favicon.svg", "/error", "/.well-known/**", "/openid/v1/jwks").permitAll()
-					.requestMatchers("/me").authenticated()
+					.requestMatchers("/login", "/logout", "/css/**", "/js/**", "/fonts/**", "/favicon.svg", "/error", "/.well-known/**", "/openid/v1/jwks").permitAll()
 					.anyRequest().hasRole("USER");
 			})
 				// @formatter:on
@@ -73,8 +77,12 @@ class SecurityConfig {
 				.authenticationEntryPoint(artifactsEntryPoint)
 				.jwt(jwt -> {
 				}))
-			.exceptionHandling(exception -> exception.defaultAuthenticationEntryPointFor(artifactsEntryPoint,
-					PathPatternRequestMatcher.withDefaults().matcher("/artifacts/**")))
+			.exceptionHandling(exception -> exception
+				.defaultAuthenticationEntryPointFor(artifactsEntryPoint,
+						PathPatternRequestMatcher.withDefaults().matcher("/artifacts/**"))
+				.defaultAuthenticationEntryPointFor(htmxAuthenticationEntryPoint(),
+						new RequestHeaderRequestMatcher("HX-Request", "true"))
+				.accessDeniedHandler(errorPageAccessDeniedHandler()))
 			.csrf(csrf -> csrf.ignoringRequestMatchers("/artifacts/**", "/token"))
 			.logout(logout -> logout.logoutUrl("/logout")
 				.logoutSuccessUrl("/login?logout")
@@ -122,6 +130,46 @@ class SecurityConfig {
 		}
 		String userAgent = request.getHeader(HttpHeaders.USER_AGENT);
 		return userAgent != null && userAgent.startsWith("Mozilla");
+	}
+
+	/**
+	 * Authentication entry point for htmx requests: the browser follows the usual
+	 * redirect to the login page inside the fetch request and htmx would swap the login
+	 * page into the fragment target, so an {@code HX-Redirect} is sent instead to force a
+	 * full-page navigation.
+	 */
+	private static AuthenticationEntryPoint htmxAuthenticationEntryPoint() {
+		return (request, response, authException) -> {
+			response.setStatus(401);
+			response.setHeader("HX-Redirect", "/login");
+		};
+	}
+
+	/**
+	 * Access denied handler that renders the error page; htmx requests get an
+	 * {@code HX-Redirect} to the error page instead. Machine endpoints under
+	 * {@code /artifacts/**} keep the default handler behaviour.
+	 */
+	private static AccessDeniedHandler errorPageAccessDeniedHandler() {
+		AccessDeniedHandler bearerHandler = new BearerTokenAccessDeniedHandler();
+		AccessDeniedHandler defaultHandler = new AccessDeniedHandlerImpl();
+		return (request, response, accessDeniedException) -> {
+			if (request.getRequestURI().startsWith("/artifacts/")) {
+				if (request.getUserPrincipal() instanceof JwtAuthenticationToken) {
+					bearerHandler.handle(request, response, accessDeniedException);
+				}
+				else {
+					defaultHandler.handle(request, response, accessDeniedException);
+				}
+				return;
+			}
+			response.setStatus(403);
+			if ("true".equals(request.getHeader("HX-Request"))) {
+				response.setHeader("HX-Redirect", "/error?status=403");
+				return;
+			}
+			request.getRequestDispatcher("/error").forward(request, response);
+		};
 	}
 
 	@Bean

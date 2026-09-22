@@ -1,0 +1,72 @@
+<div class="panel" id="token-flow">
+  <div class="section-head">
+    <h3 class="registry-label font-semibold"><span style="color: var(--accent); margin-right: 0.75rem;">01 /</span> Select Repositories</h3>
+    <p>Choose which repositories this token can access</p>
+  </div>
+  <form id="token-form" hx-post="/app/token" hx-target="#token-flow" hx-swap="outerHTML">
+    {{#_csrf}}<input type="hidden" name="_csrf" value="{{_csrf.token}}"/>{{/_csrf}}
+    <div class="repo-check-grid">
+      {{#repositories}}
+      <label class="check-card">
+        <input type="checkbox" name="repositories" value="{{id}}"/>
+        <span class="check-body">
+          <span class="check-title">{{id}}{{#isPrivate}}<span class="registry-label badge-private">Private</span>{{/isPrivate}}</span>
+          <span class="check-code">{{url}}</span>
+        </span>
+      </label>
+      {{/repositories}}
+    </div>
+
+    <div class="section-head">
+      <h3 class="registry-label font-semibold"><span style="color: var(--accent); margin-right: 0.75rem;">02 /</span> Select Permissions</h3>
+      <p>Choose what actions this token can perform</p>
+    </div>
+    <div class="scope-check-list">
+      <label class="check-card">
+        <input type="checkbox" name="scope" value="artifacts:read"/>
+        <span class="check-body">
+          <span class="check-title">Read Artifacts</span>
+          <span class="check-desc">Download and view repository contents</span>
+          <span class="check-code">artifacts:read</span>
+        </span>
+      </label>
+      <label class="check-card">
+        <input type="checkbox" name="scope" value="artifacts:delete"/>
+        <span class="check-body">
+          <span class="check-title">Delete Artifacts</span>
+          <span class="check-desc">Remove artifacts from repositories</span>
+          <span class="check-code">artifacts:delete</span>
+        </span>
+      </label>
+    </div>
+
+    <div class="section-head">
+      <h3 class="registry-label font-semibold"><span style="color: var(--accent); margin-right: 0.75rem;">03 /</span> Token Expiration</h3>
+      <p>Set how long the token will remain valid</p>
+    </div>
+    <div class="expiration-row">
+      <input type="number" name="duration" min="1" value="6"/>
+      <select name="unit">
+        <option value="hours">Hours</option>
+        <option value="days">Days</option>
+        <option value="months" selected>Months</option>
+      </select>
+    </div>
+    <div style="padding: 0 1.5rem 1.5rem;">
+      <div id="long-lived-warning" class="alert alert-warning alert-hidden">
+        <span><strong>Long-lived token warning:</strong> This token will be valid for more than 6 months.
+        Since JWT tokens cannot be revoked, consider using shorter durations for better security.</span>
+      </div>
+    </div>
+
+    {{#hasError}}
+    <div style="padding: 0 1.5rem 1.5rem;">
+      <div class="alert">{{error}}</div>
+    </div>
+    {{/hasError}}
+
+    <div class="page-actions">
+      <button type="submit" id="generate-button" class="button" disabled>Generate Token</button>
+    </div>
+  </form>
+</div>

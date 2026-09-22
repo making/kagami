@@ -65,9 +65,6 @@ class OidcLocalStorageBrowserE2ETest extends BrowserE2ETestBase {
 		this.page.locator("a", new Page.LocatorOptions().setHasText("Login with Mock OIDC")).click();
 		// The mock provider redirects straight back with an authorization code
 		assertThat(this.page).hasURL("http://localhost:" + this.port + "/");
-		// Reload so that the /me state cached while unauthenticated is discarded
-		this.page.reload();
-		assertThat(this.page).hasURL("http://localhost:" + this.port + "/");
 	}
 
 	@Test

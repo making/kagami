@@ -39,8 +39,7 @@ import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertTha
  * storage backend is supplied by the subclass so that every backend runs the same
  * scenario.
  * <p>
- * The UI is built into {@code target/classes/META-INF/resources} by the
- * {@code frontend-maven-plugin} in the {@code compile} phase and Chromium is installed by
+ * The UI is server-rendered with Mustache templates and htmx. Chromium is installed by
  * the {@code exec-maven-plugin} in the {@code process-test-classes} phase, so a plain
  * {@code ./mvnw test} is enough. When running from an IDE, run
  * {@code ./mvnw process-test-classes} once beforehand.
@@ -143,9 +142,6 @@ public abstract class BrowserE2ETestBase {
 		this.page.fill("#password", "pass");
 		this.page.locator("form button[type=submit]").click();
 		assertThat(this.page).hasURL("http://localhost:" + this.port + "/");
-		// Reload so that the /me state cached while unauthenticated is discarded
-		this.page.reload();
-		assertThat(this.page).hasURL("http://localhost:" + this.port + "/");
 	}
 
 	@AfterEach
@@ -172,7 +168,7 @@ public abstract class BrowserE2ETestBase {
 		this.page.getByText("am", new Page.GetByTextOptions().setExact(true)).click();
 		assertThat(this.page).hasURL(baseUrl + "/browse/mock/am");
 		assertThat(this.page.getByText("ik", new Page.GetByTextOptions().setExact(true))).isVisible();
-		this.page.locator("nav button", new Page.LocatorOptions().setHasText("mock")).click();
+		this.page.locator("nav a", new Page.LocatorOptions().setHasText("mock")).click();
 		assertThat(this.page).hasURL(baseUrl + "/browse/mock");
 		assertThat(this.page.getByText("am", new Page.GetByTextOptions().setExact(true))).isVisible();
 
@@ -235,9 +231,8 @@ public abstract class BrowserE2ETestBase {
 		assertThat(this.page).hasURL(Pattern.compile("/login\\?logout$"));
 		assertThat(this.page.getByText("You have been successfully logged out.")).isVisible();
 		this.page.navigate("http://localhost:" + this.port + "/");
-		// Unauthenticated access keeps the SPA shell but the header no longer knows the
-		// user
-		assertThat(this.page.locator("header").getByText("Authentication required")).isVisible();
+		// Unauthenticated access is redirected back to the login page
+		assertThat(this.page).hasURL(Pattern.compile("/login$"));
 	}
 
 	@Test
@@ -254,7 +249,7 @@ public abstract class BrowserE2ETestBase {
 		assertThat(privateRow).containsText("Private");
 
 		// Stats on the hero section: two repositories configured
-		Locator stats = this.page.locator("section .grid > div").first();
+		Locator stats = this.page.locator("section .hero-stats > div").first();
 		assertThat(stats).containsText("2");
 		assertThat(stats).containsText("Repositories");
 

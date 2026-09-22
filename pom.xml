@@ -288,50 +288,36 @@
         </executions>
       </plugin>
       <plugin>
-        <groupId>com.github.eirslett</groupId>
-        <artifactId>frontend-maven-plugin</artifactId>
-        <version>2.0.2</version>
-        <configuration>
-          <installDirectory>target</installDirectory>
-          <nodeVersion>v22.15.0</nodeVersion>
-        </configuration>
+        <!-- Bundles the small client-side scripts (nav, clipboard, modal, tabs, token form)
+             into static/js/app.min.js. vendor/htmx.min.js is deliberately NOT bundled: htmx 4
+             is written with private class fields (#foo), which Closure Compiler cannot parse
+             at any optimization level. It ships as its own <script> tag from the layout. -->
+        <groupId>com.github.blutorange</groupId>
+        <artifactId>closure-compiler-maven-plugin</artifactId>
+        <version>3.0.1</version>
         <executions>
           <execution>
-            <id>install node and npm</id>
+            <id>minify-js</id>
+            <phase>generate-resources</phase>
             <goals>
-              <goal>install-node-and-npm</goal>
-            </goals>
-          </execution>
-          <execution>
-            <id>npm install ui</id>
-            <goals>
-              <goal>npm</goal>
+              <goal>minify</goal>
             </goals>
             <configuration>
-              <arguments>install</arguments>
-              <workingDirectory>${project.basedir}/ui</workingDirectory>
-            </configuration>
-          </execution>
-          <execution>
-            <id>npm run lint ui</id>
-            <goals>
-              <goal>npm</goal>
-            </goals>
-            <phase>test</phase>
-            <configuration>
-              <arguments>run lint</arguments>
-              <workingDirectory>${project.basedir}/ui</workingDirectory>
-            </configuration>
-          </execution>
-          <execution>
-            <id>npm run build ui</id>
-            <goals>
-              <goal>npm</goal>
-            </goals>
-            <phase>compile</phase>
-            <configuration>
-              <arguments>run build</arguments>
-              <workingDirectory>${project.basedir}/ui</workingDirectory>
+              <baseSourceDir>${basedir}/src/main/resources</baseSourceDir>
+              <baseTargetDir>${project.build.outputDirectory}</baseTargetDir>
+              <sourceDir>static/js</sourceDir>
+              <targetDir>static/js</targetDir>
+              <outputFilename>app.min.js</outputFilename>
+              <includes>
+                <include>nav.js</include>
+                <include>clipboard.js</include>
+                <include>modal.js</include>
+                <include>tabs.js</include>
+                <include>token-form.js</include>
+              </includes>
+              <closureCompilationLevel>SIMPLE_OPTIMIZATIONS</closureCompilationLevel>
+              <closureLanguageIn>ECMASCRIPT_NEXT</closureLanguageIn>
+              <closureLanguageOut>NO_TRANSPILE</closureLanguageOut>
             </configuration>
           </execution>
         </executions>

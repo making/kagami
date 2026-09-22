@@ -99,7 +99,10 @@ public class ArtifactController {
 		try {
 			boolean deleted = this.storageService.delete(new ArtifactLocation(repositoryId, artifactPath));
 			if (deleted) {
-				return ResponseEntity.noContent().build();
+				// 204 is a "no swap" status for htmx, but its headers are still
+				// processed:
+				// the listing listens for this event and refreshes itself.
+				return ResponseEntity.noContent().header("HX-Trigger", "refreshEntries").build();
 			}
 			else {
 				return ResponseEntity.notFound().build();

@@ -1,0 +1,17 @@
+{{>layouts/head}}
+<div class="page">
+  <section class="hero">
+    <div class="hero-label registry-label">Error / {{statusCode}}</div>
+    <h1 class="error-title">{{statusCode}}<br><span class="hero-title-gradient">{{statusText}}</span></h1>
+    <p class="hero-sub">{{message}}{{^message}}The server could not process your request.{{/message}}</p>
+    <div class="hero-watermark" aria-hidden="true">鏡</div>
+    {{#hasPath}}
+    <p class="hero-sub">Request path: <code>{{path}}</code></p>
+    {{/hasPath}}
+  </section>
+  <div class="page-actions page-actions-center">
+    <a href="/" class="button button-secondary">Back to Repositories</a>
+  </div>
+  {{>layouts/footer}}
+</div>
+{{>layouts/tail}}

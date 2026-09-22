@@ -1,0 +1,59 @@
+<div class="browser-panel" id="entry-list"
+     hx-get="{{entriesUrl}}" hx-trigger="refreshEntries from:body" hx-swap="outerHTML">
+  {{#hasParent}}
+  <a class="parent-row registry-row-hover" href="{{parentHref}}">
+    <div class="entry-type"><span class="type-label type-label-directory">dir</span></div>
+    <div>../ Parent directory</div>
+  </a>
+  {{/hasParent}}
+  {{^hasEntries}}
+  {{#hasError}}
+  <div class="alert" style="border-top: none;">{{error}}</div>
+  {{/hasError}}
+  {{^hasError}}
+  <div class="empty-message">This directory is empty.</div>
+  {{/hasError}}
+  {{/hasEntries}}
+  {{#hasEntries}}
+  {{#entries}}
+  {{#isDirectory}}
+  <a class="entry-row group registry-row-hover registry-rise" href="{{href}}">
+    <div class="entry-type"><span class="type-label type-label-directory">{{typeLabel}}</span></div>
+    <div class="entry-name"><div>{{name}}</div></div>
+    <div class="entry-meta">
+      <span class="entry-size"></span>
+      <span class="entry-updated"></span>
+      <div class="action-buttons">
+        <button type="button" class="registry-label button-small button-small-danger"
+                hx-delete="{{deletePath}}" hx-swap="none"
+                hx-confirm="{{confirmMessage}}">Del</button>
+      </div>
+    </div>
+  </a>
+  {{/isDirectory}}
+  {{#isFile}}
+  <div class="entry-row group registry-row-hover registry-rise">
+    <div class="entry-type"><span class="type-label type-label-file">{{typeLabel}}</span></div>
+    <div class="entry-name"><div>{{name}}</div></div>
+    <div class="entry-meta">
+      {{#hasSize}}<span class="entry-size">{{size}}</span>{{/hasSize}}
+      {{^hasSize}}<span class="entry-size"></span>{{/hasSize}}
+      {{#hasUpdated}}<span class="entry-updated">{{updated}}</span>{{/hasUpdated}}
+      {{^hasUpdated}}<span class="entry-updated"></span>{{/hasUpdated}}
+      <div class="action-buttons">
+        {{#isFile}}
+        <button type="button" class="registry-label button-small"
+                hx-get="{{infoPath}}"
+                hx-target="body" hx-swap="beforeend">Info</button>
+        <a class="registry-label button-small" role="button" href="{{downloadPath}}" target="_blank">Get</a>
+        {{/isFile}}
+        <button type="button" class="registry-label button-small button-small-danger"
+                hx-delete="{{deletePath}}" hx-swap="none"
+                hx-confirm="{{confirmMessage}}">Del</button>
+      </div>
+    </div>
+  </div>
+  {{/isFile}}
+  {{/entries}}
+  {{/hasEntries}}
+</div>

@@ -1,0 +1,16 @@
+<div class="info-block" id="{{panesId}}" data-panes-container>
+  {{#configs}}
+  {{#active}}
+  <div class="tab-pane active" data-pane-id="{{paneId}}">
+    {{>fragments/config-pane}}
+  </div>
+  {{/active}}
+  {{^active}}
+  <template data-pane-id="{{paneId}}">
+    <div class="tab-pane" data-pane-id="{{paneId}}">
+      {{>fragments/config-pane}}
+    </div>
+  </template>
+  {{/active}}
+  {{/configs}}
+</div>

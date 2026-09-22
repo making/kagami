@@ -1,0 +1,11 @@
+<div class="tab-list" role="tablist">
+  <button type="button" class="tab active" data-panes="{{panesId}}" data-pane-dimension="tool" data-pane-pattern="maven-*">Maven</button>
+  <button type="button" class="tab" data-panes="{{panesId}}" data-pane-dimension="tool" data-pane-pattern="gradlegroovy-*">Gradle (Groovy)</button>
+  <button type="button" class="tab" data-panes="{{panesId}}" data-pane-dimension="tool" data-pane-pattern="gradlekotlin-*">Gradle (Kotlin)</button>
+</div>
+{{#hasAuthTabs}}
+<div class="tab-list" role="tablist">
+  <button type="button" class="tab active" data-panes="{{panesId}}" data-pane-dimension="auth" data-pane-pattern="*-basic">Username / Password</button>
+  <button type="button" class="tab" data-panes="{{panesId}}" data-pane-dimension="auth" data-pane-pattern="*-bearer">Bearer Token</button>
+</div>
+{{/hasAuthTabs}}

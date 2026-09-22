@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}} - Kagami 🪞 Repository Browser</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/fonts/fonts.css">
+  <link rel="stylesheet" href="{{#src}}/css/app.css{{/src}}">
+  <script src="{{#src}}/js/vendor/htmx.min.js{{/src}}"></script>
+  <script src="{{#src}}/js/app.min.js{{/src}}"></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="header-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark">鏡</span>
+      <span class="brand-name">Kagami</span>
+    </a>
+    <nav class="header-nav">
+      <a href="/" class="nav-link nav-link-hidden registry-label">Repositories</a>
+      <a href="/token" class="nav-link nav-link-accent registry-label">Generate Token</a>
+      <span class="nav-user">{{userName}}</span>
+      <a href="/logout" class="nav-link registry-label">Logout</a>
+    </nav>
+  </div>
+</header>

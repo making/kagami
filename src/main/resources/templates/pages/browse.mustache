@@ -1,0 +1,19 @@
+{{>layouts/head}}
+<div class="page">
+  <div class="section-line registry-label">
+    <a href="/" class="registry-label">&larr; Repositories</a>
+    <span>/ Browse</span>
+  </div>
+
+  <div class="breadcrumb-bar">
+    <nav class="breadcrumb">
+      <span>&gt;</span>
+      {{#breadcrumbs}}{{^first}}<span class="breadcrumb-separator">/</span>{{/first}}{{#current}}<span class="breadcrumb-current">{{name}}</span>{{/current}}{{^current}}<a href="{{href}}">{{name}}</a>{{/current}}{{/breadcrumbs}}
+    </nav>
+  </div>
+
+  {{>fragments/entry-list}}
+
+  {{>layouts/footer}}
+</div>
+{{>layouts/tail}}

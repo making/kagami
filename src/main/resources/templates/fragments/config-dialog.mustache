@@ -1,0 +1,47 @@
+<div class="modal-overlay fixed">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 class="registry-label modal-title modal-title-lg">{{title}}</h2>
+      <button type="button" class="modal-close" data-modal-close aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      {{>fragments/config-tabs}}
+
+      <div class="info-block">
+        <div class="registry-label info-block-head">Repository Information</div>
+        <div class="info-block-body">
+          <div><span class="registry-label">ID</span> {{repositoryId}}</div>
+          <div class="info-value"><span class="registry-label">URL</span> {{artifactUrl}}</div>
+          <div class="info-value"><span class="registry-label">Origin</span> {{originUrl}}</div>
+        </div>
+      </div>
+
+      {{>fragments/config-panes}}
+
+      {{#isPrivate}}
+      <div class="notice notice-magenta">
+        <h4 class="registry-label notice-title">Authentication Required</h4>
+        <p>This is a private repository that requires JWT token authentication.</p>
+        <p style="font-weight: 600;">To generate a JWT token:</p>
+        <ol>
+          <li>Go to the <a href="/token" style="color: var(--accent);">Generate Token</a> page</li>
+          <li>Select this repository ({{repositoryId}})</li>
+          <li>Choose your required permissions (artifacts:read for downloads)</li>
+          <li>Set token expiration (recommended: 6 months or less)</li>
+          <li>Generate the token and replace <code style="background: var(--wash); color: var(--accent); padding: 0 0.25rem;">YOUR_JWT_TOKEN_HERE</code> in the configuration above</li>
+        </ol>
+      </div>
+      {{/isPrivate}}
+
+      <div class="notice">
+        <h4 class="registry-label notice-title">Usage Notes</h4>
+        <ul>
+          <li>&mdash; This Kagami server caches artifacts from the original repository</li>
+          <li>&mdash; Artifacts are fetched on-demand and cached locally for faster subsequent access</li>
+          <li>&mdash; You can use this as a primary repository or as a mirror for faster downloads</li>
+          <li>&mdash; JWT tokens cannot be revoked - use appropriate expiration times for security</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,68 @@
+<div class="modal-overlay fixed">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2 class="registry-label modal-title">{{title}}</h2>
+      <button type="button" class="modal-close" data-modal-close>✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-grid">
+        <div>
+          <div class="registry-label info-label">File Name</div>
+          <div class="info-value">{{name}}</div>
+        </div>
+        <div>
+          <div class="registry-label info-label">Content Type</div>
+          <div class="info-value">{{contentType}}</div>
+        </div>
+        <div>
+          <div class="registry-label info-label">File Size</div>
+          <div class="info-value">{{size}}</div>
+        </div>
+        <div>
+          <div class="registry-label info-label">Last Modified</div>
+          <div class="info-value">{{lastModified}}</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="registry-label info-label">Path</div>
+        <div class="copy-field">
+          <div class="copy-field-value">{{path}}</div>
+          <button type="button" class="copy-field-button" data-copy="{{path}}" aria-label="Copy path">
+            <span data-copy-label><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></span>
+          </button>
+        </div>
+      </div>
+
+      {{#hasSha1}}
+      <div>
+        <h3 class="registry-label" style="font-weight: 600; margin-bottom: 0.75rem;">Checksums</h3>
+        <div class="registry-label info-label">SHA-1</div>
+        <div class="copy-field">
+          <div class="copy-field-value">{{sha1}}</div>
+          <button type="button" class="copy-field-button" data-copy="{{sha1}}" aria-label="Copy SHA-1">
+            <span data-copy-label><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></span>
+          </button>
+        </div>
+      </div>
+      {{/hasSha1}}
+
+      {{#hasSha256}}
+      <div>
+        <div class="registry-label info-label">SHA-256</div>
+        <div class="copy-field">
+          <div class="copy-field-value">{{sha256}}</div>
+          <button type="button" class="copy-field-button" data-copy="{{sha256}}" aria-label="Copy SHA-256">
+            <span data-copy-label><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></span>
+          </button>
+        </div>
+      </div>
+      {{/hasSha256}}
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+        <button type="button" class="button-secondary button" data-modal-close>Close</button>
+        <a class="button" href="{{downloadPath}}" target="_blank"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Download</a>
+      </div>
+    </div>
+  </div>
+</div>

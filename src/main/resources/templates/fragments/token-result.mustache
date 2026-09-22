@@ -1,0 +1,32 @@
+<div class="panel" id="token-flow">
+  <div class="page-head">
+    <div class="page-head-title">
+      <span class="page-head-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 2-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></span>
+      <h3 style="font-size: 1.25rem;">Token Generated</h3>
+    </div>
+    <p class="page-head-sub">Copy this token and store it securely. You won't be able to see it again.</p>
+  </div>
+
+  <div class="result-section">
+    <div class="copy-button-row">
+      <span class="registry-label" style="color: var(--ink-3);">JWT Token</span>
+      <button type="button" class="registry-label copy-button" data-copy="{{token}}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        <span data-copy-label>Copy</span>
+      </button>
+    </div>
+    <div class="token-block select-all">{{token}}</div>
+  </div>
+
+  <div class="section-head">
+    <h3 class="registry-label font-semibold"><span style="color: var(--accent); margin-right: 0.75rem;">&gt;</span> Build Tool Configuration</h3>
+    <p>Use these configurations in your build tools to access the selected repositories with the generated token</p>
+  </div>
+  {{>fragments/config-tabs}}
+  {{>fragments/config-panes}}
+
+  <div class="page-actions page-actions-center" style="border-top: 2px solid var(--ink);">
+    <button type="button" class="button-secondary button"
+            hx-get="/app/token/form" hx-target="#token-flow" hx-swap="outerHTML">Generate Another Token</button>
+  </div>
+</div>

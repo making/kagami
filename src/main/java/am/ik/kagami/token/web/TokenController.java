@@ -1,16 +1,11 @@
 package am.ik.kagami.token.web;
 
-import am.ik.kagami.token.KagamiJwtClaims;
-import am.ik.kagami.token.TokenSigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import java.time.Instant;
-import java.time.InstantSource;
-import java.time.temporal.ChronoUnit;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
+
+import am.ik.kagami.token.TokenIssuer;
+import am.ik.kagami.token.TokenIssuer.TokenRequest;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,13 +14,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RestController
 public class TokenController {
 
-	private final TokenSigner tokenSigner;
+	private final TokenIssuer tokenIssuer;
 
-	private final InstantSource instantSource;
-
-	public TokenController(TokenSigner tokenSigner, InstantSource instantSource) {
-		this.tokenSigner = tokenSigner;
-		this.instantSource = instantSource;
+	public TokenController(TokenIssuer tokenIssuer) {
+		this.tokenIssuer = tokenIssuer;
 	}
 
 	@PostMapping(path = "/token")
@@ -34,17 +26,13 @@ public class TokenController {
 			@RequestParam(defaultValue = "") Set<String> scope, Authentication authentication,
 			UriComponentsBuilder builder) {
 		String issuer = builder.path("").build().toString();
-		Instant issueAt = this.instantSource.instant();
-		Instant expiresAt = issueAt.plus(expiresIn, ChronoUnit.HOURS);
-		JWTClaimsSet claimsSet = new JWTClaimsSet.Builder().expirationTime(Date.from(expiresAt))
-			.subject(authentication.getName())
+		return this.tokenIssuer.issue(TokenRequest.builder()
 			.issuer(issuer)
-			.audience("kagami")
-			.issueTime(Date.from(issueAt))
-			.claim(OAuth2ParameterNames.SCOPE, scope)
-			.claim(KagamiJwtClaims.REPOSITORIES, repositories)
-			.build();
-		return this.tokenSigner.sign(claimsSet).serialize();
+			.expiresIn(expiresIn)
+			.repositories(repositories)
+			.scope(scope)
+			.userName(authentication.getName())
+			.build());
 	}
 
 }

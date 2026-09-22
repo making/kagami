@@ -1,0 +1,67 @@
+{{>layouts/head}}
+<div class="page">
+  <section class="hero">
+    <div class="hero-label registry-label">01 / Mirror Index</div>
+    <h1 class="hero-title">Maven<br><span class="hero-title-outline">Mirror</span> <span class="hero-title-gradient">Registry</span></h1>
+    <p class="hero-sub">Browse, inspect and manage every artifact mirrored by this Kagami instance &mdash; reflected from upstream, served from here.</p>
+    <div class="hero-watermark" aria-hidden="true">鏡</div>
+    <div class="hero-stats">
+      <div>
+        <div class="stat-value">{{repoCount}}</div>
+        <div class="registry-label stat-label">Repositories</div>
+      </div>
+      <div>
+        <div class="stat-value">{{totalArtifacts}}</div>
+        <div class="registry-label stat-label">Artifacts</div>
+      </div>
+      <div>
+        <div class="stat-value">{{totalSize}}</div>
+        <div class="registry-label stat-label">Mirrored</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2 class="registry-label panel-head-label">Repositories</h2>
+      <span class="registry-label panel-head-meta">{{repoCount}} entries / select to browse</span>
+    </div>
+    <table class="registry-table">
+      <thead>
+        <tr>
+          <th class="registry-label text-left">Repository</th>
+          <th class="registry-label">Artifacts</th>
+          <th class="registry-label">Size</th>
+          <th class="registry-label">Updated</th>
+          <th></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#repositories}}
+        <tr class="group registry-row-hover registry-rise" data-navigate="/browse/{{id}}">
+          <td>
+            <div class="row-title">{{id}}{{#isPrivate}}<span class="registry-label badge-private">Private</span>{{/isPrivate}}</div>
+            <div class="row-url">{{url}}</div>
+          </td>
+          <td class="text-right"><span class="row-value">{{artifactCount}}</span></td>
+          <td class="text-right"><span class="row-value">{{totalSize}}</span></td>
+          <td class="text-right">
+            {{#hasUpdated}}<span class="row-value">{{updated}}</span>{{/hasUpdated}}
+            {{^hasUpdated}}<span class="row-value row-value-muted">&mdash;</span>{{/hasUpdated}}
+          </td>
+          <td class="text-right">
+            <button type="button" class="registry-label button-small"
+                    hx-get="/fragments/repositories/{{id}}/config"
+                    hx-target="body" hx-swap="beforeend">Config</button>
+          </td>
+          <td class="row-arrow">&rarr;</td>
+        </tr>
+        {{/repositories}}
+      </tbody>
+    </table>
+  </div>
+
+  {{>layouts/footer}}
+</div>
+{{>layouts/tail}}
