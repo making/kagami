@@ -32,8 +32,15 @@ The web interface features:
 **Important**: All repository browsing endpoints require USER role authentication. These APIs are designed for web UI access only and are not intended for programmatic access. Users must be logged in through the web interface to access these endpoints.
 
 #### Artifact APIs (`/artifacts/**`)
-- Public repositories: No authentication required
-- Private repositories: JWT-based authentication using Bearer token in Authorization header: `Authorization: Bearer <jwt>`
+- Public repositories: No authentication required (GET and HEAD)
+- Private repositories: JWT-based authentication. The JWT can be sent either as a
+  Bearer token (`Authorization: Bearer <jwt>`) or as the password part of a Basic
+  auth header (`Authorization: Basic base64(<username>:<jwt>)`). The username is
+  ignored; the password is resolved as the bearer token. The Basic form exists so
+  Maven/Gradle clients configured with the standard `<username>`/`<password>`
+  server settings work out of the box.
+- GET requires the `artifacts:read` scope, DELETE requires the `artifacts:delete`
+  scope (authenticated web UI sessions with USER role are also accepted).
 
 JWT tokens must be generated through the authenticated web UI. See the [Token Management](#token-management) section for details.
 
@@ -227,6 +234,8 @@ GET /repositories/central/info?path=org/springframework/spring-core/5.3.21/sprin
 #### GET /artifacts/{repositoryId}/{artifactPath}
 
 Download an artifact from the repository. This endpoint serves the actual file content.
+If the artifact is not in local storage yet, it is fetched from the remote repository
+on demand. HEAD is also supported.
 
 **Parameters:**
 - `repositoryId` (path, required): Repository identifier
@@ -241,13 +250,15 @@ GET /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3.21
 - Binary content of the requested file
 - Appropriate `Content-Type` header based on file extension
 - `Content-Length` header with file size
-- `Last-Modified` header with file modification timestamp
+- `Cache-Control` header: `max-age=31536000, public` for public repositories,
+  `max-age=31536000, private` for private repositories
+- `Content-Disposition: attachment` header with the file name
 
 **Status Codes:**
-- `200 OK`: File found and returned (public repositories only)
-- `401 Unauthorized`: Authentication required (for private repository or if not logged in)
+- `200 OK`: File found and returned
+- `401 Unauthorized`: Authentication required (for private repository)
 - `403 Forbidden`: Token lacks required scope
-- `404 Not Found`: Repository or file not found
+- `404 Not Found`: Repository, file, or remote artifact not found
 - `500 Internal Server Error`: Server error
 
 ---
@@ -366,10 +377,14 @@ GET /me
 
 API endpoints return appropriate HTTP status codes. For client errors (4xx) and server errors (5xx), the response body may be empty or contain error details.
 
-For authentication errors (401), the response includes a `WWW-Authenticate` header:
+For authentication errors (401) on `/artifacts/**`, the response includes a `WWW-Authenticate` header:
 - `WWW-Authenticate: Bearer` - for missing authentication
 - `WWW-Authenticate: Bearer error="invalid_token", error_description="..."` - for invalid tokens
 - `WWW-Authenticate: Bearer error="insufficient_scope", error_description="..."` - for insufficient permissions
+- `WWW-Authenticate: Basic realm="Kagami"` - additionally added for non-browser clients
+  (browsers are excluded to avoid a native credential dialog)
+
+The generated JWT `scope` and `repositories` claims are serialized as JSON arrays.
 
 ## Examples
 

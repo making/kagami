@@ -11,7 +11,7 @@ public class MeController {
 
 	@GetMapping(path = "/me")
 	public Map<String, Object> me(Authentication authentication, CsrfToken csrfToken) {
-		return Map.of("name", authentication.getName(), "crsfToken", csrfToken.getToken());
+		return Map.of("name", authentication.getName(), "csrfToken", csrfToken.getToken());
 	}
 
 }
