@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.browser.BrowserService;
 import am.ik.kagami.browser.BrowserService.RepositoryInfo;
 import org.jspecify.annotations.Nullable;
@@ -20,12 +21,16 @@ public class HomeController {
 
 	private final BrowserService browserService;
 
-	public HomeController(BrowserService browserService) {
+	private final KagamiProperties properties;
+
+	public HomeController(BrowserService browserService, KagamiProperties properties) {
 		this.browserService = browserService;
+		this.properties = properties;
 	}
 
 	@GetMapping("/")
 	public String home(Authentication authentication, Model model) {
+		model.addAttribute("defaultJwtKey", this.properties.jwt().defaultKeys());
 		List<RepositoryInfo> repositories = this.browserService.getRepositories();
 		long totalArtifacts = repositories.stream().mapToLong(RepositoryInfo::artifactCount).sum();
 		long totalSize = repositories.stream().mapToLong(RepositoryInfo::totalSize).sum();

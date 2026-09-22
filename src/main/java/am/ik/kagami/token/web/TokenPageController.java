@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.browser.BrowserService;
 import am.ik.kagami.browser.web.BrowseController.ConfigItem;
 import am.ik.kagami.buildconfig.ConfigExamples;
@@ -34,15 +35,19 @@ public class TokenPageController {
 
 	private final TokenIssuer tokenIssuer;
 
-	public TokenPageController(BrowserService browserService, TokenIssuer tokenIssuer) {
+	private final KagamiProperties properties;
+
+	public TokenPageController(BrowserService browserService, TokenIssuer tokenIssuer, KagamiProperties properties) {
 		this.browserService = browserService;
 		this.tokenIssuer = tokenIssuer;
+		this.properties = properties;
 	}
 
 	@GetMapping("/token")
 	public String page(Authentication authentication, Model model) {
 		model.addAttribute("title", "Generate Access Token");
 		model.addAttribute("userName", authentication.getName());
+		model.addAttribute("defaultJwtKey", this.properties.jwt().defaultKeys());
 		addRepositoryModel(model);
 		model.addAttribute("error", null);
 		model.addAttribute("hasError", false);

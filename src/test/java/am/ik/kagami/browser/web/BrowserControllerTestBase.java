@@ -64,6 +64,18 @@ public abstract class BrowserControllerTestBase {
 	}
 
 	@Test
+	void homePageShowsDefaultKeyWarningWhenBuiltInPemIsUsed() throws Exception {
+		String body = bodyOf("/");
+		assertThat(body).contains("built-in default PEM key pair");
+	}
+
+	@Test
+	void tokenPageShowsDefaultKeyWarningWhenBuiltInPemIsUsed() throws Exception {
+		String body = bodyOf("/token");
+		assertThat(body).contains("built-in default PEM key pair");
+	}
+
+	@Test
 	void browsePageShowsEntries() throws Exception {
 		seed("org/springframework/test-file.jar", "dummy jar content");
 		String body = bodyOf("/browse/test-repo/org");

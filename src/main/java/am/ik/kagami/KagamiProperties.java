@@ -268,6 +268,19 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 	public static class Jwt {
 
+		/**
+		 * The private key bundled with Kagami. Tokens signed with it are not secure
+		 * because the key pair ships with the application.
+		 */
+		public static final String DEFAULT_PRIVATE_KEY = "classpath:kagami-private.pem";
+
+		/** The public key bundled with Kagami. */
+		public static final String DEFAULT_PUBLIC_KEY = "classpath:kagami-public.pem";
+
+		private final @Nullable String publicKeyLocation;
+
+		private final @Nullable String privateKeyLocation;
+
 		private final @Nullable RSAPublicKey publicKey;
 
 		private final @Nullable RSAPrivateKey privateKey;
@@ -276,8 +289,19 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 		private static final ResourceLoader resourceLoader = ApplicationResourceLoader.get();
 
 		public Jwt(@Nullable String publicKey, @Nullable String privateKey) {
+			this.publicKeyLocation = publicKey;
+			this.privateKeyLocation = privateKey;
 			this.publicKey = publicKey == null ? null : resourceToPublicKey(resourceLoader.getResource(publicKey));
 			this.privateKey = privateKey == null ? null : resourceToPrivateKey(resourceLoader.getResource(privateKey));
+		}
+
+		/**
+		 * Whether the built-in (bundled) PEM keys are in use. {@code true} when either
+		 * key location still points at the bundled key pair.
+		 */
+		public boolean defaultKeys() {
+			return DEFAULT_PUBLIC_KEY.equals(this.publicKeyLocation)
+					|| DEFAULT_PRIVATE_KEY.equals(this.privateKeyLocation);
 		}
 
 		public RSAPublicKey publicKey() {
