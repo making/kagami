@@ -18,6 +18,7 @@ import am.ik.kagami.token.TokenIssuer;
 import am.ik.kagami.token.TokenIssuer.TokenRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -81,6 +82,7 @@ public class TokenPageController {
 		Set<String> issuable = this.rbacService.issuableScopes(authentication);
 		model.addAttribute("canRead", issuable.contains(RbacBuiltins.READ_AUTHORITY));
 		model.addAttribute("canDelete", issuable.contains(RbacBuiltins.DELETE_AUTHORITY));
+		model.addAttribute("canAdmin", issuable.contains(RbacBuiltins.ADMIN_AUTHORITY));
 	}
 
 	/**
@@ -93,6 +95,16 @@ public class TokenPageController {
 			@RequestParam(name = "duration", defaultValue = "6") long duration,
 			@RequestParam(name = "unit", defaultValue = "months") String unit, Authentication authentication,
 			UriComponentsBuilder builder, Model model) {
+		if (authentication instanceof JwtAuthenticationToken) {
+			ModelAndView forbidden = new ModelAndView("pages/error");
+			forbidden.setStatus(HttpStatus.FORBIDDEN);
+			forbidden.addObject("title", "Forbidden");
+			forbidden.addObject("userName", authentication.getName());
+			forbidden.addObject("statusCode", HttpStatus.FORBIDDEN.value());
+			forbidden.addObject("statusText", HttpStatus.FORBIDDEN.getReasonPhrase());
+			forbidden.addObject("message", "JWTs cannot issue tokens");
+			return forbidden;
+		}
 		if (repositories.isEmpty() || scope.isEmpty()) {
 			return formWithError(model, "Please select at least one repository and one scope.");
 		}

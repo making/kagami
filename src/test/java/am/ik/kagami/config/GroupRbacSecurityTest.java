@@ -13,6 +13,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -93,7 +94,8 @@ class GroupRbacSecurityTest {
 	@WithMockUser(username = "test-user", authorities = { "artifacts:read" })
 	void tokenIssuanceBeyondTheCapIsForbidden() throws Exception {
 		this.mockMvc
-			.perform(post("/token").param("expires_in", "1")
+			.perform(post("/token").with(csrf())
+				.param("expires_in", "1")
 				.param("repositories", "secure")
 				.param("scope", "artifacts:read,artifacts:delete"))
 			.andExpect(status().isForbidden());
@@ -101,12 +103,45 @@ class GroupRbacSecurityTest {
 
 	@Test
 	@WithMockUser(username = "test-user", authorities = { "artifacts:read" })
-	void tokenIssuanceWithinTheCapIsAllowed() throws Exception {
+	void tokenIssuanceWithoutCsrfIsForbidden() throws Exception {
 		this.mockMvc
 			.perform(post("/token").param("expires_in", "1")
 				.param("repositories", "secure")
 				.param("scope", "artifacts:read"))
+			.andExpect(status().isForbidden());
+	}
+
+	@Test
+	@WithMockUser(username = "test-user", authorities = { "artifacts:read" })
+	void tokenIssuanceWithinTheCapIsAllowed() throws Exception {
+		this.mockMvc
+			.perform(post("/token").with(csrf())
+				.param("expires_in", "1")
+				.param("repositories", "secure")
+				.param("scope", "artifacts:read"))
 			.andExpect(status().isOk());
+	}
+
+	@Test
+	@WithMockUser(username = "test-user", authorities = { "artifacts:admin" })
+	void tokenIssuanceWithAdminAuthorityIsAllowed() throws Exception {
+		this.mockMvc
+			.perform(post("/token").with(csrf())
+				.param("expires_in", "1")
+				.param("repositories", "secure")
+				.param("scope", "artifacts:admin"))
+			.andExpect(status().isOk());
+	}
+
+	@Test
+	@WithMockUser(username = "test-user", authorities = { "artifacts:admin" })
+	void tokenPageOffersAdminAuthority() throws Exception {
+		String body = this.mockMvc.perform(get("/token"))
+			.andExpect(status().isOk())
+			.andReturn()
+			.getResponse()
+			.getContentAsString();
+		org.assertj.core.api.Assertions.assertThat(body).contains("artifacts:admin");
 	}
 
 	@Test

@@ -4,8 +4,10 @@ import am.ik.kagami.KagamiProperties;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
@@ -49,7 +51,7 @@ public class LocalStorageService implements StorageService {
 	@Override
 	public Optional<Resource> retrieve(ArtifactLocation location) {
 		Path targetPath = resolvePath(location.requireArtifactPath());
-		if (Files.isRegularFile(targetPath)) {
+		if (Files.isRegularFile(targetPath, LinkOption.NOFOLLOW_LINKS)) {
 			return Optional.of(new PathResource(targetPath));
 		}
 		return Optional.empty();
@@ -58,10 +60,10 @@ public class LocalStorageService implements StorageService {
 	@Override
 	public boolean delete(ArtifactLocation location) throws IOException {
 		Path targetPath = resolvePath(location.requireArtifactPath());
-		if (!Files.exists(targetPath)) {
+		if (!Files.exists(targetPath, LinkOption.NOFOLLOW_LINKS)) {
 			return false;
 		}
-		if (Files.isDirectory(targetPath)) {
+		if (Files.isDirectory(targetPath, LinkOption.NOFOLLOW_LINKS)) {
 			deleteRecursively(targetPath);
 		}
 		else {
@@ -71,13 +73,47 @@ public class LocalStorageService implements StorageService {
 	}
 
 	@Override
+	public boolean deleteFile(ArtifactLocation location) throws IOException {
+		Path targetPath = resolvePath(location.requireArtifactPath());
+		if (!Files.isRegularFile(targetPath, LinkOption.NOFOLLOW_LINKS)) {
+			return false;
+		}
+		try {
+			Files.delete(targetPath);
+			return true;
+		}
+		catch (NoSuchFileException e) {
+			return false;
+		}
+	}
+
+	@Override
+	public boolean deleteIfEmpty(ArtifactLocation location) throws IOException {
+		Path targetPath = resolvePath(location.requireArtifactPath());
+		if (!Files.isDirectory(targetPath, LinkOption.NOFOLLOW_LINKS)) {
+			return false;
+		}
+		try {
+			// Delete the directory entry itself, never its contents. A concurrent writer
+			// therefore turns this into a no-op instead of losing a newly cached
+			// artifact.
+			Files.delete(targetPath);
+			return true;
+		}
+		catch (DirectoryNotEmptyException | NoSuchFileException e) {
+			return false;
+		}
+	}
+
+	@Override
 	public List<StorageEntry> list(ArtifactLocation location) throws IOException {
 		Path targetPath = resolvePath(location);
-		if (!Files.isDirectory(targetPath)) {
+		if (!Files.isDirectory(targetPath, LinkOption.NOFOLLOW_LINKS)) {
 			return List.of();
 		}
 		try (Stream<Path> stream = Files.list(targetPath)) {
-			return stream.sorted(Comparator.comparing(path -> path.getFileName().toString()))
+			return stream.filter(path -> !Files.isSymbolicLink(path))
+				.sorted(Comparator.comparing(path -> path.getFileName().toString()))
 				.map(path -> toEntry(location.resolve(path.getFileName().toString()), path))
 				.toList();
 		}
@@ -89,7 +125,7 @@ public class LocalStorageService implements StorageService {
 	@Override
 	public Optional<StorageEntry> stat(ArtifactLocation location) throws IOException {
 		Path targetPath = resolvePath(location);
-		if (!Files.exists(targetPath)) {
+		if (!Files.exists(targetPath, LinkOption.NOFOLLOW_LINKS) || Files.isSymbolicLink(targetPath)) {
 			return Optional.empty();
 		}
 		return Optional.of(toEntry(location, targetPath));
@@ -98,7 +134,7 @@ public class LocalStorageService implements StorageService {
 	@Override
 	public StorageStats stats(String repositoryId) throws IOException {
 		Path repositoryPath = resolvePath(ArtifactLocation.root(repositoryId));
-		if (!Files.isDirectory(repositoryPath)) {
+		if (!Files.isDirectory(repositoryPath, LinkOption.NOFOLLOW_LINKS)) {
 			return StorageStats.EMPTY;
 		}
 		StorageStats.Builder builder = StorageStats.builder();
@@ -139,7 +175,7 @@ public class LocalStorageService implements StorageService {
 
 	private static BasicFileAttributes readAttributes(Path path) {
 		try {
-			return Files.readAttributes(path, BasicFileAttributes.class);
+			return Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
 		}
 		catch (IOException e) {
 			throw new UncheckedIOException(e);

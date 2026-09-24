@@ -40,6 +40,29 @@ public interface StorageService {
 	boolean delete(ArtifactLocation location) throws IOException;
 
 	/**
+	 * Delete exactly one regular file or object, never a directory or any descendants.
+	 * @param location the file location; the repository root is not allowed
+	 * @return true if the file was deleted, false if it is missing or is not a regular
+	 * file
+	 * @throws IOException if an I/O error occurs during deletion
+	 */
+	boolean deleteFile(ArtifactLocation location) throws IOException;
+
+	/**
+	 * Delete a directory only when it is empty. Unlike {@link #delete(ArtifactLocation)},
+	 * this operation must not remove descendants that appear concurrently.
+	 * @param location the directory location; the repository root is not allowed
+	 * @return true if an empty directory was removed, false if the location is missing,
+	 * not a directory, or is no longer empty
+	 * @throws IOException if an I/O error occurs during deletion
+	 */
+	default boolean deleteIfEmpty(ArtifactLocation location) throws IOException {
+		location.requireArtifactPath();
+		// A backend without explicit directory entries has nothing to remove here.
+		return false;
+	}
+
+	/**
 	 * List the direct children of a directory, files and sub-directories alike.
 	 * @param location the directory location; the repository root is allowed
 	 * @return the children sorted by name, or an empty list if the location does not

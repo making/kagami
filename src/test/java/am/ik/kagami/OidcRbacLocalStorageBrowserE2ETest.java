@@ -53,9 +53,10 @@ class OidcRbacLocalStorageBrowserE2ETest extends OidcLocalStorageBrowserE2ETest 
 			.getByRole(AriaRole.BUTTON, new com.microsoft.playwright.Page.GetByRoleOptions().setName("Del"))
 			.first()).isVisible();
 
-		// The token form offers both scopes
+		// The token form offers all administrator scopes
 		this.page.navigate(baseUrl + "/token");
 		assertThat(this.page.getByText("Delete Artifacts")).isVisible();
+		assertThat(this.page.getByText("Administer Cache")).isVisible();
 		assertThat(this.page.getByText("Read Artifacts")).isVisible();
 	}
 
@@ -78,6 +79,7 @@ class OidcRbacLocalStorageBrowserE2ETest extends OidcLocalStorageBrowserE2ETest 
 		this.page.navigate(baseUrl + "/token");
 		assertThat(this.page.getByText("Read Artifacts")).not().isVisible();
 		assertThat(this.page.getByText("Delete Artifacts")).not().isVisible();
+		assertThat(this.page.getByText("Administer Cache")).not().isVisible();
 	}
 
 }

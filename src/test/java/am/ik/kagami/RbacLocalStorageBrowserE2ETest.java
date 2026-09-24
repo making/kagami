@@ -43,9 +43,10 @@ class RbacLocalStorageBrowserE2ETest extends BrowserE2ETestBase {
 		this.page.navigate(baseUrl + "/browse/mock/am/ik/kagami/kagami/0.0.1");
 		assertThat(this.page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Del"))).hasCount(0);
 
-		// The token form hides the delete scope but keeps the read scope
+		// The token form hides privileged scopes but keeps the read scope
 		this.page.navigate(baseUrl + "/token");
 		assertThat(this.page.locator("label", new Page.LocatorOptions().setHasText("Delete Artifacts"))).hasCount(0);
+		assertThat(this.page.locator("label", new Page.LocatorOptions().setHasText("Administer Cache"))).hasCount(0);
 		Locator repositoryCheckbox = this.page.locator("label", new Page.LocatorOptions().setHasText("mock"))
 			.locator("input[type=checkbox]");
 		repositoryCheckbox.check();

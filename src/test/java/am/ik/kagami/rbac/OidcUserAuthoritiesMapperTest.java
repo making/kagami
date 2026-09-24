@@ -72,7 +72,7 @@ class OidcUserAuthoritiesMapperTest {
 			.stream()
 			.map(org.springframework.security.core.GrantedAuthority::getAuthority)
 			.toList();
-		assertThat(authorities).containsExactlyInAnyOrder("artifacts:read", "artifacts:delete");
+		assertThat(authorities).containsExactlyInAnyOrder("artifacts:read", "artifacts:delete", "artifacts:admin");
 	}
 
 	@Test

@@ -42,7 +42,7 @@ class RbacServiceTest {
 	@Test
 	void unmappedUserFallsIntoDefaultGroup() {
 		RbacService service = new RbacService(properties(
-				new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(), mappings(Map.of(), Map.of()))));
+				new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(), mappings(Map.of(), Map.of()))));
 		assertThat(authorityNames(service.authoritiesFor("nobody", List.of())))
 			.containsExactlyInAnyOrder("artifacts:read", "artifacts:delete");
 	}
@@ -53,7 +53,7 @@ class RbacServiceTest {
 				Map.of("demo", List.of(RbacBuiltins.ADMINISTRATORS_GROUP, RbacBuiltins.VIEWERS_GROUP)), Map.of()));
 		RbacService service = new RbacService(properties(rbac));
 		assertThat(authorityNames(service.authoritiesFor("demo", List.of())))
-			.containsExactlyInAnyOrder("artifacts:read", "artifacts:delete");
+			.containsExactlyInAnyOrder("artifacts:read", "artifacts:delete", "artifacts:admin");
 	}
 
 	@Test
@@ -78,7 +78,7 @@ class RbacServiceTest {
 				Map.of("user@example.com", List.of("viewers")), Map.of("my-team-admins", List.of("administrators"))));
 		RbacService service = new RbacService(properties(rbac));
 		assertThat(authorityNames(service.authoritiesFor("user@example.com", List.of("my-team-admins", "unknown"))))
-			.containsExactlyInAnyOrder("artifacts:read", "artifacts:delete");
+			.containsExactlyInAnyOrder("artifacts:read", "artifacts:delete", "artifacts:admin");
 	}
 
 	@Test
@@ -120,7 +120,7 @@ class RbacServiceTest {
 
 	@Test
 	void validationAcceptsBuiltInConfiguration() {
-		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
+		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(),
 				mappings(Map.of(), Map.of()));
 		new RbacService(properties(rbac)).afterPropertiesSet();
 	}
@@ -128,7 +128,7 @@ class RbacServiceTest {
 	@Test
 	void issuableScopesComeFromPrincipalAuthorities() {
 		RbacService service = new RbacService(properties(
-				new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(), mappings(Map.of(), Map.of()))));
+				new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(), mappings(Map.of(), Map.of()))));
 		var authentication = org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 			.authenticated("demo", null,
 					List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("artifacts:read")));

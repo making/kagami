@@ -16,22 +16,28 @@ public final class RbacBuiltins {
 	/** The authority to remove artifacts. */
 	public static final String DELETE_AUTHORITY = "artifacts:delete";
 
+	/** The authority to run repository cache maintenance operations. */
+	public static final String ADMIN_AUTHORITY = "artifacts:admin";
+
 	/** The authority vocabulary available to group definitions. */
-	public static final List<String> ALLOWED_AUTHORITIES = List.of(READ_AUTHORITY, DELETE_AUTHORITY);
+	public static final List<String> ALLOWED_AUTHORITIES = List.of(READ_AUTHORITY, DELETE_AUTHORITY, ADMIN_AUTHORITY);
 
 	/** The built-in group granting every authority. */
 	public static final String ADMINISTRATORS_GROUP = "administrators";
 
-	/** The built-in group granting every authority, kept as a separately named entry. */
+	/** The built-in group granting read and delete authorities. */
 	public static final String EDITORS_GROUP = "editors";
 
 	/** The built-in group granting read-only authorities. */
 	public static final String VIEWERS_GROUP = "viewers";
 
+	/** The group applied when no user or IdP group mapping matches. */
+	public static final String DEFAULT_GROUP = EDITORS_GROUP;
+
 	/** The groups that exist even when nothing is configured. */
 	public static final Map<String, List<String>> BUILT_IN_GROUPS = Map.of(ADMINISTRATORS_GROUP,
-			List.of(READ_AUTHORITY, DELETE_AUTHORITY), EDITORS_GROUP, List.of(READ_AUTHORITY, DELETE_AUTHORITY),
-			VIEWERS_GROUP, List.of(READ_AUTHORITY));
+			List.of(READ_AUTHORITY, DELETE_AUTHORITY, ADMIN_AUTHORITY), EDITORS_GROUP,
+			List.of(READ_AUTHORITY, DELETE_AUTHORITY), VIEWERS_GROUP, List.of(READ_AUTHORITY));
 
 	private RbacBuiltins() {
 	}

@@ -23,7 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
 		properties = { "kagami.repositories.mock.is-private=true", "spring.security.user.name=test",
-				"spring.security.user.password={noop}pass", "spring.http.clients.redirects=dont_follow" })
+				"spring.security.user.password={noop}pass", "kagami.rbac.mappings.users.test=administrators",
+				"spring.http.clients.redirects=dont_follow" })
 @Import(MockConfig.class)
 public abstract class KagamiIntegrationTestBase {
 
@@ -83,10 +84,21 @@ public abstract class KagamiIntegrationTestBase {
 		assertThat(loginResponse.getStatusCode()).isEqualTo(HttpStatus.FOUND);
 		assertThat(loginResponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE)).isNotNull();
 		cookie = loginResponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE).split(";")[0];
+		ResponseEntity<String> tokenPageResponse = this.restClient.get()
+			.uri("/token")
+			.header(HttpHeaders.COOKIE, cookie)
+			.retrieve()
+			.toEntity(String.class);
+		assertThat(tokenPageResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(tokenPageResponse.getBody()).isNotNull();
+		Matcher tokenPageCsrfMatcher = pattern.matcher(tokenPageResponse.getBody());
+		assertThat(tokenPageCsrfMatcher.find()).isTrue();
+		csrfToken = tokenPageCsrfMatcher.group(1);
 		ResponseEntity<String> tokenResponse = this.restClient.post()
 			.uri("/token")
 			.contentType(MediaType.APPLICATION_FORM_URLENCODED)
-			.body("repositories=" + String.join(",", repositories) + "&scope=" + String.join(",", scope))
+			.body("repositories=" + String.join(",", repositories) + "&scope=" + String.join(",", scope) + "&_csrf="
+					+ csrfToken)
 			.header(HttpHeaders.COOKIE, cookie)
 			.retrieve()
 			.toEntity(String.class);
@@ -216,6 +228,41 @@ public abstract class KagamiIntegrationTestBase {
 			assertThat(values.getFirst())
 				.contains("The request requires higher privileges than provided by the access token.");
 		});
+	}
+
+	@Test
+	void adminGarbageCollectionApiShouldAcceptAdminToken() {
+		String token = issueToken(List.of("mock"), List.of("artifacts:admin"));
+		ResponseEntity<String> response = this.restClient.get()
+			.uri("/artifacts/mock/gc")
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
+			.retrieve()
+			.toEntity(String.class);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	@Test
+	void adminTokenCanRunGarbageCollectionWithoutCsrf() {
+		String token = issueToken(List.of("mock"), List.of("artifacts:admin"));
+		ResponseEntity<String> response = this.restClient.post()
+			.uri("/artifacts/mock/gc")
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
+			.retrieve()
+			.toEntity(String.class);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	@Test
+	void adminTokenCannotMintAnotherToken() {
+		String token = issueToken(List.of("mock"), List.of("artifacts:admin"));
+		ResponseEntity<String> response = this.restClient.post()
+			.uri("/token")
+			.contentType(MediaType.APPLICATION_FORM_URLENCODED)
+			.body("repositories=mock&scope=artifacts:admin")
+			.headers(httpHeaders -> httpHeaders.setBearerAuth(Objects.requireNonNull(token)))
+			.retrieve()
+			.toEntity(String.class);
+		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
 	}
 
 	@Test

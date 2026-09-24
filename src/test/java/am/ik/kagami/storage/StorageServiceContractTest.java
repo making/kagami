@@ -1,9 +1,15 @@
 package am.ik.kagami.storage;
 
+import am.ik.kagami.repository.RepositoryGarbageCollector;
+import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageCollectionResult;
+import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageDirectory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.InstantSource;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -64,6 +70,8 @@ public abstract class StorageServiceContractTest {
 		assertThatIllegalArgumentException()
 			.isThrownBy(() -> storage.store(root, new ByteArrayInputStream(new byte[0])));
 		assertThatIllegalArgumentException().isThrownBy(() -> storage.retrieve(root));
+		assertThatIllegalArgumentException().isThrownBy(() -> storage.deleteIfEmpty(root));
+		assertThatIllegalArgumentException().isThrownBy(() -> storage.deleteFile(root));
 	}
 
 	@Test
@@ -190,6 +198,87 @@ public abstract class StorageServiceContractTest {
 		StorageService storage = storageService();
 		assertThat(storage.delete(location("org/missing.jar"))).isFalse();
 		assertThat(storage.delete(location("org/missing"))).isFalse();
+	}
+
+	@Test
+	void deleteFileDeletesOnlyAFile() throws IOException {
+		StorageService storage = storageService();
+		ArtifactLocation file = location("org/example/file.txt");
+		store(storage, file, "content");
+
+		assertThat(storage.deleteFile(file)).isTrue();
+		assertThat(storage.retrieve(file)).isEmpty();
+		assertThat(storage.deleteFile(file)).isFalse();
+	}
+
+	@Test
+	void deleteFileDoesNotDeleteDirectoryDescendants() throws IOException {
+		StorageService storage = storageService();
+		ArtifactLocation child = location("org/example/child.txt");
+		store(storage, child, "content");
+
+		assertThat(storage.deleteFile(location("org/example"))).isFalse();
+		assertThat(storage.retrieve(child)).isPresent();
+	}
+
+	@Test
+	void deleteIfEmptyDoesNotDeleteANonEmptyDirectory() throws IOException {
+		StorageService storage = storageService();
+		ArtifactLocation file = location("org/example/keep.txt");
+		store(storage, file, "content");
+
+		assertThat(storage.deleteIfEmpty(location("org/example"))).isFalse();
+		assertThat(storage.retrieve(file)).isPresent();
+	}
+
+	@Test
+	void garbageCollectorRemovesOnlyOldMetadataOnlyDirectories() throws IOException {
+		StorageService storage = storageService();
+		String candidatePath = "org/old/missing";
+		store(storage, location(candidatePath + "/maven-metadata.xml"), "metadata");
+		store(storage, location(candidatePath + "/maven-metadata.xml.sha1"), "checksum");
+		store(storage, location("org/partial/maven-metadata.xml"), "metadata");
+		store(storage, location("org/extra/maven-metadata.xml"), "metadata");
+		store(storage, location("org/extra/maven-metadata.xml.sha1"), "checksum");
+		store(storage, location("org/extra/keep.txt"), "keep");
+		store(storage, location("org/nested/maven-metadata.xml"), "metadata");
+		store(storage, location("org/nested/maven-metadata.xml.sha1"), "checksum");
+		store(storage, location("org/nested/child/keep.txt"), "keep");
+		store(storage, location("org/valid/maven-metadata.xml"), "metadata");
+		store(storage, location("org/valid/maven-metadata.xml.sha1"), "checksum");
+		store(storage, location("org/valid/artifact.jar"), "artifact");
+		InstantSource future = InstantSource.fixed(Instant.now().plus(Duration.ofHours(2)));
+		RepositoryGarbageCollector collector = new RepositoryGarbageCollector(storage, future);
+
+		List<GarbageDirectory> candidates = collector.findCandidates(REPOSITORY_ID, Duration.ofHours(1));
+		assertThat(candidates).extracting(GarbageDirectory::path).containsExactly(candidatePath);
+
+		GarbageCollectionResult result = collector.collect(REPOSITORY_ID, Duration.ofHours(1));
+		assertThat(result.collectedPaths()).containsExactly(candidatePath);
+		assertThat(result.failures()).isEmpty();
+		assertThat(storage.stat(location(candidatePath))).isEmpty();
+		assertThat(storage.stat(location("org/old"))).isEmpty();
+		assertThat(storage.retrieve(location("org/partial/maven-metadata.xml"))).isPresent();
+		assertThat(storage.retrieve(location("org/extra/keep.txt"))).isPresent();
+		assertThat(storage.retrieve(location("org/nested/child/keep.txt"))).isPresent();
+		assertThat(storage.retrieve(location("org/valid/artifact.jar"))).isPresent();
+		assertThat(collector.findCandidates(REPOSITORY_ID, Duration.ofHours(1))).isEmpty();
+	}
+
+	@Test
+	void garbageCollectorHonorsTheMinimumAge() throws IOException {
+		StorageService storage = storageService();
+		store(storage, location("org/recent/maven-metadata.xml"), "metadata");
+		store(storage, location("org/recent/maven-metadata.xml.sha1"), "checksum");
+		Instant storedAt = Instant.now();
+		RepositoryGarbageCollector tooSoon = new RepositoryGarbageCollector(storage,
+				InstantSource.fixed(storedAt.plus(Duration.ofMinutes(30))));
+		RepositoryGarbageCollector oldEnough = new RepositoryGarbageCollector(storage,
+				InstantSource.fixed(storedAt.plus(Duration.ofHours(2))));
+
+		assertThat(tooSoon.findCandidates(REPOSITORY_ID, Duration.ofHours(1))).isEmpty();
+		assertThat(oldEnough.findCandidates(REPOSITORY_ID, Duration.ofHours(1))).extracting(GarbageDirectory::path)
+			.containsExactly("org/recent");
 	}
 
 	@Test

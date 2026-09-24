@@ -9,6 +9,7 @@ import am.ik.kagami.token.TokenIssuer.TokenRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +36,9 @@ public class TokenController {
 			@RequestParam(defaultValue = "") List<String> repositories,
 			@RequestParam(defaultValue = "") Set<String> scope, Authentication authentication,
 			UriComponentsBuilder builder) {
+		if (authentication instanceof JwtAuthenticationToken) {
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+		}
 		if (!this.rbacService.issuableScopes(authentication).containsAll(scope)) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 		}

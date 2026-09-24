@@ -91,7 +91,7 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 					Objects.requireNonNull(this.repositories, "repositories is required"), this.proxy,
 					Objects.requireNonNull(this.jwt, "jwt is required"),
 					Objects.requireNonNull(this.authentication, "authentication is required"),
-					this.rbac == null ? new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
+					this.rbac == null ? new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(),
 							new KagamiProperties.Mappings(Map.of(), Map.of())) : this.rbac);
 		}
 
@@ -383,8 +383,9 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * Group-based RBAC settings. A group is a named set of authorities and users are
 	 * mapped to groups through properties; a group never appears in authorization rules
 	 * itself, only the authorities it expands into do. The authority vocabulary reuses
-	 * the JWT scope vocabulary ({@code artifacts:read}, {@code artifacts:delete}), so
-	 * scope-based and group-based authorization share one namespace.
+	 * the JWT scope vocabulary ({@code artifacts:read}, {@code artifacts:delete},
+	 * {@code artifacts:admin}), so scope-based and group-based authorization share one
+	 * namespace.
 	 * <p>
 	 * Group names containing {@code @} or {@code .} must be configured with the bracket
 	 * notation (e.g. {@code kagami.rbac.mappings.users[taro@example.com]=editors}) so
@@ -396,7 +397,7 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * {@code viewers}) so that an entry with the same name overrides the built-in one
 	 * @param mappings the user to groups and IdP groups claim to groups mappings
 	 */
-	public record Rbac(@DefaultValue(RbacBuiltins.ADMINISTRATORS_GROUP) String defaultGroup,
+	public record Rbac(@DefaultValue(RbacBuiltins.DEFAULT_GROUP) String defaultGroup,
 			@DefaultValue Map<String, List<String>> groups, @DefaultValue Mappings mappings) {
 
 		public Rbac {

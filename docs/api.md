@@ -37,7 +37,8 @@ The web interface features:
   Maven/Gradle clients configured with the standard `<username>`/`<password>`
   server settings work out of the box.
 - GET requires the `artifacts:read` scope, DELETE requires the `artifacts:delete`
-  scope (authenticated web UI sessions with USER role are also accepted).
+  scope, and the cache garbage collection endpoints require `artifacts:admin`
+  (authenticated web UI sessions with USER role are also accepted).
 
 JWT tokens must be generated through the authenticated web UI. See the [Token Management](#token-management) section for details.
 
@@ -118,6 +119,76 @@ DELETE /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3
 
 ---
 
+### Cache Garbage Collection
+
+The garbage collection endpoints remove metadata-only cache directories from one
+repository. A candidate directory must contain exactly `maven-metadata.xml` and
+`maven-metadata.xml.sha1`; both files must be older than `olderThan`. The default is
+one hour. Directories with any other file or subdirectory are left unchanged.
+
+These endpoints require the `artifacts:admin` authority, including for public
+repositories. The default `editors` group does not include this authority. The `gc`
+path is reserved for this maintenance operation. Bearer-authenticated API calls do not
+need a CSRF token; browser-session POST requests do.
+
+#### GET /artifacts/{repositoryId}/gc
+
+Preview eligible directories without changing storage.
+
+**Parameters:**
+- `repositoryId` (path, required): Repository identifier
+- `olderThan` (query, optional): ISO-8601 duration; defaults to `PT1H`
+
+**Example Request:**
+```
+GET /artifacts/central/gc?olderThan=PT1H
+Authorization: Bearer <jwt>
+```
+
+**Response:**
+```json
+[
+  {
+    "path": "org/example/missing",
+    "lastModified": "2026-09-24T10:00:00Z"
+  }
+]
+```
+
+#### POST /artifacts/{repositoryId}/gc
+
+Collect eligible directories. The operation rechecks each directory before deleting
+it and removes only the two metadata files, so a concurrent artifact download is
+preserved.
+
+**Parameters:**
+- `repositoryId` (path, required): Repository identifier
+- `olderThan` (query, optional): ISO-8601 duration; defaults to `PT1H`
+
+**Example Request:**
+```
+POST /artifacts/central/gc?olderThan=PT1H
+Authorization: Bearer <jwt>
+```
+
+**Response:**
+```json
+{
+  "collectedPaths": ["org/example/missing"],
+  "failures": []
+}
+```
+
+**Status Codes:**
+- `200 OK`: Preview or collection completed
+- `400 Bad Request`: `olderThan` is negative or invalid
+- `401 Unauthorized`: Authentication required
+- `403 Forbidden`: Principal lacks `artifacts:admin`
+- `404 Not Found`: Repository is not configured
+- `500 Internal Server Error`: Storage error while listing or deleting
+
+---
+
 ### Token Management
 
 #### POST /token
@@ -128,7 +199,7 @@ Generate a JWT token for accessing private repositories. **This endpoint require
 
 **Web Interface**: The recommended approach is to use the web-based token generation interface at `/token` which provides:
 - Repository selection with checkboxes
-- Permission scope selection (artifacts:read, artifacts:delete)
+- Permission scope selection (artifacts:read, artifacts:delete, artifacts:admin)
 - Human-friendly expiration time input (hours, days, months) with 6-month default
 - Warning for long-duration tokens (>6 months)
 - Copy functionality for generated tokens
@@ -137,7 +208,7 @@ Generate a JWT token for accessing private repositories. **This endpoint require
 **Parameters (form-urlencoded):**
 - `expires_in` (optional): Token expiration time in hours (default: 3)
 - `repositories` (optional): Comma-separated list of repository IDs to access
-- `scope` (optional): Comma-separated list of scopes (`artifacts:read`, `artifacts:delete`)
+- `scope` (optional): Comma-separated list of scopes (`artifacts:read`, `artifacts:delete`, `artifacts:admin`)
 
 **Example Request:**
 ```

@@ -1,5 +1,6 @@
 package am.ik.kagami.rbac;
 
+import java.util.List;
 import java.util.Map;
 
 import am.ik.kagami.KagamiProperties;
@@ -20,14 +21,16 @@ class RbacBindingTest {
 	private KagamiProperties.Rbac bind(Map<String, String> properties) {
 		MapConfigurationPropertySource source = new MapConfigurationPropertySource(properties);
 		return new Binder(source).bind("kagami.rbac", Bindable.of(KagamiProperties.Rbac.class))
-			.orElse(new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
+			.orElse(new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(),
 					new KagamiProperties.Mappings(Map.of(), Map.of())));
 	}
 
 	@Test
 	void bindsBuiltInGroupsWhenNothingIsConfigured() {
 		KagamiProperties.Rbac rbac = bind(Map.of());
-		assertThat(rbac.defaultGroup()).isEqualTo(RbacBuiltins.ADMINISTRATORS_GROUP);
+		assertThat(rbac.defaultGroup()).isEqualTo(RbacBuiltins.DEFAULT_GROUP);
+		assertThat(rbac.groups()).containsEntry(RbacBuiltins.EDITORS_GROUP,
+				List.of("artifacts:read", "artifacts:delete"));
 		assertThat(rbac.groups()).containsEntry(RbacBuiltins.ADMINISTRATORS_GROUP, RbacBuiltins.ALLOWED_AUTHORITIES);
 		assertThat(rbac.mappings().users()).isEmpty();
 		assertThat(rbac.mappings().groups()).isEmpty();
@@ -54,7 +57,8 @@ class RbacBindingTest {
 	void configuredGroupOverridesBuiltInGroup() {
 		KagamiProperties.Rbac rbac = bind(Map.of("kagami.rbac.groups.viewers", "artifacts:read,artifacts:delete",
 				"kagami.rbac.groups.extra", "artifacts:read"));
-		assertThat(rbac.groups()).containsEntry(RbacBuiltins.VIEWERS_GROUP, RbacBuiltins.ALLOWED_AUTHORITIES);
+		assertThat(rbac.groups()).containsEntry(RbacBuiltins.VIEWERS_GROUP,
+				List.of("artifacts:read", "artifacts:delete"));
 		assertThat(rbac.groups()).containsEntry("extra", java.util.List.of("artifacts:read"));
 	}
 

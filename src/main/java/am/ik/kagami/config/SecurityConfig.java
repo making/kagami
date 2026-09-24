@@ -31,12 +31,16 @@ import org.springframework.security.oauth2.server.resource.web.access.BearerToke
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.AndRequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestHeaderRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.HEAD;
+import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.security.authorization.AuthorityAuthorizationManager.hasAuthority;
 import static org.springframework.security.authorization.AuthorizationManagers.anyOf;
 import static org.springframework.security.oauth2.core.authorization.OAuth2AuthorizationManagers.hasScope;
@@ -48,10 +52,22 @@ class SecurityConfig {
 	SecurityFilterChain securityFilterChain(HttpSecurity http, KagamiProperties properties, RbacService rbacService)
 			throws Exception {
 		AuthenticationEntryPoint artifactsEntryPoint = artifactsAuthenticationEntryPoint();
+		RequestMatcher artifactApi = PathPatternRequestMatcher.withDefaults().matcher("/artifacts/**");
+		RequestMatcher garbageCollectionApi = PathPatternRequestMatcher.withDefaults().matcher("/artifacts/*/gc");
+		RequestMatcher tokenApi = PathPatternRequestMatcher.withDefaults().matcher("/token");
+		RequestMatcher bearerAuthentication = request -> {
+			String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+			return authorization != null && authorization.regionMatches(true, 0, "Bearer ", 0, 7);
+		};
 		HttpSecurity security = http
 		// @formatter:off
 			.authorizeHttpRequests(authz -> {
 				properties.repositories().forEach((repositoryId, repository) -> {
+					String garbageCollectionPath = "/artifacts/%s/gc".formatted(repositoryId);
+					authz.requestMatchers(GET, garbageCollectionPath).access(anyOf(hasScope(RbacBuiltins.ADMIN_AUTHORITY), hasAuthority(RbacBuiltins.ADMIN_AUTHORITY)));
+					authz.requestMatchers(HEAD, garbageCollectionPath).access(anyOf(hasScope(RbacBuiltins.ADMIN_AUTHORITY), hasAuthority(RbacBuiltins.ADMIN_AUTHORITY)));
+					authz.requestMatchers(POST, garbageCollectionPath).access(anyOf(hasScope(RbacBuiltins.ADMIN_AUTHORITY), hasAuthority(RbacBuiltins.ADMIN_AUTHORITY)));
+					authz.requestMatchers(DELETE, garbageCollectionPath).access(anyOf(hasScope(RbacBuiltins.ADMIN_AUTHORITY), hasAuthority(RbacBuiltins.ADMIN_AUTHORITY)));
 					if (repository.isPrivate()) {
 						authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope(RbacBuiltins.READ_AUTHORITY), hasAuthority(RbacBuiltins.READ_AUTHORITY)));
 						authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope(RbacBuiltins.READ_AUTHORITY), hasAuthority(RbacBuiltins.READ_AUTHORITY)));
@@ -77,7 +93,10 @@ class SecurityConfig {
 				.defaultAuthenticationEntryPointFor(htmxAuthenticationEntryPoint(),
 						new RequestHeaderRequestMatcher("HX-Request", "true"))
 				.accessDeniedHandler(errorPageAccessDeniedHandler()))
-			.csrf(csrf -> csrf.ignoringRequestMatchers("/artifacts/**", "/token"))
+			.csrf(csrf -> csrf.ignoringRequestMatchers(new AndRequestMatcher(tokenApi, bearerAuthentication))
+				.ignoringRequestMatchers(
+						new AndRequestMatcher(artifactApi, new NegatedRequestMatcher(garbageCollectionApi)))
+				.ignoringRequestMatchers(new AndRequestMatcher(garbageCollectionApi, bearerAuthentication)))
 			.logout(logout -> logout.logoutUrl("/logout")
 				.logoutSuccessUrl("/login?logout")
 				.deleteCookies("JSESSIONID"));

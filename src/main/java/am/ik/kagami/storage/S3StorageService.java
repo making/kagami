@@ -134,6 +134,38 @@ public class S3StorageService implements StorageService {
 	}
 
 	@Override
+	public boolean deleteFile(ArtifactLocation location) throws IOException {
+		String key = key(location.requireArtifactPath());
+		try {
+			if (headObject(key).isEmpty()) {
+				return false;
+			}
+			this.s3Client.deleteObject(request -> request.bucket(this.bucket).key(key));
+			return true;
+		}
+		catch (NoSuchKeyException e) {
+			return false;
+		}
+		catch (S3Exception e) {
+			if (e.statusCode() == 404) {
+				return false;
+			}
+			throw new IOException("Failed to delete s3://%s/%s".formatted(this.bucket, key), e);
+		}
+		catch (SdkException e) {
+			throw new IOException("Failed to delete s3://%s/%s".formatted(this.bucket, key), e);
+		}
+	}
+
+	@Override
+	public boolean deleteIfEmpty(ArtifactLocation location) {
+		location.requireArtifactPath();
+		// Object storage has no directory entry to remove. Once its last object is gone,
+		// the prefix ceases to exist automatically.
+		return false;
+	}
+
+	@Override
 	public List<StorageEntry> list(ArtifactLocation location) throws IOException {
 		String prefix = directoryPrefix(location);
 		List<StorageEntry> entries = new ArrayList<>();

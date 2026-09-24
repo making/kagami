@@ -326,17 +326,21 @@ See the [Spring Boot documentation](https://docs.spring.io/spring-boot/reference
 
 A group is a named set of authorities and users are mapped to groups through properties.
 Group names are not roles: authorization rules only see the authorities a group expands
-into, which reuse the JWT scope vocabulary (`artifacts:read`, `artifacts:delete`), so
-JWT scopes and group membership satisfy the same rules. Users absent from every mapping
-fall into the default group, which by default is `administrators` and keeps the
-out-of-the-box behavior unchanged.
+into, which reuse the JWT scope vocabulary (`artifacts:read`, `artifacts:delete`,
+`artifacts:admin`), so JWT scopes and group membership satisfy the same rules. Users
+absent from every mapping fall into the default group, which is `editors` by default.
+The default therefore grants read and delete access but not cache administration; assign
+`administrators` or another group with `artifacts:admin` explicitly when maintenance access
+is required.
 
 ```properties
 # Group definitions: group name -> authorities (same vocabulary as JWT scopes).
-# The built-in groups administrators, editors (both artifacts:read,artifacts:delete)
-# and viewers (artifacts:read) exist by default; entries here override or add groups.
-# An empty value defines a group with no authorities.
-kagami.rbac.groups.administrators=artifacts:read,artifacts:delete
+# The built-in groups are:
+#   administrators: artifacts:read,artifacts:delete,artifacts:admin
+#   editors: artifacts:read,artifacts:delete
+#   viewers: artifacts:read
+# Entries here override or add groups. An empty value defines a group with no authorities.
+kagami.rbac.groups.administrators=artifacts:read,artifacts:delete,artifacts:admin
 kagami.rbac.groups.no-access=
 
 # Username -> groups, common to simple and OIDC authentication. Keys containing @ or .
@@ -347,7 +351,7 @@ kagami.rbac.mappings.users[taro@example.com]=editors
 # OIDC groups claim (IdP group names) -> Kagami groups
 kagami.rbac.mappings.groups.my-team-admins=administrators
 
-# Group applied to users absent from every mapping (default: administrators)
+# Group applied to users absent from every mapping (default: editors)
 kagami.rbac.default-group=no-access
 ```
 
@@ -367,6 +371,29 @@ token.
   `artifacts:delete`
 - The `allowed-name-patterns` OIDC gate is orthogonal to RBAC: patterns decide who may
   log in, RBAC decides what admitted users can do
+- `artifacts:admin` is required by the cache garbage collection API; it is not granted by
+  the default `editors` group
+
+#### Cache garbage collection API
+
+The administrator API removes directories whose only files are `maven-metadata.xml` and
+`maven-metadata.xml.sha1`, when both files are at least one hour old. Preview candidates
+first, then run the collection explicitly:
+
+```bash
+# Dry-run; olderThan accepts ISO-8601 durations such as PT30M or PT0S
+curl -H "Authorization: Bearer $TOKEN" \
+  'http://localhost:8080/artifacts/central/gc?olderThan=PT1H'
+
+# Collect eligible directories
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  'http://localhost:8080/artifacts/central/gc?olderThan=PT1H'
+```
+
+The operation works with both local and S3 storage. It scans the repository before
+collecting, so very large S3 repositories may take time. A concurrent artifact download
+is preserved; the collector removes only the two metadata files and then removes an empty
+local directory when possible.
 
 ### HTTP Proxy Configuration
 

@@ -42,6 +42,16 @@
         </span>
       </label>
       {{/canDelete}}
+      {{#canAdmin}}
+      <label class="check-card">
+        <input type="checkbox" name="scope" value="artifacts:admin"/>
+        <span class="check-body">
+          <span class="check-title">Administer Cache</span>
+          <span class="check-desc">Collect metadata-only cache directories</span>
+          <span class="check-code">artifacts:admin</span>
+        </span>
+      </label>
+      {{/canAdmin}}
     </div>
 
     <div class="section-head">
