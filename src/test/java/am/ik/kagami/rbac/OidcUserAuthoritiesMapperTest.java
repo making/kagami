@@ -55,9 +55,12 @@ class OidcUserAuthoritiesMapperTest {
 
 	@Test
 	void admittedUserIsExpandedThroughRbacGroups() {
-		OidcUserAuthoritiesMapper mapper = mapper(new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
-				new KagamiProperties.Mappings(Map.of("user@example.com", List.of("viewers")), Map.of()), "groups"),
-				List.of(Pattern.compile(".*@example.com")));
+		OidcUserAuthoritiesMapper mapper = mapper(KagamiProperties.Rbac.builder()
+			.defaultGroup(RbacBuiltins.ADMINISTRATORS_GROUP)
+			.groups(Map.of())
+			.mappings(new KagamiProperties.Mappings(Map.of("user@example.com", List.of("viewers")), Map.of()))
+			.groupsClaim("groups")
+			.build(), List.of(Pattern.compile(".*@example.com")));
 		List<String> authorities = mapper.mapAuthorities(List.of(oidcUser("user@example.com", null)))
 			.stream()
 			.map(org.springframework.security.core.GrantedAuthority::getAuthority)
@@ -67,9 +70,12 @@ class OidcUserAuthoritiesMapperTest {
 
 	@Test
 	void idpGroupsClaimIsTranslated() {
-		OidcUserAuthoritiesMapper mapper = mapper(new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
-				new KagamiProperties.Mappings(Map.of(), Map.of("my-team-admins", List.of("administrators"))), "groups"),
-				List.of(Pattern.compile(".*")));
+		OidcUserAuthoritiesMapper mapper = mapper(KagamiProperties.Rbac.builder()
+			.defaultGroup(RbacBuiltins.ADMINISTRATORS_GROUP)
+			.groups(Map.of())
+			.mappings(new KagamiProperties.Mappings(Map.of(), Map.of("my-team-admins", List.of("administrators"))))
+			.groupsClaim("groups")
+			.build(), List.of(Pattern.compile(".*")));
 		List<String> authorities = mapper
 			.mapAuthorities(List.of(oidcUser("user@example.com", List.of("my-team-admins"))))
 			.stream()
@@ -80,8 +86,12 @@ class OidcUserAuthoritiesMapperTest {
 
 	@Test
 	void customGroupsClaimNameIsUsed() {
-		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
-				new KagamiProperties.Mappings(Map.of(), Map.of("my-team-admins", List.of("administrators"))), "roles");
+		KagamiProperties.Rbac rbac = KagamiProperties.Rbac.builder()
+			.defaultGroup(RbacBuiltins.ADMINISTRATORS_GROUP)
+			.groups(Map.of())
+			.mappings(new KagamiProperties.Mappings(Map.of(), Map.of("my-team-admins", List.of("administrators"))))
+			.groupsClaim("roles")
+			.build();
 		OidcUserAuthoritiesMapper mapper = mapper(rbac, List.of(Pattern.compile(".*")));
 		List<String> authorities = mapper
 			.mapAuthorities(List.of(oidcUser("user@example.com", "roles", List.of("my-team-admins"))))
@@ -93,10 +103,12 @@ class OidcUserAuthoritiesMapperTest {
 
 	@Test
 	void nonMatchingUserIsRejectedWithLoginFailure() {
-		OidcUserAuthoritiesMapper mapper = mapper(
-				new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
-						new KagamiProperties.Mappings(Map.of(), Map.of()), "groups"),
-				List.of(Pattern.compile(".*@example.com")));
+		OidcUserAuthoritiesMapper mapper = mapper(KagamiProperties.Rbac.builder()
+			.defaultGroup(RbacBuiltins.ADMINISTRATORS_GROUP)
+			.groups(Map.of())
+			.mappings(new KagamiProperties.Mappings(Map.of(), Map.of()))
+			.groupsClaim("groups")
+			.build(), List.of(Pattern.compile(".*@example.com")));
 		// A rejected user must not pass as "authenticated with zero authorities": the
 		// mapper throws so that the login itself fails and the default-group never
 		// applies
@@ -106,8 +118,12 @@ class OidcUserAuthoritiesMapperTest {
 
 	@Test
 	void authoritiesWithoutOidcUserMapToNothing() {
-		OidcUserAuthoritiesMapper mapper = mapper(new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
-				new KagamiProperties.Mappings(Map.of(), Map.of()), "groups"), List.of(Pattern.compile(".*")));
+		OidcUserAuthoritiesMapper mapper = mapper(KagamiProperties.Rbac.builder()
+			.defaultGroup(RbacBuiltins.ADMINISTRATORS_GROUP)
+			.groups(Map.of())
+			.mappings(new KagamiProperties.Mappings(Map.of(), Map.of()))
+			.groupsClaim("groups")
+			.build(), List.of(Pattern.compile(".*")));
 		assertThat(mapper
 			.mapAuthorities(List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_X"))))
 			.isEmpty();

@@ -21,8 +21,12 @@ class RbacBindingTest {
 	private KagamiProperties.Rbac bind(Map<String, String> properties) {
 		MapConfigurationPropertySource source = new MapConfigurationPropertySource(properties);
 		return new Binder(source).bind("kagami.rbac", Bindable.of(KagamiProperties.Rbac.class))
-			.orElse(new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(),
-					new KagamiProperties.Mappings(Map.of(), Map.of()), "groups"));
+			.orElse(KagamiProperties.Rbac.builder()
+				.defaultGroup(RbacBuiltins.DEFAULT_GROUP)
+				.groups(Map.of())
+				.mappings(new KagamiProperties.Mappings(Map.of(), Map.of()))
+				.groupsClaim("groups")
+				.build());
 	}
 
 	@Test
