@@ -2,6 +2,7 @@ package am.ik.kagami.browser.web;
 
 import am.ik.kagami.rbac.RbacBuiltins;
 import java.io.IOException;
+import java.time.InstantSource;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -46,8 +47,11 @@ public class BrowseController {
 
 	private final BrowserService browserService;
 
-	public BrowseController(BrowserService browserService) {
+	private final InstantSource instantSource;
+
+	public BrowseController(BrowserService browserService, InstantSource instantSource) {
 		this.browserService = browserService;
+		this.instantSource = instantSource;
 	}
 
 	/**
@@ -185,7 +189,8 @@ public class BrowseController {
 					.typeLabel(typeLabel(entry.name(), isDirectory))
 					.size(entry.size() != null ? Formats.fileSize(entry.size()) : null)
 					.hasSize(!isDirectory && entry.size() != null)
-					.updated(entry.lastModified() != null ? Formats.relativeTime(entry.lastModified()) : null)
+					.updated(entry.lastModified() != null
+							? Formats.relativeTime(entry.lastModified(), this.instantSource) : null)
 					.hasUpdated(!isDirectory && entry.lastModified() != null)
 					.downloadPath(isDirectory ? null : artifactPath(repositoryId, entry.path()))
 					.infoPath(isDirectory ? null

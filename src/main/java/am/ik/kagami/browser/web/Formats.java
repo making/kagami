@@ -1,6 +1,8 @@
 package am.ik.kagami.browser.web;
 
 import java.time.Instant;
+import java.time.InstantSource;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -44,8 +46,15 @@ final class Formats {
 	 * Format a timestamp relative to now: Today, Yesterday, "N days ago" or a localized
 	 * date for anything older.
 	 */
-	static String relativeTime(Instant instant) {
-		long diffDays = ChronoUnit.DAYS.between(instant, Instant.now());
+	/**
+	 * Format a timestamp relative to the given source of instants. Days are counted as
+	 * calendar days in the system time zone, so a file modified yesterday evening shows
+	 * "Yesterday" the next morning even though less than 24 hours have passed.
+	 */
+	static String relativeTime(Instant instant, InstantSource instantSource) {
+		ZoneId zone = ZoneId.systemDefault();
+		long diffDays = ChronoUnit.DAYS.between(instant.atZone(zone).toLocalDate(),
+				instantSource.instant().atZone(zone).toLocalDate());
 		if (diffDays <= 0) {
 			return "Today";
 		}

@@ -1,5 +1,6 @@
 package am.ik.kagami.browser.web;
 
+import java.time.InstantSource;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -23,9 +24,12 @@ public class HomeController {
 
 	private final KagamiProperties properties;
 
-	public HomeController(BrowserService browserService, KagamiProperties properties) {
+	private final InstantSource instantSource;
+
+	public HomeController(BrowserService browserService, KagamiProperties properties, InstantSource instantSource) {
 		this.browserService = browserService;
 		this.properties = properties;
+		this.instantSource = instantSource;
 	}
 
 	@GetMapping("/")
@@ -46,7 +50,8 @@ public class HomeController {
 						.url(repo.url())
 						.artifactCount(String.format(Locale.ENGLISH, "%,d", repo.artifactCount()))
 						.totalSize(Formats.fileSize(repo.totalSize()))
-						.updated(repo.lastUpdated() != null ? Formats.relativeTime(repo.lastUpdated()) : null)
+						.updated(repo.lastUpdated() != null
+								? Formats.relativeTime(repo.lastUpdated(), this.instantSource) : null)
 						.hasUpdated(repo.lastUpdated() != null)
 						.isPrivate(repo.isPrivate())
 						.build())
