@@ -276,7 +276,7 @@ public abstract class KagamiIntegrationTestBase {
 		assertThat(second.getHeaders().getContentLength()).isEqualTo("<project></project>".length());
 		assertThat(second.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_XML);
 		assertThat(second.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION))
-			.isEqualTo("attachment;filename=kagami-0.0.5.pom");
+			.isEqualTo("inline;filename=kagami-0.0.5.pom");
 		// The mirror served the second request without asking the remote again
 		assertThat(remoteHits).hasValue(1);
 	}

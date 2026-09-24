@@ -7,6 +7,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -47,6 +48,7 @@ class ArtifactControllerTest {
 		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/4.13.2/junit-4.13.2.pom"))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType("application/xml"))
+			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "inline;filename=junit-4.13.2.pom"))
 			.andExpect(header().string("Cache-Control", "max-age=31536000, public"));
 
 		// Verify artifact was cached
@@ -107,17 +109,20 @@ class ArtifactControllerTest {
 		// JAR file
 		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/4.13.2/junit-4.13.2.jar"))
 			.andExpect(status().isOk())
-			.andExpect(content().contentType("application/java-archive"));
+			.andExpect(content().contentType("application/java-archive"))
+			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=junit-4.13.2.jar"));
 
 		// SHA1 checksum
 		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/4.13.2/junit-4.13.2.jar.sha1"))
 			.andExpect(status().isOk())
-			.andExpect(content().contentType("text/plain"));
+			.andExpect(content().contentType("text/plain"))
+			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=junit-4.13.2.jar.sha1"));
 
 		// Maven metadata
 		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/maven-metadata.xml"))
 			.andExpect(status().isOk())
-			.andExpect(content().contentType("application/xml"));
+			.andExpect(content().contentType("application/xml"))
+			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "inline;filename=maven-metadata.xml"));
 	}
 
 }

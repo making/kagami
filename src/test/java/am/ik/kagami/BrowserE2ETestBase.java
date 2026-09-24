@@ -5,7 +5,6 @@ import am.ik.kagami.mockserver.MockServer.Response;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Dialog;
-import com.microsoft.playwright.Download;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Playwright;
@@ -16,10 +15,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.Queue;
 import java.util.regex.Pattern;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
@@ -372,9 +368,9 @@ public abstract class BrowserE2ETestBase {
 	}
 
 	@Test
-	void fileDownloadAndDeleteActions() {
+	void fileViewAndDeleteActions() {
 		String path = "actions/tmp/1.0/sample-1.0.pom";
-		mirror(path, "<project/>");
+		mirror(path, "<project><artifactId>sample</artifactId></project>");
 		login();
 		String baseUrl = "http://localhost:" + this.port;
 		this.page.navigate(baseUrl + "/browse/mock/actions/tmp/1.0");
@@ -382,23 +378,12 @@ public abstract class BrowserE2ETestBase {
 		Locator fileRow = this.page.locator("div.group", new Page.LocatorOptions()
 			.setHas(this.page.getByText("sample-1.0.pom", new Page.GetByTextOptions().setExact(true))));
 
-		// Get opens the artifact download URL in a new tab; the endpoint serves the
-		// artifact as an attachment, so the popup starts a download
-		Queue<Download> downloads = new ConcurrentLinkedQueue<>();
-		this.context.onDownload(downloads::add);
-		this.page.waitForPopup(
+		// Get opens the XML artifact directly in a new tab
+		Page artifactPage = this.page.waitForPopup(
 				() -> fileRow.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Get")).click());
-		Download download = null;
-		long deadline = System.currentTimeMillis() + 15_000;
-		while (download == null && System.currentTimeMillis() < deadline) {
-			download = downloads.poll();
-			if (download == null) {
-				this.page.waitForTimeout(100);
-			}
-		}
-		Assertions.assertThat(download).as("download").isNotNull();
-		Assertions.assertThat(download.url()).isEqualTo(baseUrl + "/artifacts/mock/" + path);
-		download.delete();
+		assertThat(artifactPage).hasURL(baseUrl + "/artifacts/mock/" + path);
+		assertThat(artifactPage.locator("span").getByText("sample", new Locator.GetByTextOptions().setExact(true)))
+			.isVisible();
 
 		// The delete actions are only exercised when the principal may delete
 		Assumptions.assumeTrue(canDelete());

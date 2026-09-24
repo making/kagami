@@ -71,12 +71,15 @@ public class ArtifactController {
 		if (retrieved.isPresent() && retrieved.get().exists()) {
 			Resource resource = retrieved.get();
 			try {
+				MediaType contentType = determineContentType(artifactPath);
+				String disposition = MediaType.APPLICATION_XML.equals(contentType) ? "inline" : "attachment";
 				CacheControl cacheControl = CacheControl.maxAge(Duration.ofSeconds(31536000));
 				return ResponseEntity.ok()
-					.contentType(determineContentType(artifactPath))
+					.contentType(contentType)
 					.contentLength(resource.contentLength())
 					.cacheControl(repository.isPrivate() ? cacheControl.cachePrivate() : cacheControl.cachePublic())
-					.header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=%s".formatted(resource.getFilename()))
+					.header(HttpHeaders.CONTENT_DISPOSITION,
+							"%s;filename=%s".formatted(disposition, resource.getFilename()))
 					.body(resource);
 			}
 			catch (IOException e) {
