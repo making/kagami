@@ -1,0 +1,47 @@
+<div class="panel" id="repository-panel"{{#statsPending}} hx-get="/fragments/repositories/stats" hx-trigger="load" hx-swap="outerMorph"{{/statsPending}}>
+  <div class="panel-head">
+    <h2 class="registry-label panel-head-label">Repositories</h2>
+    <span class="registry-label panel-head-meta">{{repoCount}} entries / select to browse</span>
+  </div>
+  <table class="registry-table">
+    <thead>
+      <tr>
+        <th class="registry-label text-left">Repository</th>
+        <th class="registry-label">Artifacts</th>
+        <th class="registry-label">Size</th>
+        <th class="registry-label">Updated</th>
+        <th></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#repositories}}
+      <tr id="repository-{{id}}" class="group registry-row-hover registry-rise" data-navigate="/browse/{{id}}">
+        <td>
+          <div class="row-title">{{id}}{{#isPrivate}}<span class="registry-label badge-private">Private</span>{{/isPrivate}}</div>
+          <div class="row-url">{{url}}</div>
+        </td>
+        {{#pending}}
+        <td class="text-right"><span class="row-value row-value-muted">&hellip;</span></td>
+        <td class="text-right"><span class="row-value row-value-muted">&hellip;</span></td>
+        <td class="text-right"><span class="row-value row-value-muted">&hellip;</span></td>
+        {{/pending}}
+        {{^pending}}
+        <td class="text-right"><span class="row-value">{{artifactCount}}</span></td>
+        <td class="text-right"><span class="row-value">{{totalSize}}</span></td>
+        <td class="text-right">
+          {{#hasUpdated}}<span class="row-value">{{updated}}</span>{{/hasUpdated}}
+          {{^hasUpdated}}<span class="row-value row-value-muted">&mdash;</span>{{/hasUpdated}}
+        </td>
+        {{/pending}}
+        <td class="text-right">
+          <button type="button" class="registry-label button-small button-loading"
+                  hx-get="/fragments/repositories/{{id}}/config"
+                  hx-target="body" hx-swap="beforeend">Config</button>
+        </td>
+        <td class="row-arrow">&rarr;</td>
+      </tr>
+      {{/repositories}}
+    </tbody>
+  </table>
+</div>

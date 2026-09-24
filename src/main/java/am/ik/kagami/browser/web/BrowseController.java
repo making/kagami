@@ -17,7 +17,7 @@ import am.ik.kagami.browser.BrowserService;
 import am.ik.kagami.browser.BrowserService.BrowseResult;
 import am.ik.kagami.browser.BrowserService.FileInfo;
 import am.ik.kagami.browser.BrowserService.RepositoryEntry;
-import am.ik.kagami.browser.BrowserService.RepositoryInfo;
+import am.ik.kagami.browser.BrowserService.RepositorySummary;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.ModelAndView;
@@ -121,10 +121,7 @@ public class BrowseController {
 	@GetMapping("/fragments/repositories/{repositoryId}/config")
 	public String config(@PathVariable String repositoryId, UriComponentsBuilder builder, Model model) {
 		String baseUrl = builder.path("").build().toString();
-		RepositoryInfo repository = this.browserService.getRepositories()
-			.stream()
-			.filter(repo -> repo.id().equals(repositoryId))
-			.findFirst()
+		RepositorySummary repository = this.browserService.findRepository(repositoryId)
 			.orElseThrow(() -> new IllegalArgumentException("Repository not found: " + repositoryId));
 		model.addAttribute("title", "Repository Configuration / " + repositoryId);
 		model.addAttribute("repositoryId", repositoryId);

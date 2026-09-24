@@ -272,6 +272,12 @@ public abstract class BrowserE2ETestBase {
 		assertThat(stats).containsText("2");
 		assertThat(stats).containsText("Repositories");
 
+		// The statistics are loaded after the page and swapped into the hero and the rows
+		Locator artifactStats = this.page.locator("section .hero-stats > div").nth(1);
+		assertThat(artifactStats).containsText("Artifacts");
+		assertThat(artifactStats.locator(".stat-value")).hasText("1");
+		assertThat(publicRow.locator(".row-value").first()).hasText("1");
+
 		// The config dialog shows build tool configuration for the public repository
 		publicRow.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Config")).click();
 		Locator dialog = this.page.locator("div.fixed",

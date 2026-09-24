@@ -8,6 +8,7 @@ import java.util.Objects;
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.browser.BrowserService;
 import am.ik.kagami.browser.BrowserService.RepositoryInfo;
+import am.ik.kagami.browser.BrowserService.RepositorySummary;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -32,16 +33,37 @@ public class HomeController {
 		this.instantSource = instantSource;
 	}
 
+	/**
+	 * The home page. It only lists the configured repositories; the statistics visit
+	 * every stored file and are loaded afterwards by {@link #stats}.
+	 */
 	@GetMapping("/")
 	public String home(Authentication authentication, Model model) {
 		model.addAttribute("defaultJwtKey", this.properties.jwt().defaultKeys());
-		List<RepositoryInfo> repositories = this.browserService.getRepositories();
-		long totalArtifacts = repositories.stream().mapToLong(RepositoryInfo::artifactCount).sum();
-		long totalSize = repositories.stream().mapToLong(RepositoryInfo::totalSize).sum();
+		List<RepositorySummary> repositories = this.browserService.getRepositories();
 		model.addAttribute("title", "Maven Mirror Registry");
 		model.addAttribute("userName", authentication.getName());
 		model.addAttribute("repoCount", repositories.size());
-		model.addAttribute("totalArtifacts", String.format(java.util.Locale.ENGLISH, "%,d", totalArtifacts));
+		model.addAttribute("statsPending", true);
+		model.addAttribute("repositories", repositories.stream()
+			.<RepositoryRow>map(
+					repo -> RepositoryRow.builder().id(repo.id()).url(repo.url()).isPrivate(repo.isPrivate()).build())
+			.toList());
+		return "pages/home";
+	}
+
+	/**
+	 * Fragment: the repository table with statistics, plus the hero statistics as a
+	 * partial.
+	 */
+	@GetMapping("/fragments/repositories/stats")
+	public String stats(Model model) {
+		List<RepositoryInfo> repositories = this.browserService.getRepositoryStats();
+		long totalArtifacts = repositories.stream().mapToLong(RepositoryInfo::artifactCount).sum();
+		long totalSize = repositories.stream().mapToLong(RepositoryInfo::totalSize).sum();
+		model.addAttribute("repoCount", repositories.size());
+		model.addAttribute("statsPending", false);
+		model.addAttribute("totalArtifacts", String.format(Locale.ENGLISH, "%,d", totalArtifacts));
 		model.addAttribute("totalSize", Formats.fileSize(totalSize));
 		model.addAttribute("repositories",
 				repositories.stream()
@@ -56,14 +78,19 @@ public class HomeController {
 						.isPrivate(repo.isPrivate())
 						.build())
 					.toList());
-		return "pages/home";
+		return "fragments/repository-stats";
 	}
 
 	/**
-	 * One row of the repository table on the home page.
+	 * One row of the repository table on the home page. The statistics are absent while
+	 * they are still being loaded.
 	 */
-	record RepositoryRow(String id, String url, String artifactCount, String totalSize, @Nullable String updated,
-			boolean hasUpdated, boolean isPrivate) {
+	record RepositoryRow(String id, String url, @Nullable String artifactCount, @Nullable String totalSize,
+			@Nullable String updated, boolean hasUpdated, boolean isPrivate) {
+
+		public boolean pending() {
+			return this.artifactCount == null;
+		}
 
 		public static Builder builder() {
 			return new Builder();
@@ -98,12 +125,12 @@ public class HomeController {
 				return this;
 			}
 
-			public Builder artifactCount(String artifactCount) {
+			public Builder artifactCount(@Nullable String artifactCount) {
 				this.artifactCount = artifactCount;
 				return this;
 			}
 
-			public Builder totalSize(String totalSize) {
+			public Builder totalSize(@Nullable String totalSize) {
 				this.totalSize = totalSize;
 				return this;
 			}
@@ -125,10 +152,8 @@ public class HomeController {
 
 			public RepositoryRow build() {
 				return new RepositoryRow(Objects.requireNonNull(this.id, "id is required"),
-						Objects.requireNonNull(this.url, "url is required"),
-						Objects.requireNonNull(this.artifactCount, "artifactCount is required"),
-						Objects.requireNonNull(this.totalSize, "totalSize is required"), this.updated, this.hasUpdated,
-						this.isPrivate);
+						Objects.requireNonNull(this.url, "url is required"), this.artifactCount, this.totalSize,
+						this.updated, this.hasUpdated, this.isPrivate);
 			}
 
 		}

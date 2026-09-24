@@ -13,9 +13,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -26,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * every backend.
  */
 @SpringBootTest(properties = { "kagami.repositories.test-repo.url=https://repo.maven.apache.org/maven2",
+		"kagami.repositories.stats-repo.url=https://repo.maven.apache.org/maven2",
 		"spring.security.user.name=test-user", "spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
 @WithMockUser(username = "test-user", password = "test-password",
@@ -35,12 +40,16 @@ public abstract class BrowserControllerTestBase {
 	@Autowired
 	MockMvc mockMvc;
 
-	@Autowired
+	@MockitoSpyBean
 	private StorageService storageService;
 
 	void seed(String path, String content) throws IOException {
+		seed("test-repo", path, content);
+	}
+
+	void seed(String repositoryId, String path, String content) throws IOException {
 		try (InputStream inputStream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))) {
-			this.storageService.store(new ArtifactLocation("test-repo", path), inputStream);
+			this.storageService.store(new ArtifactLocation(repositoryId, path), inputStream);
 		}
 	}
 
@@ -62,6 +71,36 @@ public abstract class BrowserControllerTestBase {
 		String body = bodyOf("/");
 		assertThat(body).contains("test-repo");
 		assertThat(body).contains("Repositories");
+	}
+
+	@Test
+	void homePageDefersRepositoryStatistics() throws Exception {
+		seed("org/springframework/test-file.jar", "dummy jar content");
+		String body = bodyOf("/");
+		assertThat(body).contains("hx-get=\"/fragments/repositories/stats\"");
+		verify(this.storageService, never()).stats(anyString());
+	}
+
+	@Test
+	void statsFragmentShowsRepositoryStatistics() throws Exception {
+		// A repository of its own: the other tests leave their seeded files in test-repo
+		seed("stats-repo", "org/springframework/test-file.jar", "dummy jar content");
+		seed("stats-repo", "org/springframework/test-file.jar.sha1", "abc123");
+		String body = bodyOf("/fragments/repositories/stats");
+		String row = body.substring(body.indexOf("id=\"repository-stats-repo\""));
+		row = row.substring(0, row.indexOf("</tr>"));
+		// One artifact (the checksum is not counted), 17 + 6 bytes in total
+		assertThat(row).contains("<span class=\"row-value\">1</span>");
+		assertThat(row).contains("<span class=\"row-value\">23 B</span>");
+		assertThat(body).contains("<hx-partial hx-target=\"#hero-stats\"");
+		assertThat(body).doesNotContain("hx-get=\"/fragments/repositories/stats\"");
+	}
+
+	@Test
+	void tokenPagesDoNotComputeRepositoryStatistics() throws Exception {
+		bodyOf("/token");
+		bodyOf("/app/token/form");
+		verify(this.storageService, never()).stats(anyString());
 	}
 
 	@Test
@@ -132,6 +171,7 @@ public abstract class BrowserControllerTestBase {
 		assertThat(body).contains("$HOME/.m2/settings.xml");
 		assertThat(body).contains("$HOME/.gradle/init.gradle.kts");
 		assertThat(body).contains("Usage Notes");
+		verify(this.storageService, never()).stats(anyString());
 	}
 
 }

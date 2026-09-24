@@ -4,8 +4,11 @@ import am.ik.kagami.KagamiProperties;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Comparator;
@@ -99,16 +102,26 @@ public class LocalStorageService implements StorageService {
 			return StorageStats.EMPTY;
 		}
 		StorageStats.Builder builder = StorageStats.builder();
-		try (Stream<Path> stream = Files.walk(repositoryPath)) {
-			stream.filter(Files::isRegularFile).forEach(file -> {
-				BasicFileAttributes attributes = readAttributes(file);
-				builder.addFile(file.getFileName().toString(), attributes.size(),
-						attributes.lastModifiedTime().toInstant());
-			});
-		}
-		catch (UncheckedIOException e) {
-			throw e.getCause();
-		}
+		// walkFileTree hands over the attributes it has already read, one stat per file
+		Files.walkFileTree(repositoryPath, new SimpleFileVisitor<>() {
+			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) {
+				if (attributes.isRegularFile()) {
+					builder.addFile(file.getFileName().toString(), attributes.size(),
+							attributes.lastModifiedTime().toInstant());
+				}
+				return FileVisitResult.CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult visitFileFailed(Path file, IOException e) throws IOException {
+				// A file deleted while walking is simply no longer part of the statistics
+				if (e instanceof NoSuchFileException) {
+					return FileVisitResult.CONTINUE;
+				}
+				throw e;
+			}
+		});
 		return builder.build();
 	}
 

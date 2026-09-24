@@ -13,13 +13,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StreamUtils;
 import org.springframework.util.StringUtils;
@@ -36,38 +37,70 @@ public class BrowserService {
 
 	private final KagamiProperties properties;
 
-	public BrowserService(StorageService storageService, KagamiProperties properties) {
+	private final AsyncTaskExecutor taskExecutor;
+
+	public BrowserService(StorageService storageService, KagamiProperties properties, AsyncTaskExecutor taskExecutor) {
 		this.storageService = storageService;
 		this.properties = properties;
+		this.taskExecutor = taskExecutor;
 	}
 
 	/**
-	 * Get all configured repositories with their statistics
-	 * @return list of repository information
+	 * Get all configured repositories without touching the storage.
+	 * @return list of repository summaries in configuration order
 	 */
-	public List<RepositoryInfo> getRepositories() {
-		List<RepositoryInfo> repositories = new ArrayList<>();
-		for (Map.Entry<String, KagamiProperties.Repository> entry : this.properties.repositories().entrySet()) {
-			String repoId = entry.getKey();
-			KagamiProperties.Repository repository = entry.getValue();
-			StorageStats stats;
-			try {
-				stats = this.storageService.stats(repoId);
-			}
-			catch (IOException e) {
-				logger.warn("Failed to calculate statistics of repository {}", repoId, e);
-				stats = StorageStats.EMPTY;
-			}
-			repositories.add(RepositoryInfo.builder()
-				.id(repoId)
+	public List<RepositorySummary> getRepositories() {
+		return this.properties.repositories()
+			.entrySet()
+			.stream()
+			.map(entry -> new RepositorySummary(entry.getKey(), entry.getValue().url(), entry.getValue().isPrivate()))
+			.toList();
+	}
+
+	/**
+	 * Find a configured repository without touching the storage.
+	 * @param repositoryId the repository identifier
+	 * @return the repository summary, empty if it is not configured
+	 */
+	public Optional<RepositorySummary> findRepository(String repositoryId) {
+		return Optional.ofNullable(this.properties.repositories().get(repositoryId))
+			.map(repository -> new RepositorySummary(repositoryId, repository.url(), repository.isPrivate()));
+	}
+
+	/**
+	 * Get all configured repositories with their statistics. Computing the statistics
+	 * visits every stored file, so the repositories are processed concurrently.
+	 * @return list of repository information in configuration order
+	 */
+	public List<RepositoryInfo> getRepositoryStats() {
+		List<RepositorySummary> repositories = getRepositories();
+		List<CompletableFuture<StorageStats>> stats = repositories.stream()
+			.map(repository -> CompletableFuture.supplyAsync(() -> stats(repository.id()), this.taskExecutor))
+			.toList();
+		List<RepositoryInfo> infos = new ArrayList<>(repositories.size());
+		for (int i = 0; i < repositories.size(); i++) {
+			RepositorySummary repository = repositories.get(i);
+			StorageStats stat = stats.get(i).join();
+			infos.add(RepositoryInfo.builder()
+				.id(repository.id())
 				.url(repository.url())
-				.artifactCount(stats.artifactCount())
-				.totalSize(stats.totalSize())
-				.lastUpdated(stats.lastUpdated())
+				.artifactCount(stat.artifactCount())
+				.totalSize(stat.totalSize())
+				.lastUpdated(stat.lastUpdated())
 				.isPrivate(repository.isPrivate())
 				.build());
 		}
-		return repositories;
+		return infos;
+	}
+
+	private StorageStats stats(String repositoryId) {
+		try {
+			return this.storageService.stats(repositoryId);
+		}
+		catch (IOException | RuntimeException e) {
+			logger.warn("Failed to calculate statistics of repository {}", repositoryId, e);
+			return StorageStats.EMPTY;
+		}
 	}
 
 	/**
@@ -165,6 +198,13 @@ public class BrowserService {
 	}
 
 	// Response DTOs
+
+	/**
+	 * A configured repository, known without touching the storage.
+	 */
+	public record RepositorySummary(String id, String url, boolean isPrivate) {
+	}
+
 	public record RepositoryInfo(String id, String url, long artifactCount, long totalSize,
 			@Nullable Instant lastUpdated, boolean isPrivate) {
 
