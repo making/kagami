@@ -1,4 +1,4 @@
-package am.ik.kagami.browser.web;
+package am.ik.kagami.repository.web;
 
 import java.time.Instant;
 import java.time.InstantSource;

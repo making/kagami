@@ -1,4 +1,4 @@
-package am.ik.kagami.browser.web;
+package am.ik.kagami.repository.web;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Runs the browser API tests against the local file system storage with a generated
  * (non-built-in) JWT key pair: the home page must not show the default key warning.
  */
-class CustomJwtKeyBrowserControllerTest extends BrowserControllerTestBase {
+class CustomJwtKeyBrowserControllerTest extends RepositoryControllerTestBase {
 
 	@TempDir
 	static Path tempDir;

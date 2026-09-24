@@ -1,4 +1,4 @@
-package am.ik.kagami.browser.web;
+package am.ik.kagami.repository.web;
 
 import java.time.InstantSource;
 import java.util.List;
@@ -6,9 +6,9 @@ import java.util.Locale;
 import java.util.Objects;
 
 import am.ik.kagami.KagamiProperties;
-import am.ik.kagami.browser.BrowserService;
-import am.ik.kagami.browser.BrowserService.RepositoryInfo;
-import am.ik.kagami.browser.BrowserService.RepositorySummary;
+import am.ik.kagami.repository.RepositoryService;
+import am.ik.kagami.repository.RepositoryService.RepositoryInfo;
+import am.ik.kagami.repository.RepositoryService.RepositorySummary;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -21,14 +21,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class HomeController {
 
-	private final BrowserService browserService;
+	private final RepositoryService repositoryService;
 
 	private final KagamiProperties properties;
 
 	private final InstantSource instantSource;
 
-	public HomeController(BrowserService browserService, KagamiProperties properties, InstantSource instantSource) {
-		this.browserService = browserService;
+	public HomeController(RepositoryService repositoryService, KagamiProperties properties,
+			InstantSource instantSource) {
+		this.repositoryService = repositoryService;
 		this.properties = properties;
 		this.instantSource = instantSource;
 	}
@@ -40,7 +41,7 @@ public class HomeController {
 	@GetMapping("/")
 	public String home(Authentication authentication, Model model) {
 		model.addAttribute("defaultJwtKey", this.properties.jwt().defaultKeys());
-		List<RepositorySummary> repositories = this.browserService.getRepositories();
+		List<RepositorySummary> repositories = this.repositoryService.getRepositories();
 		model.addAttribute("title", "Maven Mirror Registry");
 		model.addAttribute("userName", authentication.getName());
 		model.addAttribute("repoCount", repositories.size());
@@ -58,7 +59,7 @@ public class HomeController {
 	 */
 	@GetMapping("/fragments/repositories/stats")
 	public String stats(Model model) {
-		List<RepositoryInfo> repositories = this.browserService.getRepositoryStats();
+		List<RepositoryInfo> repositories = this.repositoryService.getRepositoryStats();
 		long totalArtifacts = repositories.stream().mapToLong(RepositoryInfo::artifactCount).sum();
 		long totalSize = repositories.stream().mapToLong(RepositoryInfo::totalSize).sum();
 		model.addAttribute("repoCount", repositories.size());

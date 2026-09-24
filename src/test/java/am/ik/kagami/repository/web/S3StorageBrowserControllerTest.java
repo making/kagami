@@ -1,4 +1,4 @@
-package am.ik.kagami.browser.web;
+package am.ik.kagami.repository.web;
 
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Import(TestcontainersConfiguration.class)
 @TestPropertySource(properties = "kagami.storage.type=s3")
-class S3StorageBrowserControllerTest extends BrowserControllerTestBase {
+class S3StorageBrowserControllerTest extends RepositoryControllerTestBase {
 
 	@Test
 	void browsePage_directoryEntriesCarryNoTimestamp() throws Exception {

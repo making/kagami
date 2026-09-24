@@ -1,4 +1,4 @@
-package am.ik.kagami.browser.web;
+package am.ik.kagami.repository.web;
 
 import java.nio.file.Path;
 import org.junit.jupiter.api.io.TempDir;
@@ -8,7 +8,7 @@ import org.springframework.test.context.DynamicPropertySource;
 /**
  * Runs the browser API tests against the local file system storage
  */
-class LocalStorageBrowserControllerTest extends BrowserControllerTestBase {
+class LocalStorageBrowserControllerTest extends RepositoryControllerTestBase {
 
 	@TempDir
 	static Path tempDir;

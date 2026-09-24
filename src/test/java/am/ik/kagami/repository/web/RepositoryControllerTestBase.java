@@ -1,4 +1,4 @@
-package am.ik.kagami.browser.web;
+package am.ik.kagami.repository.web;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -35,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @WithMockUser(username = "test-user", password = "test-password",
 		authorities = { "artifacts:read", "artifacts:delete" })
-public abstract class BrowserControllerTestBase {
+public abstract class RepositoryControllerTestBase {
 
 	@Autowired
 	MockMvc mockMvc;

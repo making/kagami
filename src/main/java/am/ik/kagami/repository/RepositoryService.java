@@ -1,4 +1,4 @@
-package am.ik.kagami.browser;
+package am.ik.kagami.repository;
 
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.storage.ArtifactContentType;
@@ -29,9 +29,9 @@ import org.springframework.util.StringUtils;
  * Service for browsing repository contents
  */
 @Service
-public class BrowserService {
+public class RepositoryService {
 
-	private static final Logger logger = LoggerFactory.getLogger(BrowserService.class);
+	private static final Logger logger = LoggerFactory.getLogger(RepositoryService.class);
 
 	private final StorageService storageService;
 
@@ -39,7 +39,8 @@ public class BrowserService {
 
 	private final AsyncTaskExecutor taskExecutor;
 
-	public BrowserService(StorageService storageService, KagamiProperties properties, AsyncTaskExecutor taskExecutor) {
+	public RepositoryService(StorageService storageService, KagamiProperties properties,
+			AsyncTaskExecutor taskExecutor) {
 		this.storageService = storageService;
 		this.properties = properties;
 		this.taskExecutor = taskExecutor;
@@ -113,7 +114,7 @@ public class BrowserService {
 		ArtifactLocation location = toLocation(repositoryId, path);
 		List<RepositoryEntry> entries = this.storageService.list(location)
 			.stream()
-			.map(BrowserService::toRepositoryEntry)
+			.map(RepositoryService::toRepositoryEntry)
 			.toList();
 		return BrowseResult.builder()
 			.repositoryId(repositoryId)

@@ -1,4 +1,4 @@
-package am.ik.kagami.browser.web;
+package am.ik.kagami.repository.web;
 
 import am.ik.kagami.rbac.RbacBuiltins;
 import java.io.IOException;
@@ -13,11 +13,11 @@ import am.ik.kagami.buildconfig.ConfigExamples.AuthMethod;
 import am.ik.kagami.buildconfig.ConfigExamples.BuildTool;
 import am.ik.kagami.buildconfig.ConfigExamples.ConfigExample;
 import am.ik.kagami.buildconfig.ConfigExamples.Params;
-import am.ik.kagami.browser.BrowserService;
-import am.ik.kagami.browser.BrowserService.BrowseResult;
-import am.ik.kagami.browser.BrowserService.FileInfo;
-import am.ik.kagami.browser.BrowserService.RepositoryEntry;
-import am.ik.kagami.browser.BrowserService.RepositorySummary;
+import am.ik.kagami.repository.RepositoryService;
+import am.ik.kagami.repository.RepositoryService.BrowseResult;
+import am.ik.kagami.repository.RepositoryService.FileInfo;
+import am.ik.kagami.repository.RepositoryService.RepositoryEntry;
+import am.ik.kagami.repository.RepositoryService.RepositorySummary;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.ModelAndView;
@@ -45,12 +45,12 @@ public class BrowseController {
 
 	private static final List<AuthMethod> AUTH_METHODS = List.of(AuthMethod.BASIC, AuthMethod.BEARER);
 
-	private final BrowserService browserService;
+	private final RepositoryService repositoryService;
 
 	private final InstantSource instantSource;
 
-	public BrowseController(BrowserService browserService, InstantSource instantSource) {
-		this.browserService = browserService;
+	public BrowseController(RepositoryService repositoryService, InstantSource instantSource) {
+		this.repositoryService = repositoryService;
 		this.instantSource = instantSource;
 	}
 
@@ -93,7 +93,7 @@ public class BrowseController {
 			throws IOException {
 		FileInfo info;
 		try {
-			info = this.browserService.getFileInfo(repositoryId, path);
+			info = this.repositoryService.getFileInfo(repositoryId, path);
 		}
 		catch (IllegalArgumentException e) {
 			ModelAndView error = new ModelAndView("fragments/file-info-error");
@@ -121,7 +121,7 @@ public class BrowseController {
 	@GetMapping("/fragments/repositories/{repositoryId}/config")
 	public String config(@PathVariable String repositoryId, UriComponentsBuilder builder, Model model) {
 		String baseUrl = builder.path("").build().toString();
-		RepositorySummary repository = this.browserService.findRepository(repositoryId)
+		RepositorySummary repository = this.repositoryService.findRepository(repositoryId)
 			.orElseThrow(() -> new IllegalArgumentException("Repository not found: " + repositoryId));
 		model.addAttribute("title", "Repository Configuration / " + repositoryId);
 		model.addAttribute("repositoryId", repositoryId);
@@ -168,7 +168,7 @@ public class BrowseController {
 		model.addAttribute("repositoryId", repositoryId);
 		model.addAttribute("entriesUrl", entriesUrl(repositoryId, path));
 		try {
-			BrowseResult result = this.browserService.browseRepository(repositoryId, path);
+			BrowseResult result = this.repositoryService.browseRepository(repositoryId, path);
 			model.addAttribute("error", null);
 			model.addAttribute("hasError", false);
 			model.addAttribute("hasParent", result.parentPath() != null);

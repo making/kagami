@@ -7,9 +7,9 @@ import java.util.Locale;
 import java.util.Set;
 
 import am.ik.kagami.KagamiProperties;
-import am.ik.kagami.browser.BrowserService;
+import am.ik.kagami.repository.RepositoryService;
 import am.ik.kagami.rbac.RbacService;
-import am.ik.kagami.browser.web.BrowseController.ConfigItem;
+import am.ik.kagami.repository.web.BrowseController.ConfigItem;
 import am.ik.kagami.buildconfig.ConfigExamples;
 import am.ik.kagami.buildconfig.ConfigExamples.AuthMethod;
 import am.ik.kagami.buildconfig.ConfigExamples.BuildTool;
@@ -33,7 +33,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Controller
 public class TokenPageController {
 
-	private final BrowserService browserService;
+	private final RepositoryService repositoryService;
 
 	private final TokenIssuer tokenIssuer;
 
@@ -41,9 +41,9 @@ public class TokenPageController {
 
 	private final RbacService rbacService;
 
-	public TokenPageController(BrowserService browserService, TokenIssuer tokenIssuer, KagamiProperties properties,
-			RbacService rbacService) {
-		this.browserService = browserService;
+	public TokenPageController(RepositoryService repositoryService, TokenIssuer tokenIssuer,
+			KagamiProperties properties, RbacService rbacService) {
+		this.repositoryService = repositoryService;
 		this.tokenIssuer = tokenIssuer;
 		this.properties = properties;
 		this.rbacService = rbacService;
@@ -132,7 +132,7 @@ public class TokenPageController {
 
 	private void addRepositoryModel(Model model) {
 		model.addAttribute("repositories",
-				this.browserService.getRepositories()
+				this.repositoryService.getRepositories()
 					.stream()
 					.<RepositoryCheckbox>map(repo -> new RepositoryCheckbox(repo.id(), repo.url(), repo.isPrivate()))
 					.toList());
