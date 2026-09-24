@@ -26,7 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		"logging.level.am.ik.kagami=DEBUG", "spring.security.user.name=test-user",
 		"spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
-@WithMockUser(username = "test-user", password = "test-password", roles = "USER")
+@WithMockUser(username = "test-user", password = "test-password",
+		authorities = { "artifacts:read", "artifacts:delete" })
 class ArtifactControllerTest {
 
 	@TempDir

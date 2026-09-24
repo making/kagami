@@ -1,15 +1,14 @@
 package am.ik.kagami.config;
 
+import am.ik.kagami.rbac.RbacBuiltins;
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.KagamiProperties.AuthenticationType;
+import am.ik.kagami.rbac.OidcUserAuthoritiesMapper;
+import am.ik.kagami.rbac.RbacService;
 import am.ik.kagami.token.web.BasicToBearerTokenResolver;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.security.autoconfigure.SecurityProperties;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
@@ -17,9 +16,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -27,7 +23,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.DelegatingPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenAuthenticationEntryPoint;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -42,35 +37,34 @@ import org.springframework.security.web.servlet.util.matcher.PathPatternRequestM
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.HEAD;
-import static org.springframework.security.authorization.AuthorityAuthorizationManager.hasRole;
+import static org.springframework.security.authorization.AuthorityAuthorizationManager.hasAuthority;
 import static org.springframework.security.authorization.AuthorizationManagers.anyOf;
 import static org.springframework.security.oauth2.core.authorization.OAuth2AuthorizationManagers.hasScope;
 
 @Configuration(proxyBeanMethods = false)
 class SecurityConfig {
 
-	Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
-
 	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http, KagamiProperties properties) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http, KagamiProperties properties, RbacService rbacService)
+			throws Exception {
 		AuthenticationEntryPoint artifactsEntryPoint = artifactsAuthenticationEntryPoint();
 		HttpSecurity security = http
 		// @formatter:off
 			.authorizeHttpRequests(authz -> {
 				properties.repositories().forEach((repositoryId, repository) -> {
 					if (repository.isPrivate()) {
-						authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope("artifacts:read"), hasRole("USER")));
-						authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope("artifacts:read"), hasRole("USER")));
+						authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope(RbacBuiltins.READ_AUTHORITY), hasAuthority(RbacBuiltins.READ_AUTHORITY)));
+						authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope(RbacBuiltins.READ_AUTHORITY), hasAuthority(RbacBuiltins.READ_AUTHORITY)));
 					}
 					else {
 						authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
 						authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
 					}
-					authz.requestMatchers(DELETE, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope("artifacts:delete"), hasRole("USER")));
+					authz.requestMatchers(DELETE, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope(RbacBuiltins.DELETE_AUTHORITY), hasAuthority(RbacBuiltins.DELETE_AUTHORITY)));
 				});
 				authz.requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
 					.requestMatchers("/login", "/logout", "/css/**", "/js/**", "/fonts/**", "/favicon.svg", "/error", "/.well-known/**", "/openid/v1/jwks").permitAll()
-					.anyRequest().hasRole("USER");
+					.anyRequest().authenticated();
 			})
 				// @formatter:on
 			.oauth2ResourceServer(oauth -> oauth.bearerTokenResolver(new BasicToBearerTokenResolver())
@@ -93,7 +87,8 @@ class SecurityConfig {
 				.rememberMe(Customizer.withDefaults());
 			case OIDC -> security.oauth2Login(oauth2 -> oauth2.loginPage("/login")
 				.defaultSuccessUrl("/", true)
-				.userInfoEndpoint(userInfo -> userInfo.userAuthoritiesMapper(grantedAuthoritiesMapper(properties))));
+				.userInfoEndpoint(userInfo -> userInfo
+					.userAuthoritiesMapper(new OidcUserAuthoritiesMapper(properties, rbacService))));
 			case null, default ->
 				throw new IllegalStateException("Unsupported authentication type: " + authenticationType);
 		}
@@ -173,11 +168,13 @@ class SecurityConfig {
 	}
 
 	@Bean
-	UserDetailsService userDetailsService(SecurityProperties properties) {
+	UserDetailsService userDetailsService(SecurityProperties properties, RbacService rbacService) {
 		SecurityProperties.User user = properties.getUser();
+		// The simple auth user gets the authorities of its RBAC groups instead of the
+		// static spring.security.user.roles; this covers form login and remember-me alike
 		UserDetails userDetails = User.withUsername(user.getName())
 			.password(user.getPassword())
-			.roles(user.getRoles().toArray(String[]::new))
+			.authorities(rbacService.authoritiesFor(user.getName(), List.of()))
 			.build();
 		return new InMemoryUserDetailsManager(userDetails);
 	}
@@ -188,30 +185,6 @@ class SecurityConfig {
 		String idForEncode = "bcrypt";
 		return new DelegatingPasswordEncoder(idForEncode,
 				Map.of(idForEncode, new BCryptPasswordEncoder(), "noop", NoOpPasswordEncoder.getInstance()));
-	}
-
-	GrantedAuthoritiesMapper grantedAuthoritiesMapper(KagamiProperties props) {
-		return authorities -> {
-			List<GrantedAuthority> authorityList = new ArrayList<>();
-			for (GrantedAuthority grantedAuthority : authorities) {
-				if (grantedAuthority instanceof OidcUserAuthority oidcUserAuthority) {
-					String userName = (String) oidcUserAuthority.getAttributes()
-						.get(oidcUserAuthority.getUserNameAttributeName());
-					for (Pattern allowedNamePattern : props.authentication().allowedNamePatterns()) {
-						if (allowedNamePattern.matcher(userName).matches()) {
-							logger.info("Allowed name pattern: {} => {}", userName, allowedNamePattern);
-							authorityList.add(new SimpleGrantedAuthority("ROLE_USER"));
-							break;
-						}
-					}
-					if (authorityList.isEmpty()) {
-						logger.info("User {} does not match any allowed name patterns", userName);
-					}
-					break;
-				}
-			}
-			return authorityList;
-		};
 	}
 
 }

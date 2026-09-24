@@ -21,7 +21,7 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **Authentication**: Form-based authentication or OIDC/OAuth2 login for web UI access with styled login/logout pages
 - **Token Management**: Web-based JWT token generation with configurable expiration, permissions, and build tool configuration examples
 - **User Interface**: Consistent header across all pages showing logged-in username, logout functionality, and token generation access
-- **Security Features**: OAuth2 Resource Server with JWT tokens, repository-specific access control, role-based token generation, CSRF protection partially disabled for API usage
+- **Security Features**: OAuth2 Resource Server with JWT tokens, repository-specific access control, group-based RBAC, scope-capped token generation, CSRF protection partially disabled for API usage
 - **OIDC Support**: OpenID Connect authentication with multiple identity providers (Google, Microsoft Entra ID, etc.)
 
 ## Quick Start
@@ -318,9 +318,55 @@ spring.security.oauth2.client.registration.microsoft-entra-id.scope=openid,email
 - When OIDC is enabled, users will see provider-specific login buttons instead of username/password fields
 - The `allowed-name-patterns` property restricts access to users whose name matches the specified patterns
 - Multiple identity providers can be configured simultaneously
-- Users must have matching email patterns to be granted USER role access
+- Users must have matching email patterns to be allowed to log in
 
 See the [Spring Boot documentation](https://docs.spring.io/spring-boot/reference/web/spring-security.html#web.security.oauth2.client) for more details on configuring OIDC authentication.
+
+### Group-based RBAC
+
+A group is a named set of authorities and users are mapped to groups through properties.
+Group names are not roles: authorization rules only see the authorities a group expands
+into, which reuse the JWT scope vocabulary (`artifacts:read`, `artifacts:delete`), so
+JWT scopes and group membership satisfy the same rules. Users absent from every mapping
+fall into the default group, which by default is `administrators` and keeps the
+out-of-the-box behavior unchanged.
+
+```properties
+# Group definitions: group name -> authorities (same vocabulary as JWT scopes).
+# The built-in groups administrators, editors (both artifacts:read,artifacts:delete)
+# and viewers (artifacts:read) exist by default; entries here override or add groups.
+# An empty value defines a group with no authorities.
+kagami.rbac.groups.administrators=artifacts:read,artifacts:delete
+kagami.rbac.groups.no-access=
+
+# Username -> groups, common to simple and OIDC authentication. Keys containing @ or .
+# need the bracket notation so that relaxed binding does not mangle them.
+kagami.rbac.users.demo=administrators
+kagami.rbac.users[taro@example.com]=editors
+
+# OIDC groups claim (IdP group names) -> Kagami groups
+kagami.rbac.idp-groups.my-team-admins=administrators
+
+# Group applied to users absent from every mapping (default: administrators)
+kagami.rbac.default-group=no-access
+```
+
+With this configuration, the user `demo` gets the authorities of `administrators`,
+`taro@example.com` gets those of `editors`, and OIDC users carrying the `my-team-admins`
+group get those of `administrators`. Everyone else falls into `no-access`, which grants
+nothing: such users can browse the web UI but see no delete actions and cannot issue any
+token.
+
+**Notes**:
+- Login grants the union of the authorities of all groups the user belongs to
+- Every referenced group must be defined under `kagami.rbac.groups.*`; the application
+  fails to start otherwise
+- The token generation page only offers the scopes the logged in user holds, and the
+  token API (`POST /token`) rejects requests beyond that cap with 403
+- The delete actions in the web UI are only rendered for users holding
+  `artifacts:delete`
+- The `allowed-name-patterns` OIDC gate is orthogonal to RBAC: patterns decide who may
+  log in, RBAC decides what admitted users can do
 
 ### HTTP Proxy Configuration
 

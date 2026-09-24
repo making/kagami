@@ -12,10 +12,12 @@ import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import am.ik.kagami.rbac.RbacBuiltins;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -30,7 +32,8 @@ import org.springframework.util.StreamUtils;
  */
 @ConfigurationProperties(prefix = "kagami")
 public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<String, Repository> repositories,
-		@Nullable Proxy proxy, @DefaultValue Jwt jwt, @DefaultValue Authentication authentication) {
+		@Nullable Proxy proxy, @DefaultValue Jwt jwt, @DefaultValue Authentication authentication,
+		@DefaultValue Rbac rbac) {
 
 	public static Builder builder() {
 		return new Builder();
@@ -47,6 +50,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 		@Nullable private Jwt jwt;
 
 		@Nullable private Authentication authentication;
+
+		@Nullable private Rbac rbac;
 
 		private Builder() {
 		}
@@ -76,11 +81,19 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			return this;
 		}
 
+		public Builder rbac(Rbac rbac) {
+			this.rbac = rbac;
+			return this;
+		}
+
 		public KagamiProperties build() {
 			return new KagamiProperties(Objects.requireNonNull(this.storage, "storage is required"),
 					Objects.requireNonNull(this.repositories, "repositories is required"), this.proxy,
 					Objects.requireNonNull(this.jwt, "jwt is required"),
-					Objects.requireNonNull(this.authentication, "authentication is required"));
+					Objects.requireNonNull(this.authentication, "authentication is required"),
+					this.rbac == null
+							? new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(), Map.of(), Map.of())
+							: this.rbac);
 		}
 
 	}
@@ -366,4 +379,37 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 		SIMPLE, OIDC
 
 	}
+
+	/**
+	 * Group-based RBAC settings. A group is a named set of authorities and users are
+	 * mapped to groups through properties; a group never appears in authorization rules
+	 * itself, only the authorities it expands into do. The authority vocabulary reuses
+	 * the JWT scope vocabulary ({@code artifacts:read}, {@code artifacts:delete}), so
+	 * scope-based and group-based authorization share one namespace.
+	 * <p>
+	 * Group names containing {@code @} or {@code .} must be configured with the bracket
+	 * notation (e.g. {@code kagami.rbac.users[taro@example.com]=editors}) so that Spring
+	 * Boot relaxed binding does not mangle the key.
+	 *
+	 * @param defaultGroup the group applied to users absent from every mapping
+	 * @param groups the group definitions: group name to the authorities it expands into;
+	 * merged over the built-in groups ({@code administrators}, {@code editors},
+	 * {@code viewers}) so that an entry with the same name overrides the built-in one
+	 * @param users the username to groups mapping, common to simple and OIDC
+	 * authentication
+	 * @param idpGroups the IdP groups claim value to Kagami groups translation for OIDC
+	 * authentication
+	 */
+	public record Rbac(@DefaultValue(RbacBuiltins.ADMINISTRATORS_GROUP) String defaultGroup,
+			@DefaultValue Map<String, List<String>> groups, @DefaultValue Map<String, List<String>> users,
+			@DefaultValue Map<String, List<String>> idpGroups) {
+
+		public Rbac {
+			Map<String, List<String>> merged = new LinkedHashMap<>(RbacBuiltins.BUILT_IN_GROUPS);
+			merged.putAll(groups == null ? Map.of() : groups);
+			groups = Map.copyOf(merged);
+		}
+
+	}
+
 }

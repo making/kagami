@@ -1,5 +1,6 @@
 package am.ik.kagami.token.web;
 
+import am.ik.kagami.rbac.RbacBuiltins;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -7,6 +8,7 @@ import java.util.Set;
 
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.browser.BrowserService;
+import am.ik.kagami.rbac.RbacService;
 import am.ik.kagami.browser.web.BrowseController.ConfigItem;
 import am.ik.kagami.buildconfig.ConfigExamples;
 import am.ik.kagami.buildconfig.ConfigExamples.AuthMethod;
@@ -37,10 +39,14 @@ public class TokenPageController {
 
 	private final KagamiProperties properties;
 
-	public TokenPageController(BrowserService browserService, TokenIssuer tokenIssuer, KagamiProperties properties) {
+	private final RbacService rbacService;
+
+	public TokenPageController(BrowserService browserService, TokenIssuer tokenIssuer, KagamiProperties properties,
+			RbacService rbacService) {
 		this.browserService = browserService;
 		this.tokenIssuer = tokenIssuer;
 		this.properties = properties;
+		this.rbacService = rbacService;
 	}
 
 	@GetMapping("/token")
@@ -49,6 +55,7 @@ public class TokenPageController {
 		model.addAttribute("userName", authentication.getName());
 		model.addAttribute("defaultJwtKey", this.properties.jwt().defaultKeys());
 		addRepositoryModel(model);
+		addScopeModel(model, authentication);
 		model.addAttribute("error", null);
 		model.addAttribute("hasError", false);
 		return "pages/token";
@@ -58,11 +65,22 @@ public class TokenPageController {
 	 * Fragment: a fresh token form, used by "Generate Another Token" to reset the flow.
 	 */
 	@GetMapping("/app/token/form")
-	public String form(Model model) {
+	public String form(Authentication authentication, Model model) {
 		addRepositoryModel(model);
+		addScopeModel(model, authentication);
 		model.addAttribute("error", null);
 		model.addAttribute("hasError", false);
 		return "fragments/token-form";
+	}
+
+	/**
+	 * The scope checkboxes the principal may actually issue: scopes above the cap are
+	 * hidden from the form.
+	 */
+	private void addScopeModel(Model model, Authentication authentication) {
+		Set<String> issuable = this.rbacService.issuableScopes(authentication);
+		model.addAttribute("canRead", issuable.contains(RbacBuiltins.READ_AUTHORITY));
+		model.addAttribute("canDelete", issuable.contains(RbacBuiltins.DELETE_AUTHORITY));
 	}
 
 	/**
@@ -77,6 +95,9 @@ public class TokenPageController {
 			UriComponentsBuilder builder, Model model) {
 		if (repositories.isEmpty() || scope.isEmpty()) {
 			return formWithError(model, "Please select at least one repository and one scope.");
+		}
+		if (!this.rbacService.issuableScopes(authentication).containsAll(scope)) {
+			return formWithError(model, "You are not allowed to issue tokens with the selected scopes.");
 		}
 		if (duration < 1) {
 			return formWithError(model, "Duration must be at least 1.");

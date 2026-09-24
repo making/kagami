@@ -24,9 +24,9 @@
       <span class="entry-size"></span>
       <span class="entry-updated"></span>
       <div class="action-buttons">
-        <button type="button" class="registry-label button-small button-small-danger"
+        {{#canDelete}}<button type="button" class="registry-label button-small button-small-danger"
                 hx-delete="{{deletePath}}" hx-swap="none"
-                hx-confirm="{{confirmMessage}}">Del</button>
+                hx-confirm="{{confirmMessage}}">Del</button>{{/canDelete}}
       </div>
     </div>
   </a>
@@ -47,9 +47,9 @@
                 hx-target="body" hx-swap="beforeend">Info</button>
         <a class="registry-label button-small" role="button" href="{{downloadPath}}" target="_blank">Get</a>
         {{/isFile}}
-        <button type="button" class="registry-label button-small button-small-danger"
+        {{#canDelete}}<button type="button" class="registry-label button-small button-small-danger"
                 hx-delete="{{deletePath}}" hx-swap="none"
-                hx-confirm="{{confirmMessage}}">Del</button>
+                hx-confirm="{{confirmMessage}}">Del</button>{{/canDelete}}
       </div>
     </div>
   </div>

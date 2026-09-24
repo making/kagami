@@ -1,10 +1,12 @@
 package am.ik.kagami.browser.web;
 
+import am.ik.kagami.rbac.RbacBuiltins;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.buildconfig.ConfigExamples;
 import am.ik.kagami.buildconfig.ConfigExamples.AuthMethod;
 import am.ik.kagami.buildconfig.ConfigExamples.BuildTool;
@@ -59,7 +61,7 @@ public class BrowseController {
 		model.addAttribute("userName", authentication.getName());
 		model.addAttribute("repositoryId", repositoryId);
 		model.addAttribute("breadcrumbs", breadcrumbs(repositoryId, path));
-		addEntryListModel(model, repositoryId, path);
+		addEntryListModel(model, repositoryId, path, authentication);
 		return "pages/browse";
 	}
 
@@ -73,8 +75,9 @@ public class BrowseController {
 	 * deleted elsewhere in the listing.
 	 */
 	@GetMapping("/fragments/repositories/{repositoryId}/entries")
-	public String entries(@PathVariable String repositoryId, @RequestParam(required = false) String path, Model model) {
-		addEntryListModel(model, repositoryId, path);
+	public String entries(@PathVariable String repositoryId, @RequestParam(required = false) String path,
+			Authentication authentication, Model model) {
+		addEntryListModel(model, repositoryId, path, authentication);
 		return "fragments/entry-list";
 	}
 
@@ -154,7 +157,13 @@ public class BrowseController {
 		return "/artifacts/" + repositoryId + "/" + path;
 	}
 
-	private void addEntryListModel(Model model, String repositoryId, @Nullable String path) {
+	private void addEntryListModel(Model model, String repositoryId, @Nullable String path,
+			Authentication authentication) {
+		// The delete action is only rendered for principals holding the delete authority
+		model.addAttribute("canDelete",
+				authentication.getAuthorities()
+					.stream()
+					.anyMatch(authority -> RbacBuiltins.DELETE_AUTHORITY.equals(authority.getAuthority())));
 		model.addAttribute("repositoryId", repositoryId);
 		model.addAttribute("entriesUrl", entriesUrl(repositoryId, path));
 		try {

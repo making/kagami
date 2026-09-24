@@ -28,7 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = { "kagami.repositories.test-repo.url=https://repo.maven.apache.org/maven2",
 		"spring.security.user.name=test-user", "spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
-@WithMockUser(username = "test-user", password = "test-password", roles = "USER")
+@WithMockUser(username = "test-user", password = "test-password",
+		authorities = { "artifacts:read", "artifacts:delete" })
 public abstract class BrowserControllerTestBase {
 
 	@Autowired

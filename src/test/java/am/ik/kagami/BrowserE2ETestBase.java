@@ -133,6 +133,24 @@ public abstract class BrowserE2ETestBase {
 	}
 
 	/**
+	 * Whether the logged in principal holds the delete authority and therefore sees the
+	 * delete actions in the UI. Subclasses exercising restricted RBAC groups override
+	 * this.
+	 */
+	boolean canDelete() {
+		return true;
+	}
+
+	/**
+	 * Whether the inherited standard scenario applies: tests that generate tokens require
+	 * the principal to hold the matching authorities, which restricted RBAC
+	 * configurations take away, so subclasses can turn them off.
+	 */
+	boolean standardScenarioApplies() {
+		return true;
+	}
+
+	/**
 	 * Logs in through the login form and waits for the home page.
 	 */
 	void login() {
@@ -151,6 +169,7 @@ public abstract class BrowserE2ETestBase {
 
 	@Test
 	void browseRepositoryAndGenerateToken() {
+		Assumptions.assumeTrue(standardScenarioApplies());
 		String baseUrl = "http://localhost:" + this.port;
 		String sha1 = mirror(POM_PATH, POM_CONTENT);
 
@@ -352,6 +371,9 @@ public abstract class BrowserE2ETestBase {
 		Assertions.assertThat(download.url()).isEqualTo(baseUrl + "/artifacts/mock/" + path);
 		download.delete();
 
+		// The delete actions are only exercised when the principal may delete
+		Assumptions.assumeTrue(canDelete());
+
 		// Dismissing the delete confirmation keeps the file
 		fileRow.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Del")).click();
 		assertThat(fileRow).isVisible();
@@ -371,6 +393,7 @@ public abstract class BrowserE2ETestBase {
 
 	@Test
 	void tokenPageValidationAndExpirationWarning() {
+		Assumptions.assumeTrue(standardScenarioApplies());
 		login();
 		String baseUrl = "http://localhost:" + this.port;
 		this.page.navigate(baseUrl + "/token");
@@ -400,6 +423,7 @@ public abstract class BrowserE2ETestBase {
 
 	@Test
 	void tokenGenerationShowsResultAndResets() {
+		Assumptions.assumeTrue(standardScenarioApplies());
 		mirror(POM_PATH, POM_CONTENT);
 		login();
 		String baseUrl = "http://localhost:" + this.port;

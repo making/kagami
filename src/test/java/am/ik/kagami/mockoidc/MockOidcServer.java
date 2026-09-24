@@ -45,6 +45,8 @@ public class MockOidcServer implements AutoCloseable {
 
 	private String email = "user@example.com";
 
+	private volatile java.util.@org.jspecify.annotations.Nullable List<String> groups;
+
 	public MockOidcServer(int port) {
 		try {
 			this.server = HttpServer.create(new InetSocketAddress(port), 0);
@@ -89,6 +91,14 @@ public class MockOidcServer implements AutoCloseable {
 
 	public MockOidcServer email(String email) {
 		this.email = email;
+		return this;
+	}
+
+	/**
+	 * Overrides the groups claim of the id token issued by the next login.
+	 */
+	public MockOidcServer groups(java.util.List<String> groups) {
+		this.groups = groups;
 		return this;
 	}
 
@@ -137,6 +147,9 @@ public class MockOidcServer implements AutoCloseable {
 		claims.put("sub", this.subject);
 		claims.put("aud", java.util.List.of("kagami"));
 		claims.put("email", this.email);
+		if (this.groups != null) {
+			claims.put("groups", this.groups);
+		}
 		if (this.nonce != null) {
 			claims.put("nonce", this.nonce);
 		}

@@ -22,6 +22,7 @@
       <p>Choose what actions this token can perform</p>
     </div>
     <div class="scope-check-list">
+      {{#canRead}}
       <label class="check-card">
         <input type="checkbox" name="scope" value="artifacts:read"/>
         <span class="check-body">
@@ -30,6 +31,8 @@
           <span class="check-code">artifacts:read</span>
         </span>
       </label>
+      {{/canRead}}
+      {{#canDelete}}
       <label class="check-card">
         <input type="checkbox" name="scope" value="artifacts:delete"/>
         <span class="check-body">
@@ -38,6 +41,7 @@
           <span class="check-code">artifacts:delete</span>
         </span>
       </label>
+      {{/canDelete}}
     </div>
 
     <div class="section-head">
