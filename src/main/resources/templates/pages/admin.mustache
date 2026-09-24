@@ -45,7 +45,7 @@
                   hx-get="/app/admin/gc/preview" hx-include="closest form"
                   hx-target="#gc-result" hx-swap="innerHTML"
                   {{^hasRepositories}}disabled{{/hasRepositories}}>Preview</button>
-          <button type="submit" id="gc-run-button" class="button button-loading"
+          <button type="submit" id="gc-run-button" class="button button-primary button-loading"
                   hx-confirm="Collect eligible metadata-only directories? This operation cannot be undone."
                   {{^hasRepositories}}disabled{{/hasRepositories}}>Run Garbage Collection</button>
         </div>

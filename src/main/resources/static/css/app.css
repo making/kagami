@@ -579,6 +579,10 @@ tr.group:hover .row-arrow {
   animation: button-spin 0.6s linear infinite;
 }
 
+.button-primary.button-loading.htmx-request::after {
+  border-color: #fff;
+}
+
 @keyframes button-spin {
   to {
     transform: rotate(360deg);
