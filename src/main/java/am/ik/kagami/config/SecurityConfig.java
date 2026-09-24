@@ -179,12 +179,14 @@ class SecurityConfig {
 				}
 				return;
 			}
-			response.setStatus(403);
 			if ("true".equals(request.getHeader("HX-Request"))) {
+				response.setStatus(403);
 				response.setHeader("HX-Redirect", "/error?status=403");
 				return;
 			}
-			request.getRequestDispatcher("/error").forward(request, response);
+			// sendError routes to /error through the container's ERROR dispatch, which
+			// populates the jakarta.servlet.error.* attributes for the error page
+			response.sendError(403);
 		};
 	}
 

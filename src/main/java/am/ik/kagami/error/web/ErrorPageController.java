@@ -41,11 +41,14 @@ public class ErrorPageController implements ErrorController {
 		model.put("title", "Error " + status);
 		model.put("statusCode", status);
 		model.put("statusText", statusText(status));
-		model.put("message", errorMessage(request));
-		model.put("path", errorPath(request));
-		if (authentication != null) {
-			model.put("userName", authentication.getName());
-		}
+		// Mustache is configured strictly: every referenced key must be present even
+		// when a value is optional (e.g. an access-denied forward carries no message)
+		String message = errorMessage(request);
+		model.put("message", message != null ? message : "The server could not process your request.");
+		String path = errorPath(request);
+		model.put("path", path);
+		model.put("hasPath", path != null);
+		model.put("userName", authentication != null ? authentication.getName() : "");
 		return new ModelAndView("pages/error", model);
 	}
 

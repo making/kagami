@@ -1,7 +1,15 @@
 package am.ik.kagami.error.web;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.FileNotFoundException;
+import java.nio.charset.StandardCharsets;
+
+import com.samskivert.mustache.Mustache;
+
 import org.junit.jupiter.api.Test;
 
+import org.springframework.boot.mustache.servlet.view.MustacheViewResolver;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -17,7 +25,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class ErrorPageControllerTest {
 
-	private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new ErrorPageController()).build();
+	private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new ErrorPageController())
+		.setViewResolvers(mustacheViewResolver())
+		.build();
+
+	private static MustacheViewResolver mustacheViewResolver() {
+		Mustache.Compiler compiler = Mustache.compiler().withLoader(name -> {
+			InputStream in = ErrorPageControllerTest.class.getResourceAsStream("/templates/" + name + ".mustache");
+			if (in == null) {
+				throw new FileNotFoundException("Template not found: " + name);
+			}
+			return new InputStreamReader(in, StandardCharsets.UTF_8);
+		});
+		MustacheViewResolver resolver = new MustacheViewResolver(compiler);
+		resolver.setPrefix("classpath:/templates/");
+		resolver.setSuffix(".mustache");
+		return resolver;
+	}
 
 	@Test
 	void rendersErrorPageWithErrorAttributes() throws Exception {
@@ -51,6 +75,15 @@ class ErrorPageControllerTest {
 			.andExpect(view().name("pages/error"))
 			.andExpect(model().attribute("statusCode", 403))
 			.andExpect(model().attribute("statusText", "Forbidden"));
+	}
+
+	@Test
+	void rendersErrorPageWithoutMessage() throws Exception {
+		// Access-denied forwards carry no error message attribute
+		this.mockMvc.perform(get("/error").requestAttr("jakarta.servlet.error.status_code", 403))
+			.andExpect(status().isForbidden())
+			.andExpect(content()
+				.string(org.hamcrest.Matchers.containsString("The server could not process your request.")));
 	}
 
 	@Test
