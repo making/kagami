@@ -116,13 +116,26 @@ class ArtifactControllerTest {
 		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/4.13.2/junit-4.13.2.jar.sha1"))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType("text/plain"))
-			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=junit-4.13.2.jar.sha1"));
+			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "inline;filename=junit-4.13.2.jar.sha1"));
 
 		// Maven metadata
 		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/maven-metadata.xml"))
 			.andExpect(status().isOk())
 			.andExpect(content().contentType("application/xml"))
 			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "inline;filename=maven-metadata.xml"));
+	}
+
+	@Test
+	void getRepositoryMetadata_whenStored_shouldBeDisplayedInline() throws Exception {
+		Path metadata = tempDir.resolve("test-central/org/example/lib-1.0/_remote.repositories");
+		Files.createDirectories(metadata.getParent());
+		Files.writeString(metadata, "lib-1.0.jar>central=");
+
+		this.mockMvc.perform(get("/artifacts/test-central/org/example/lib-1.0/_remote.repositories"))
+			.andExpect(status().isOk())
+			.andExpect(content().contentType("text/plain"))
+			.andExpect(content().string("lib-1.0.jar>central="))
+			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "inline;filename=_remote.repositories"));
 	}
 
 }

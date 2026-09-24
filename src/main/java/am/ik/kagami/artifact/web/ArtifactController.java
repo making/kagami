@@ -72,7 +72,8 @@ public class ArtifactController {
 			Resource resource = retrieved.get();
 			try {
 				MediaType contentType = determineContentType(artifactPath);
-				String disposition = MediaType.APPLICATION_XML.equals(contentType) ? "inline" : "attachment";
+				String disposition = MediaType.APPLICATION_XML.equals(contentType)
+						|| MediaType.TEXT_PLAIN.equals(contentType) ? "inline" : "attachment";
 				CacheControl cacheControl = CacheControl.maxAge(Duration.ofSeconds(31536000));
 				return ResponseEntity.ok()
 					.contentType(contentType)

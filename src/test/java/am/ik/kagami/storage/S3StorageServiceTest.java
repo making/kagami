@@ -83,11 +83,14 @@ class S3StorageServiceTest extends StorageServiceContractTest {
 		store(storage, location("org/example/lib/1.0/lib-1.0.jar"), "jar content");
 		store(storage, location("org/example/lib/1.0/lib-1.0.pom"), "pom");
 		store(storage, location("org/example/lib/1.0/lib-1.0.jar.sha1"), "sha1");
+		store(storage, location("org/example/lib/1.0/_remote.repositories"), "repositories");
 
 		assertThat(head("mirror/test-repo/org/example/lib/1.0/lib-1.0.jar").contentType())
 			.isEqualTo("application/java-archive");
 		assertThat(head("mirror/test-repo/org/example/lib/1.0/lib-1.0.pom").contentType()).isEqualTo("application/xml");
 		assertThat(head("mirror/test-repo/org/example/lib/1.0/lib-1.0.jar.sha1").contentType()).isEqualTo("text/plain");
+		assertThat(head("mirror/test-repo/org/example/lib/1.0/_remote.repositories").contentType())
+			.isEqualTo("text/plain");
 	}
 
 	@Test
