@@ -62,6 +62,8 @@ class SecurityConfig {
 		HttpSecurity security = http
 		// @formatter:off
 			.authorizeHttpRequests(authz -> {
+				authz.requestMatchers("/admin", "/app/admin/**")
+					.access(anyOf(hasScope(RbacBuiltins.ADMIN_AUTHORITY), hasAuthority(RbacBuiltins.ADMIN_AUTHORITY)));
 				properties.repositories().forEach((repositoryId, repository) -> {
 					String garbageCollectionPath = "/artifacts/%s/gc".formatted(repositoryId);
 					authz.requestMatchers(GET, garbageCollectionPath).access(anyOf(hasScope(RbacBuiltins.ADMIN_AUTHORITY), hasAuthority(RbacBuiltins.ADMIN_AUTHORITY)));

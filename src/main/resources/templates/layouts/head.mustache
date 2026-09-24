@@ -20,6 +20,7 @@
     <nav class="header-nav">
       <a href="/" class="nav-link nav-link-hidden registry-label">Repositories</a>
       <a href="/token" class="nav-link nav-link-accent registry-label">Generate Token</a>
+      {{#canAdmin}}<a href="/admin" class="nav-link nav-link-hidden registry-label">Admin</a>{{/canAdmin}}
       <span class="nav-user">{{userName}}</span>
       <a href="/logout" class="nav-link registry-label">Logout</a>
     </nav>

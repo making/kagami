@@ -1,0 +1,49 @@
+{{#hasError}}
+<div class="alert" role="alert">{{error}}</div>
+{{/hasError}}
+{{#preview}}
+<div class="gc-result-section" role="status">
+  <div class="section-head">
+    <h3 class="registry-label font-semibold">Preview</h3>
+    <p>{{repositoryId}} / metadata older than {{olderThanHours}} hours</p>
+  </div>
+  {{#hasCandidates}}
+  <ul class="gc-result-list">
+    {{#candidates}}
+    <li>
+      <span class="gc-result-path">{{path}}</span>
+      <span class="gc-result-meta">{{lastModified}}</span>
+    </li>
+    {{/candidates}}
+  </ul>
+  {{/hasCandidates}}
+  {{^hasCandidates}}
+  <div class="alert alert-info">No eligible metadata-only directories were found.</div>
+  {{/hasCandidates}}
+</div>
+{{/preview}}
+{{#completed}}
+<div class="gc-result-section" role="status">
+  <div class="section-head">
+    <h3 class="registry-label font-semibold">Collection complete</h3>
+    <p>{{repositoryId}} / metadata older than {{olderThanHours}} hours</p>
+  </div>
+  {{#hasCollected}}
+  <ul class="gc-result-list">
+    {{#collectedPaths}}
+    <li><span class="gc-result-path">{{.}}</span><span class="gc-result-meta">collected</span></li>
+    {{/collectedPaths}}
+  </ul>
+  {{/hasCollected}}
+  {{^hasCollected}}
+  <div class="alert alert-info">No eligible metadata-only directories were collected.</div>
+  {{/hasCollected}}
+  {{#hasFailures}}
+  <ul class="gc-result-list">
+    {{#failures}}
+    <li><span class="gc-result-path">{{path}}</span><span class="gc-result-meta">{{message}}</span></li>
+    {{/failures}}
+  </ul>
+  {{/hasFailures}}
+</div>
+{{/completed}}
