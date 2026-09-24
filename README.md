@@ -125,7 +125,7 @@ services:
 
 #### Prerequisites
 
-- Java 21 or later
+- Java 25 or later
 
 #### Running
 

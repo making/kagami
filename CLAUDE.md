@@ -59,7 +59,7 @@ Kagami is a mirror server of Maven repositories.
 - Write javadoc and comments in English
 - Spring Java Format enforced via Maven plugin
 - All code must pass formatting validation before commit
-- Use Java 21 compatible features (avoid Java 22+ specific APIs)
+- Target Java 25
 - Use modern Java technics as much as possible like Java Records, Pattern Matching, Text Block
   etc ...
 - Be sure to avoid circular references between classes and packages.
