@@ -52,7 +52,7 @@ class OidcUserAuthoritiesMapperTest {
 	void admittedUserIsExpandedThroughRbacGroups() {
 		OidcUserAuthoritiesMapper mapper = mapper(
 				new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
-						Map.of("user@example.com", List.of("viewers")), Map.of()),
+						new KagamiProperties.Mappings(Map.of("user@example.com", List.of("viewers")), Map.of())),
 				List.of(Pattern.compile(".*@example.com")));
 		List<String> authorities = mapper.mapAuthorities(List.of(oidcUser("user@example.com", null)))
 			.stream()
@@ -63,8 +63,10 @@ class OidcUserAuthoritiesMapperTest {
 
 	@Test
 	void idpGroupsClaimIsTranslated() {
-		OidcUserAuthoritiesMapper mapper = mapper(new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
-				Map.of(), Map.of("my-team-admins", List.of("administrators"))), List.of(Pattern.compile(".*")));
+		OidcUserAuthoritiesMapper mapper = mapper(
+				new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
+						new KagamiProperties.Mappings(Map.of(), Map.of("my-team-admins", List.of("administrators")))),
+				List.of(Pattern.compile(".*")));
 		List<String> authorities = mapper
 			.mapAuthorities(List.of(oidcUser("user@example.com", List.of("my-team-admins"))))
 			.stream()
@@ -75,9 +77,8 @@ class OidcUserAuthoritiesMapperTest {
 
 	@Test
 	void nonMatchingUserIsRejectedWithLoginFailure() {
-		OidcUserAuthoritiesMapper mapper = mapper(
-				new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(), Map.of(), Map.of()),
-				List.of(Pattern.compile(".*@example.com")));
+		OidcUserAuthoritiesMapper mapper = mapper(new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
+				new KagamiProperties.Mappings(Map.of(), Map.of())), List.of(Pattern.compile(".*@example.com")));
 		// A rejected user must not pass as "authenticated with zero authorities": the
 		// mapper throws so that the login itself fails and the default-group never
 		// applies
@@ -87,9 +88,8 @@ class OidcUserAuthoritiesMapperTest {
 
 	@Test
 	void authoritiesWithoutOidcUserMapToNothing() {
-		OidcUserAuthoritiesMapper mapper = mapper(
-				new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(), Map.of(), Map.of()),
-				List.of(Pattern.compile(".*")));
+		OidcUserAuthoritiesMapper mapper = mapper(new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
+				new KagamiProperties.Mappings(Map.of(), Map.of())), List.of(Pattern.compile(".*")));
 		assertThat(mapper
 			.mapAuthorities(List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_X"))))
 			.isEmpty();

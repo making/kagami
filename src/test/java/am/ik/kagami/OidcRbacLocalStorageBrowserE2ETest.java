@@ -13,8 +13,8 @@ import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertTha
 /**
  * Runs the browser E2E scenario against the OIDC authentication with a group-based RBAC
  * configuration: the IdP groups claim is translated through
- * {@code kagami.rbac.idp-groups.*} and grants the administrator authorities, while the
- * default group grants nothing.
+ * {@code kagami.rbac.mappings.groups.*} and grants the administrator authorities, while
+ * the default group grants nothing.
  */
 class OidcRbacLocalStorageBrowserE2ETest extends OidcLocalStorageBrowserE2ETest {
 
@@ -22,7 +22,7 @@ class OidcRbacLocalStorageBrowserE2ETest extends OidcLocalStorageBrowserE2ETest 
 	static void configureRbacProperties(DynamicPropertyRegistry registry) {
 		registry.add("kagami.rbac.default-group", () -> "no-access");
 		registry.add("kagami.rbac.groups.no-access", () -> "");
-		registry.add("kagami.rbac.idp-groups.my-admins", () -> "administrators");
+		registry.add("kagami.rbac.mappings.groups.my-admins", () -> "administrators");
 	}
 
 	@Override

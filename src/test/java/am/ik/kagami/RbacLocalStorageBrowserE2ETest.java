@@ -25,7 +25,7 @@ class RbacLocalStorageBrowserE2ETest extends BrowserE2ETestBase {
 	static void configureProperties(DynamicPropertyRegistry registry) {
 		registry.add("kagami.storage.path", () -> tempDir.toString());
 		// The static user "test" belongs to the built-in viewers group
-		registry.add("kagami.rbac.users.test", () -> "viewers");
+		registry.add("kagami.rbac.mappings.user.test", () -> "viewers");
 	}
 
 	@Override

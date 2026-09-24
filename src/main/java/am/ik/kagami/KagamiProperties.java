@@ -91,9 +91,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 					Objects.requireNonNull(this.repositories, "repositories is required"), this.proxy,
 					Objects.requireNonNull(this.jwt, "jwt is required"),
 					Objects.requireNonNull(this.authentication, "authentication is required"),
-					this.rbac == null
-							? new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(), Map.of(), Map.of())
-							: this.rbac);
+					this.rbac == null ? new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
+							new KagamiProperties.Mappings(Map.of(), Map.of())) : this.rbac);
 		}
 
 	}
@@ -388,28 +387,37 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * scope-based and group-based authorization share one namespace.
 	 * <p>
 	 * Group names containing {@code @} or {@code .} must be configured with the bracket
-	 * notation (e.g. {@code kagami.rbac.users[taro@example.com]=editors}) so that Spring
-	 * Boot relaxed binding does not mangle the key.
+	 * notation (e.g. {@code kagami.rbac.mappings.user[taro@example.com]=editors}) so that
+	 * Spring Boot relaxed binding does not mangle the key.
 	 *
 	 * @param defaultGroup the group applied to users absent from every mapping
 	 * @param groups the group definitions: group name to the authorities it expands into;
 	 * merged over the built-in groups ({@code administrators}, {@code editors},
 	 * {@code viewers}) so that an entry with the same name overrides the built-in one
-	 * @param users the username to groups mapping, common to simple and OIDC
-	 * authentication
-	 * @param idpGroups the IdP groups claim value to Kagami groups translation for OIDC
-	 * authentication
+	 * @param mappings the user to groups and IdP groups claim to groups mappings
 	 */
 	public record Rbac(@DefaultValue(RbacBuiltins.ADMINISTRATORS_GROUP) String defaultGroup,
-			@DefaultValue Map<String, List<String>> groups, @DefaultValue Map<String, List<String>> users,
-			@DefaultValue Map<String, List<String>> idpGroups) {
+			@DefaultValue Map<String, List<String>> groups, @DefaultValue Mappings mappings) {
 
 		public Rbac {
 			Map<String, List<String>> merged = new LinkedHashMap<>(RbacBuiltins.BUILT_IN_GROUPS);
 			merged.putAll(groups == null ? Map.of() : groups);
 			groups = Map.copyOf(merged);
+			mappings = mappings == null ? new Mappings(Map.of(), Map.of()) : mappings;
 		}
 
+	}
+
+	/**
+	 * The user to groups and IdP groups claim to groups mappings.
+	 *
+	 * @param user the username to groups mapping, common to simple and OIDC
+	 * authentication, bound from {@code kagami.rbac.mappings.user.*}
+	 * @param groups the IdP groups claim value to Kagami groups translation for OIDC
+	 * authentication, bound from {@code kagami.rbac.mappings.groups.*}
+	 */
+	public record Mappings(@DefaultValue Map<String, List<String>> user,
+			@DefaultValue Map<String, List<String>> groups) {
 	}
 
 }

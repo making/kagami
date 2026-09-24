@@ -16,9 +16,9 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
  * The {@link GrantedAuthoritiesMapper} for the OIDC login path. It stays the admission
  * gate ({@code kagami.authentication.allowed-name-patterns}: a user whose name does not
  * match any pattern is rejected with a login failure) and then expands the RBAC group
- * membership: the {@code kagami.rbac.users.*} mapping matched by user name plus the
- * Kagami groups translated from the IdP groups claim. The two layers are orthogonal: the
- * patterns decide WHO may log in, RBAC decides WHAT admitted users can do.
+ * membership: the {@code kagami.rbac.mappings.user.*} mapping matched by user name plus
+ * the Kagami groups translated from the IdP groups claim. The two layers are orthogonal:
+ * the patterns decide WHO may log in, RBAC decides WHAT admitted users can do.
  */
 public class OidcUserAuthoritiesMapper implements GrantedAuthoritiesMapper {
 

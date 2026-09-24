@@ -19,10 +19,11 @@ import org.springframework.stereotype.Component;
 
 /**
  * Expands group membership into authorities. A user belongs to the groups listed in the
- * {@code kagami.rbac.users.*} mapping and, for OIDC authentication, to the Kagami groups
- * translated from the IdP groups claim through {@code kagami.rbac.idp-groups.*}; the
- * login authorities are the union of the authorities of all these groups. Users absent
- * from every mapping fall into {@code kagami.rbac.default-group}.
+ * {@code kagami.rbac.mappings.user.*} mapping and, for OIDC authentication, to the Kagami
+ * groups translated from the IdP groups claim through
+ * {@code kagami.rbac.mappings.groups.*}; the login authorities are the union of the
+ * authorities of all these groups. Users absent from every mapping fall into
+ * {@code kagami.rbac.default-group}.
  * <p>
  * Group names are not roles: they never appear in authorization rules, only the expanded
  * authorities do, which reuse the JWT scope vocabulary so that scope-based and
@@ -46,8 +47,8 @@ public class RbacService implements InitializingBean {
 
 	/**
 	 * Fails fast when the RBAC configuration is inconsistent: every referenced group (in
-	 * the user and IdP group mappings and in {@code default-group}) must be defined, and
-	 * group definitions may only use the known authority vocabulary.
+	 * the mappings and in {@code default-group}) must be defined, and group definitions
+	 * may only use the known authority vocabulary.
 	 */
 	void validate(KagamiProperties.Rbac rbac) {
 		rbac.groups().forEach((group, authorities) -> {
@@ -58,14 +59,14 @@ public class RbacService implements InitializingBean {
 				}
 			}
 		});
-		rbac.users().forEach((user, groups) -> {
+		rbac.mappings().user().forEach((user, groups) -> {
 			for (String group : groups) {
-				requireDefinedGroup(rbac, group, "kagami.rbac.users.%s".formatted(user));
+				requireDefinedGroup(rbac, group, "kagami.rbac.mappings.user.%s".formatted(user));
 			}
 		});
-		rbac.idpGroups().forEach((idpGroup, groups) -> {
+		rbac.mappings().groups().forEach((idpGroup, groups) -> {
 			for (String group : groups) {
-				requireDefinedGroup(rbac, group, "kagami.rbac.idp-groups.%s".formatted(idpGroup));
+				requireDefinedGroup(rbac, group, "kagami.rbac.mappings.groups.%s".formatted(idpGroup));
 			}
 		});
 		requireDefinedGroup(rbac, rbac.defaultGroup(), "kagami.rbac.default-group");
@@ -84,14 +85,14 @@ public class RbacService implements InitializingBean {
 	 * absent from every mapping.
 	 * @param userName the user name (the simple auth username or the OIDC user name)
 	 * @param idpGroups the groups claim of the OIDC provider, empty for simple
-	 * authentication; IdP group names without a {@code kagami.rbac.idp-groups.*} mapping
-	 * are ignored
+	 * authentication; IdP group names without a {@code kagami.rbac.mappings.groups.*}
+	 * mapping are ignored
 	 */
 	public Set<GrantedAuthority> authoritiesFor(String userName, Collection<String> idpGroups) {
 		KagamiProperties.Rbac rbac = this.properties.rbac();
-		Set<String> groupNames = new LinkedHashSet<>(rbac.users().getOrDefault(userName, List.of()));
+		Set<String> groupNames = new LinkedHashSet<>(rbac.mappings().user().getOrDefault(userName, List.of()));
 		for (String idpGroup : idpGroups) {
-			List<String> groups = rbac.idpGroups().get(idpGroup);
+			List<String> groups = rbac.mappings().groups().get(idpGroup);
 			if (groups == null) {
 				this.logger.debug("IdP group {} is not mapped to any Kagami group", idpGroup);
 			}

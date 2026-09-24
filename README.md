@@ -341,11 +341,11 @@ kagami.rbac.groups.no-access=
 
 # Username -> groups, common to simple and OIDC authentication. Keys containing @ or .
 # need the bracket notation so that relaxed binding does not mangle them.
-kagami.rbac.users.demo=administrators
-kagami.rbac.users[taro@example.com]=editors
+kagami.rbac.mappings.user.demo=administrators
+kagami.rbac.mappings.user[taro@example.com]=editors
 
 # OIDC groups claim (IdP group names) -> Kagami groups
-kagami.rbac.idp-groups.my-team-admins=administrators
+kagami.rbac.mappings.groups.my-team-admins=administrators
 
 # Group applied to users absent from every mapping (default: administrators)
 kagami.rbac.default-group=no-access

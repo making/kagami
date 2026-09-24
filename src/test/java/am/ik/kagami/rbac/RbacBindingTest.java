@@ -20,7 +20,8 @@ class RbacBindingTest {
 	private KagamiProperties.Rbac bind(Map<String, String> properties) {
 		MapConfigurationPropertySource source = new MapConfigurationPropertySource(properties);
 		return new Binder(source).bind("kagami.rbac", Bindable.of(KagamiProperties.Rbac.class))
-			.orElse(new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(), Map.of(), Map.of()));
+			.orElse(new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
+					new KagamiProperties.Mappings(Map.of(), Map.of())));
 	}
 
 	@Test
@@ -28,8 +29,8 @@ class RbacBindingTest {
 		KagamiProperties.Rbac rbac = bind(Map.of());
 		assertThat(rbac.defaultGroup()).isEqualTo(RbacBuiltins.ADMINISTRATORS_GROUP);
 		assertThat(rbac.groups()).containsEntry(RbacBuiltins.ADMINISTRATORS_GROUP, RbacBuiltins.ALLOWED_AUTHORITIES);
-		assertThat(rbac.users()).isEmpty();
-		assertThat(rbac.idpGroups()).isEmpty();
+		assertThat(rbac.mappings().user()).isEmpty();
+		assertThat(rbac.mappings().groups()).isEmpty();
 	}
 
 	@Test
@@ -41,11 +42,12 @@ class RbacBindingTest {
 
 	@Test
 	void bracketNotationKeysSurviveRelaxedBinding() {
-		KagamiProperties.Rbac rbac = bind(Map.of("kagami.rbac.users[taro@example.com]", "editors",
-				"kagami.rbac.users[taro.test]", "viewers", "kagami.rbac.idp-groups[my-team-admins]", "administrators"));
-		assertThat(rbac.users()).containsEntry("taro@example.com", java.util.List.of("editors"));
-		assertThat(rbac.users()).containsEntry("taro.test", java.util.List.of("viewers"));
-		assertThat(rbac.idpGroups()).containsEntry("my-team-admins", java.util.List.of("administrators"));
+		KagamiProperties.Rbac rbac = bind(
+				Map.of("kagami.rbac.mappings.user[taro@example.com]", "editors", "kagami.rbac.mappings.user[taro.test]",
+						"viewers", "kagami.rbac.mappings.groups[my-team-admins]", "administrators"));
+		assertThat(rbac.mappings().user()).containsEntry("taro@example.com", java.util.List.of("editors"));
+		assertThat(rbac.mappings().user()).containsEntry("taro.test", java.util.List.of("viewers"));
+		assertThat(rbac.mappings().groups()).containsEntry("my-team-admins", java.util.List.of("administrators"));
 	}
 
 	@Test
