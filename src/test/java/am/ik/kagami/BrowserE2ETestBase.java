@@ -400,8 +400,27 @@ public abstract class BrowserE2ETestBase {
 			.setHas(this.page.getByText("sample-1.0.pom.sha1", new Page.GetByTextOptions().setExact(true))));
 		assertThat(shaRow).isVisible();
 		this.page.onceDialog(Dialog::accept);
-		shaRow.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Del")).click();
-		assertThat(this.page.getByText("This directory is empty.")).isVisible();
+		com.microsoft.playwright.Response deleteResponse = this.page.waitForResponse(
+				response -> response.request().method().equals("DELETE"),
+				() -> shaRow.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Del")).click());
+		org.assertj.core.api.Assertions.assertThat(deleteResponse.status()).isEqualTo(204);
+
+		// Use fresh server-rendered listings because S3-compatible stores can lag the
+		// htmx refresh
+		assertDirectoryEventuallyEmpty(baseUrl + "/browse/mock/actions/tmp/1.0");
+	}
+
+	private void assertDirectoryEventuallyEmpty(String url) {
+		Locator emptyMessage = this.page.getByText("This directory is empty.");
+		long deadline = System.currentTimeMillis() + 30_000;
+		while (System.currentTimeMillis() < deadline) {
+			this.page.navigate(url);
+			if (emptyMessage.isVisible(new Locator.IsVisibleOptions().setTimeout(0))) {
+				return;
+			}
+			this.page.waitForTimeout(250);
+		}
+		assertThat(emptyMessage).isVisible();
 	}
 
 	@Test
