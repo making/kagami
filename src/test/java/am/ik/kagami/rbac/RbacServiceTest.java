@@ -88,7 +88,7 @@ class RbacServiceTest {
 		assertThatThrownBy(() -> new RbacService(properties(rbac)).afterPropertiesSet())
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("ghost")
-			.hasMessageContaining("kagami.rbac.mappings.user.demo");
+			.hasMessageContaining("kagami.rbac.mappings.users.demo");
 	}
 
 	@Test

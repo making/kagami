@@ -19,8 +19,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Expands group membership into authorities. A user belongs to the groups listed in the
- * {@code kagami.rbac.mappings.user.*} mapping and, for OIDC authentication, to the Kagami
- * groups translated from the IdP groups claim through
+ * {@code kagami.rbac.mappings.users.*} mapping and, for OIDC authentication, to the
+ * Kagami groups translated from the IdP groups claim through
  * {@code kagami.rbac.mappings.groups.*}; the login authorities are the union of the
  * authorities of all these groups. Users absent from every mapping fall into
  * {@code kagami.rbac.default-group}.
@@ -59,9 +59,9 @@ public class RbacService implements InitializingBean {
 				}
 			}
 		});
-		rbac.mappings().user().forEach((user, groups) -> {
+		rbac.mappings().users().forEach((user, groups) -> {
 			for (String group : groups) {
-				requireDefinedGroup(rbac, group, "kagami.rbac.mappings.user.%s".formatted(user));
+				requireDefinedGroup(rbac, group, "kagami.rbac.mappings.users.%s".formatted(user));
 			}
 		});
 		rbac.mappings().groups().forEach((idpGroup, groups) -> {
@@ -90,7 +90,7 @@ public class RbacService implements InitializingBean {
 	 */
 	public Set<GrantedAuthority> authoritiesFor(String userName, Collection<String> idpGroups) {
 		KagamiProperties.Rbac rbac = this.properties.rbac();
-		Set<String> groupNames = new LinkedHashSet<>(rbac.mappings().user().getOrDefault(userName, List.of()));
+		Set<String> groupNames = new LinkedHashSet<>(rbac.mappings().users().getOrDefault(userName, List.of()));
 		for (String idpGroup : idpGroups) {
 			List<String> groups = rbac.mappings().groups().get(idpGroup);
 			if (groups == null) {

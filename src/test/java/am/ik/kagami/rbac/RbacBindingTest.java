@@ -29,7 +29,7 @@ class RbacBindingTest {
 		KagamiProperties.Rbac rbac = bind(Map.of());
 		assertThat(rbac.defaultGroup()).isEqualTo(RbacBuiltins.ADMINISTRATORS_GROUP);
 		assertThat(rbac.groups()).containsEntry(RbacBuiltins.ADMINISTRATORS_GROUP, RbacBuiltins.ALLOWED_AUTHORITIES);
-		assertThat(rbac.mappings().user()).isEmpty();
+		assertThat(rbac.mappings().users()).isEmpty();
 		assertThat(rbac.mappings().groups()).isEmpty();
 	}
 
@@ -42,11 +42,11 @@ class RbacBindingTest {
 
 	@Test
 	void bracketNotationKeysSurviveRelaxedBinding() {
-		KagamiProperties.Rbac rbac = bind(
-				Map.of("kagami.rbac.mappings.user[taro@example.com]", "editors", "kagami.rbac.mappings.user[taro.test]",
-						"viewers", "kagami.rbac.mappings.groups[my-team-admins]", "administrators"));
-		assertThat(rbac.mappings().user()).containsEntry("taro@example.com", java.util.List.of("editors"));
-		assertThat(rbac.mappings().user()).containsEntry("taro.test", java.util.List.of("viewers"));
+		KagamiProperties.Rbac rbac = bind(Map.of("kagami.rbac.mappings.users[taro@example.com]", "editors",
+				"kagami.rbac.mappings.users[taro.test]", "viewers", "kagami.rbac.mappings.groups[my-team-admins]",
+				"administrators"));
+		assertThat(rbac.mappings().users()).containsEntry("taro@example.com", java.util.List.of("editors"));
+		assertThat(rbac.mappings().users()).containsEntry("taro.test", java.util.List.of("viewers"));
 		assertThat(rbac.mappings().groups()).containsEntry("my-team-admins", java.util.List.of("administrators"));
 	}
 

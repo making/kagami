@@ -387,8 +387,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * scope-based and group-based authorization share one namespace.
 	 * <p>
 	 * Group names containing {@code @} or {@code .} must be configured with the bracket
-	 * notation (e.g. {@code kagami.rbac.mappings.user[taro@example.com]=editors}) so that
-	 * Spring Boot relaxed binding does not mangle the key.
+	 * notation (e.g. {@code kagami.rbac.mappings.users[taro@example.com]=editors}) so
+	 * that Spring Boot relaxed binding does not mangle the key.
 	 *
 	 * @param defaultGroup the group applied to users absent from every mapping
 	 * @param groups the group definitions: group name to the authorities it expands into;
@@ -411,12 +411,12 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	/**
 	 * The user to groups and IdP groups claim to groups mappings.
 	 *
-	 * @param user the username to groups mapping, common to simple and OIDC
-	 * authentication, bound from {@code kagami.rbac.mappings.user.*}
+	 * @param users the username to groups mapping, common to simple and OIDC
+	 * authentication, bound from {@code kagami.rbac.mappings.users.*}
 	 * @param groups the IdP groups claim value to Kagami groups translation for OIDC
 	 * authentication, bound from {@code kagami.rbac.mappings.groups.*}
 	 */
-	public record Mappings(@DefaultValue Map<String, List<String>> user,
+	public record Mappings(@DefaultValue Map<String, List<String>> users,
 			@DefaultValue Map<String, List<String>> groups) {
 	}
 
