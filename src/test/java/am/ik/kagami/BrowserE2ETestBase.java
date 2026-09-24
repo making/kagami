@@ -255,6 +255,29 @@ public abstract class BrowserE2ETestBase {
 	}
 
 	@Test
+	void headerHighlightsCurrentPage() {
+		Assumptions.assumeTrue(standardScenarioApplies());
+		String baseUrl = "http://localhost:" + this.port;
+		Locator repositoriesLink = this.page.locator("header a", new Page.LocatorOptions().setHasText("Repositories"));
+		Locator tokenLink = this.page.locator("header a", new Page.LocatorOptions().setHasText("Generate Token"));
+
+		// The home page highlights the Repositories link
+		login();
+		assertThat(repositoriesLink).hasClass(Pattern.compile(".*nav-link-accent.*"));
+		assertThat(tokenLink).not().hasClass(Pattern.compile(".*nav-link-accent.*"));
+
+		// The token page highlights the Generate Token link
+		this.page.navigate(baseUrl + "/token");
+		assertThat(tokenLink).hasClass(Pattern.compile(".*nav-link-accent.*"));
+		assertThat(repositoriesLink).not().hasClass(Pattern.compile(".*nav-link-accent.*"));
+
+		// Pages outside the nav highlight nothing
+		this.page.navigate(baseUrl + "/browse/mock");
+		assertThat(repositoriesLink).not().hasClass(Pattern.compile(".*nav-link-accent.*"));
+		assertThat(tokenLink).not().hasClass(Pattern.compile(".*nav-link-accent.*"));
+	}
+
+	@Test
 	void homePageShowsRepositoriesAndConfigDialog() {
 		mirror(POM_PATH, POM_CONTENT);
 		login();
