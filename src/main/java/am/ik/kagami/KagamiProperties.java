@@ -91,8 +91,7 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 					Objects.requireNonNull(this.repositories, "repositories is required"), this.proxy,
 					Objects.requireNonNull(this.jwt, "jwt is required"),
 					Objects.requireNonNull(this.authentication, "authentication is required"),
-					this.rbac == null ? new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(),
-							new KagamiProperties.Mappings(Map.of(), Map.of())) : this.rbac);
+					this.rbac == null ? Rbac.builder().build() : this.rbac);
 		}
 
 	}
@@ -396,15 +395,63 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * merged over the built-in groups ({@code administrators}, {@code editors},
 	 * {@code viewers}) so that an entry with the same name overrides the built-in one
 	 * @param mappings the user to groups and IdP groups claim to groups mappings
+	 * @param groupsClaim the name of the OIDC claim that carries the IdP group
+	 * memberships, bound from {@code kagami.rbac.groups-claim}; defaults to
+	 * {@code groups}
 	 */
 	public record Rbac(@DefaultValue(RbacBuiltins.DEFAULT_GROUP) String defaultGroup,
-			@DefaultValue Map<String, List<String>> groups, @DefaultValue Mappings mappings) {
+			@DefaultValue Map<String, List<String>> groups, @DefaultValue Mappings mappings,
+			@DefaultValue("groups") String groupsClaim) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
 
 		public Rbac {
 			Map<String, List<String>> merged = new LinkedHashMap<>(RbacBuiltins.BUILT_IN_GROUPS);
 			merged.putAll(groups == null ? Map.of() : groups);
 			groups = Map.copyOf(merged);
 			mappings = mappings == null ? new Mappings(Map.of(), Map.of()) : mappings;
+			groupsClaim = groupsClaim == null ? "groups" : groupsClaim;
+		}
+
+		public static final class Builder {
+
+			private String defaultGroup = RbacBuiltins.DEFAULT_GROUP;
+
+			private Map<String, List<String>> groups = Map.of();
+
+			private Mappings mappings = new Mappings(Map.of(), Map.of());
+
+			private String groupsClaim = "groups";
+
+			private Builder() {
+			}
+
+			public Builder defaultGroup(String defaultGroup) {
+				this.defaultGroup = defaultGroup;
+				return this;
+			}
+
+			public Builder groups(Map<String, List<String>> groups) {
+				this.groups = groups;
+				return this;
+			}
+
+			public Builder mappings(Mappings mappings) {
+				this.mappings = mappings;
+				return this;
+			}
+
+			public Builder groupsClaim(String groupsClaim) {
+				this.groupsClaim = groupsClaim;
+				return this;
+			}
+
+			public Rbac build() {
+				return new Rbac(this.defaultGroup, this.groups, this.mappings, this.groupsClaim);
+			}
+
 		}
 
 	}

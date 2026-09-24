@@ -61,8 +61,8 @@ public class OidcUserAuthoritiesMapper implements GrantedAuthoritiesMapper {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static List<String> idpGroups(OidcUserAuthority oidcUserAuthority) {
-		Object groups = oidcUserAuthority.getAttributes().get("groups");
+	private List<String> idpGroups(OidcUserAuthority oidcUserAuthority) {
+		Object groups = oidcUserAuthority.getAttributes().get(this.properties.rbac().groupsClaim());
 		return groups instanceof Collection<?> collection
 				? (List<String>) collection.stream().map(String::valueOf).toList() : List.of();
 	}

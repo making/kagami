@@ -22,7 +22,7 @@ class RbacBindingTest {
 		MapConfigurationPropertySource source = new MapConfigurationPropertySource(properties);
 		return new Binder(source).bind("kagami.rbac", Bindable.of(KagamiProperties.Rbac.class))
 			.orElse(new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(),
-					new KagamiProperties.Mappings(Map.of(), Map.of())));
+					new KagamiProperties.Mappings(Map.of(), Map.of()), "groups"));
 	}
 
 	@Test

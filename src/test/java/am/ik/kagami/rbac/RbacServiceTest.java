@@ -41,16 +41,18 @@ class RbacServiceTest {
 
 	@Test
 	void unmappedUserFallsIntoDefaultGroup() {
-		RbacService service = new RbacService(properties(
-				new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(), mappings(Map.of(), Map.of()))));
+		RbacService service = new RbacService(properties(new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(),
+				mappings(Map.of(), Map.of()), "groups")));
 		assertThat(authorityNames(service.authoritiesFor("nobody", List.of())))
 			.containsExactlyInAnyOrder("artifacts:read", "artifacts:delete");
 	}
 
 	@Test
 	void multipleGroupsExpandIntoTheUnionOfAuthorities() {
-		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(), mappings(
-				Map.of("demo", List.of(RbacBuiltins.ADMINISTRATORS_GROUP, RbacBuiltins.VIEWERS_GROUP)), Map.of()));
+		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
+				mappings(Map.of("demo", List.of(RbacBuiltins.ADMINISTRATORS_GROUP, RbacBuiltins.VIEWERS_GROUP)),
+						Map.of()),
+				"groups");
 		RbacService service = new RbacService(properties(rbac));
 		assertThat(authorityNames(service.authoritiesFor("demo", List.of())))
 			.containsExactlyInAnyOrder("artifacts:read", "artifacts:delete", "artifacts:admin");
@@ -59,7 +61,7 @@ class RbacServiceTest {
 	@Test
 	void emptyGroupGrantsNoAuthority() {
 		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP,
-				Map.of("no-access", List.of()), mappings(Map.of("demo", List.of("no-access")), Map.of()));
+				Map.of("no-access", List.of()), mappings(Map.of("demo", List.of("no-access")), Map.of()), "groups");
 		RbacService service = new RbacService(properties(rbac));
 		assertThat(service.authoritiesFor("demo", List.of())).isEmpty();
 	}
@@ -67,15 +69,17 @@ class RbacServiceTest {
 	@Test
 	void configurableDefaultGroupAppliesToUnmappedUsers() {
 		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac("no-access", Map.of("no-access", List.of()),
-				mappings(Map.of(), Map.of()));
+				mappings(Map.of(), Map.of()), "groups");
 		RbacService service = new RbacService(properties(rbac));
 		assertThat(service.authoritiesFor("nobody", List.of())).isEmpty();
 	}
 
 	@Test
 	void idpGroupsClaimIsTranslatedThroughIdpGroupsMapping() {
-		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(), mappings(
-				Map.of("user@example.com", List.of("viewers")), Map.of("my-team-admins", List.of("administrators"))));
+		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
+				mappings(Map.of("user@example.com", List.of("viewers")),
+						Map.of("my-team-admins", List.of("administrators"))),
+				"groups");
 		RbacService service = new RbacService(properties(rbac));
 		assertThat(authorityNames(service.authoritiesFor("user@example.com", List.of("my-team-admins", "unknown"))))
 			.containsExactlyInAnyOrder("artifacts:read", "artifacts:delete", "artifacts:admin");
@@ -84,7 +88,7 @@ class RbacServiceTest {
 	@Test
 	void validationRejectsUndefinedGroupInUserMapping() {
 		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
-				mappings(Map.of("demo", List.of("ghost")), Map.of()));
+				mappings(Map.of("demo", List.of("ghost")), Map.of()), "groups");
 		assertThatThrownBy(() -> new RbacService(properties(rbac)).afterPropertiesSet())
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("ghost")
@@ -94,7 +98,7 @@ class RbacServiceTest {
 	@Test
 	void validationRejectsUndefinedGroupInIdpGroupsMapping() {
 		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP, Map.of(),
-				mappings(Map.of(), Map.of("team", List.of("ghost"))));
+				mappings(Map.of(), Map.of("team", List.of("ghost"))), "groups");
 		assertThatThrownBy(() -> new RbacService(properties(rbac)).afterPropertiesSet())
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("ghost");
@@ -102,7 +106,8 @@ class RbacServiceTest {
 
 	@Test
 	void validationRejectsUndefinedDefaultGroup() {
-		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac("ghost", Map.of(), mappings(Map.of(), Map.of()));
+		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac("ghost", Map.of(), mappings(Map.of(), Map.of()),
+				"groups");
 		assertThatThrownBy(() -> new RbacService(properties(rbac)).afterPropertiesSet())
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("ghost")
@@ -112,7 +117,7 @@ class RbacServiceTest {
 	@Test
 	void validationRejectsUnknownAuthorityInGroupDefinition() {
 		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.ADMINISTRATORS_GROUP,
-				Map.of("hackers", List.of("repo:write")), mappings(Map.of(), Map.of()));
+				Map.of("hackers", List.of("repo:write")), mappings(Map.of(), Map.of()), "groups");
 		assertThatThrownBy(() -> new RbacService(properties(rbac)).afterPropertiesSet())
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("repo:write");
@@ -121,14 +126,14 @@ class RbacServiceTest {
 	@Test
 	void validationAcceptsBuiltInConfiguration() {
 		KagamiProperties.Rbac rbac = new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(),
-				mappings(Map.of(), Map.of()));
+				mappings(Map.of(), Map.of()), "groups");
 		new RbacService(properties(rbac)).afterPropertiesSet();
 	}
 
 	@Test
 	void issuableScopesComeFromPrincipalAuthorities() {
-		RbacService service = new RbacService(properties(
-				new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(), mappings(Map.of(), Map.of()))));
+		RbacService service = new RbacService(properties(new KagamiProperties.Rbac(RbacBuiltins.DEFAULT_GROUP, Map.of(),
+				mappings(Map.of(), Map.of()), "groups")));
 		var authentication = org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 			.authenticated("demo", null,
 					List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("artifacts:read")));

@@ -320,6 +320,30 @@ spring.security.oauth2.client.registration.microsoft-entra-id.scope=openid,email
 - Multiple identity providers can be configured simultaneously
 - Users must have matching email patterns to be allowed to log in
 
+#### Group claim for RBAC
+
+Group-based RBAC for OIDC users reads the IdP group memberships from a claim in the ID
+token. The claim name defaults to `groups` and can be changed with
+`kagami.rbac.groups-claim`. Most providers do not include group claims by default; you
+must request them with a scope and/or configure the provider to embed the claim in the
+ID token:
+
+```properties
+# Claim Kagami reads the IdP group memberships from (default: groups)
+kagami.rbac.groups-claim=groups
+
+# Request the claim via a scope. Examples:
+# - Keycloak: add the "groups" scope of the dedicated "groups" client scope mapper,
+#   or create a protocol mapper that adds the user's groups to the ID token
+spring.security.oauth2.client.registration.keycloak.scope=openid,email,groups
+# - Microsoft Entra ID: request "Group.Read.All" so tokens carry the user's groups
+spring.security.oauth2.client.registration.microsoft-entra-id.scope=openid,email,Group.Read.All
+```
+
+Without a group claim in the ID token, the `kagami.rbac.mappings.groups.*` translations
+never match and OIDC users fall into the default group. Verify the claim is actually
+present in the token before debugging RBAC mappings.
+
 See the [Spring Boot documentation](https://docs.spring.io/spring-boot/reference/web/spring-security.html#web.security.oauth2.client) for more details on configuring OIDC authentication.
 
 ### Group-based RBAC
@@ -348,7 +372,9 @@ kagami.rbac.groups.no-access=
 kagami.rbac.mappings.users.demo=administrators
 kagami.rbac.mappings.users[taro@example.com]=editors
 
-# OIDC groups claim (IdP group names) -> Kagami groups
+# OIDC groups claim (IdP group names) -> Kagami groups.
+# The claim that carries the IdP group names is "groups" by default;
+# change it with kagami.rbac.groups-claim (see the OIDC section above).
 kagami.rbac.mappings.groups.my-team-admins=administrators
 
 # Group applied to users absent from every mapping (default: editors)
