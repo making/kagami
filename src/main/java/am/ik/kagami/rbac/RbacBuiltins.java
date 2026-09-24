@@ -34,6 +34,9 @@ public final class RbacBuiltins {
 	/** The group applied when no user or IdP group mapping matches. */
 	public static final String DEFAULT_GROUP = EDITORS_GROUP;
 
+	/** The default name of the OIDC claim that carries the IdP group memberships. */
+	public static final String DEFAULT_GROUPS_CLAIM = "groups";
+
 	/** The groups that exist even when nothing is configured. */
 	public static final Map<String, List<String>> BUILT_IN_GROUPS = Map.of(ADMINISTRATORS_GROUP,
 			List.of(READ_AUTHORITY, DELETE_AUTHORITY, ADMIN_AUTHORITY), EDITORS_GROUP,

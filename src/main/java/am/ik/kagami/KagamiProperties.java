@@ -401,7 +401,7 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 */
 	public record Rbac(@DefaultValue(RbacBuiltins.DEFAULT_GROUP) String defaultGroup,
 			@DefaultValue Map<String, List<String>> groups, @DefaultValue Mappings mappings,
-			@DefaultValue("groups") String groupsClaim) {
+			@DefaultValue(RbacBuiltins.DEFAULT_GROUPS_CLAIM) String groupsClaim) {
 
 		public static Builder builder() {
 			return new Builder();
@@ -412,7 +412,7 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			merged.putAll(groups == null ? Map.of() : groups);
 			groups = Map.copyOf(merged);
 			mappings = mappings == null ? new Mappings(Map.of(), Map.of()) : mappings;
-			groupsClaim = groupsClaim == null ? "groups" : groupsClaim;
+			groupsClaim = groupsClaim == null ? RbacBuiltins.DEFAULT_GROUPS_CLAIM : groupsClaim;
 		}
 
 		public static final class Builder {
@@ -423,7 +423,7 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 			private Mappings mappings = new Mappings(Map.of(), Map.of());
 
-			private String groupsClaim = "groups";
+			private String groupsClaim = RbacBuiltins.DEFAULT_GROUPS_CLAIM;
 
 			private Builder() {
 			}
