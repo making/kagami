@@ -126,6 +126,19 @@ class ArtifactControllerTest {
 	}
 
 	@Test
+	void getPropertiesFile_whenStored_shouldBeDisplayedInline() throws Exception {
+		Path properties = tempDir.resolve("test-central/org/example/resolver-status.properties");
+		Files.createDirectories(properties.getParent());
+		Files.writeString(properties, "resolver status");
+
+		this.mockMvc.perform(get("/artifacts/test-central/org/example/resolver-status.properties"))
+			.andExpect(status().isOk())
+			.andExpect(content().contentType("text/plain"))
+			.andExpect(content().string("resolver status"))
+			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "inline;filename=resolver-status.properties"));
+	}
+
+	@Test
 	void getRepositoryMetadata_whenStored_shouldBeDisplayedInline() throws Exception {
 		Path metadata = tempDir.resolve("test-central/org/example/lib-1.0/_remote.repositories");
 		Files.createDirectories(metadata.getParent());

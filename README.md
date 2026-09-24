@@ -376,9 +376,10 @@ token.
 
 #### Cache garbage collection API
 
-The administrator API removes directories whose only files are `maven-metadata.xml` and
-`maven-metadata.xml.sha1`, when both files are at least one hour old. Preview candidates
-first, then run the collection explicitly:
+The administrator API removes directories whose only files are either `maven-metadata.xml`
+and `maven-metadata.xml.sha1`, or only `resolver-status.properties`. All files in a
+candidate directory must be at least one hour old. Preview candidates first, then run the
+collection explicitly:
 
 ```bash
 # Dry-run; olderThan accepts ISO-8601 durations such as PT30M or PT0S
@@ -392,8 +393,8 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 
 The operation works with both local and S3 storage. It scans the repository before
 collecting, so very large S3 repositories may take time. A concurrent artifact download
-is preserved; the collector removes only the two metadata files and then removes an empty
-local directory when possible.
+is preserved; the collector removes only the eligible bookkeeping files and then removes
+an empty local directory when possible.
 
 ### HTTP Proxy Configuration
 

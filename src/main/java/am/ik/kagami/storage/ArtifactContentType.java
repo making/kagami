@@ -22,7 +22,7 @@ public final class ArtifactContentType {
 		return switch (extension(fileName)) {
 			case "jar" -> "application/java-archive";
 			case "pom", "xml" -> "application/xml";
-			case "repositories", "sha1", "sha256", "sha512", "md5" -> "text/plain";
+			case "properties", "repositories", "sha1", "sha256", "sha512", "md5" -> "text/plain";
 			case "asc" -> "application/pgp-signature";
 			default -> "application/octet-stream";
 		};

@@ -46,7 +46,7 @@ public class RepositoryAdminController {
 	}
 
 	/**
-	 * Preview eligible metadata-only directories for the selected repository.
+	 * Preview eligible cache-bookkeeping directories for the selected repository.
 	 */
 	@GetMapping("/app/admin/gc/preview")
 	public Object preview(@RequestParam String repositoryId,
@@ -82,7 +82,7 @@ public class RepositoryAdminController {
 	}
 
 	/**
-	 * Collect eligible metadata-only directories for the selected repository.
+	 * Collect eligible cache-bookkeeping directories for the selected repository.
 	 */
 	@PostMapping("/app/admin/gc")
 	public Object collect(@RequestParam String repositoryId,

@@ -20,7 +20,7 @@
       <span class="registry-label panel-head-meta">artifacts:admin</span>
     </div>
     <div class="section-head">
-      <p>Only directories containing exactly maven-metadata.xml and maven-metadata.xml.sha1 are eligible.</p>
+      <p>Only directories containing exactly maven-metadata.xml and maven-metadata.xml.sha1, or only resolver-status.properties, are eligible.</p>
     </div>
     <form id="gc-form" action="/app/admin/gc" method="post" hx-post="/app/admin/gc" hx-target="#gc-result" hx-swap="innerHTML">
       {{#_csrf}}<input type="hidden" name="_csrf" value="{{_csrf.token}}"/>{{/_csrf}}

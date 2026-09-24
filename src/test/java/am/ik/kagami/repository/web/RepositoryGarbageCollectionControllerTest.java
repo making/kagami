@@ -75,6 +75,18 @@ class RepositoryGarbageCollectionControllerTest {
 	}
 
 	@Test
+	void previewIncludesResolverStatusOnlyDirectories() throws Exception {
+		Path candidate = seedResolverStatusOnly("resolver-preview");
+
+		this.mockMvc.perform(get("/artifacts/test-repo/gc"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$[0].path").value("resolver-preview/missing"))
+			.andExpect(jsonPath("$[0].lastModified").exists());
+
+		assertThat(candidate).exists();
+	}
+
+	@Test
 	void collectionRemovesOnlyMetadataOnlyDirectories() throws Exception {
 		Path candidate = seedMetadataOnly("collection");
 		Path valid = tempDir.resolve("test-repo/collection-valid");
@@ -129,6 +141,15 @@ class RepositoryGarbageCollectionControllerTest {
 	void negativeAgeIsRejected() throws Exception {
 		this.mockMvc.perform(get("/artifacts/test-repo/gc").param("olderThan", "PT-1S"))
 			.andExpect(status().isBadRequest());
+	}
+
+	private Path seedResolverStatusOnly(String name) throws IOException {
+		Path candidate = tempDir.resolve("test-repo").resolve(name).resolve("missing");
+		Files.createDirectories(candidate);
+		FileTime old = FileTime.from(Instant.now().minus(Duration.ofHours(2)));
+		Files.writeString(candidate.resolve("resolver-status.properties"), "resolver status");
+		Files.setLastModifiedTime(candidate.resolve("resolver-status.properties"), old);
+		return candidate;
 	}
 
 	private Path seedMetadataOnly(String name) throws IOException {

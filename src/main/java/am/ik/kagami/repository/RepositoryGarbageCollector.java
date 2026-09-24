@@ -20,23 +20,24 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Finds and removes metadata-only cache directories left behind by failed Maven cache
+ * Finds and removes cache-bookkeeping-only directories left behind by failed Maven cache
  * requests.
  * <p>
- * A candidate is a repository directory whose direct children are exactly
- * {@code maven-metadata.xml} and {@code maven-metadata.xml.sha1}. The files must be at
- * least the requested age old. The two files are removed individually after a second
- * eligibility check, so a request that adds an artifact concurrently cannot make the
- * collector remove that artifact.
+ * A candidate is a repository directory whose direct children are exactly one of these
+ * file sets: {@code maven-metadata.xml} and {@code maven-metadata.xml.sha1}, or
+ * {@code resolver-status.properties}. The files must be at least the requested age old.
+ * They are removed individually after a second eligibility check, so a request that adds
+ * an artifact concurrently cannot make the collector remove that artifact.
  */
 @Service
 public class RepositoryGarbageCollector {
 
 	private static final Logger logger = LoggerFactory.getLogger(RepositoryGarbageCollector.class);
 
-	private static final List<String> METADATA_FILES = List.of("maven-metadata.xml", "maven-metadata.xml.sha1");
+	private static final String RESOLVER_STATUS_FILE = "resolver-status.properties";
 
-	private static final Set<String> METADATA_FILE_SET = Set.copyOf(METADATA_FILES);
+	private static final List<Set<String>> ELIGIBLE_FILE_SETS = List
+		.of(Set.of("maven-metadata.xml", "maven-metadata.xml.sha1"), Set.of(RESOLVER_STATUS_FILE));
 
 	private final StorageService storageService;
 
@@ -48,9 +49,9 @@ public class RepositoryGarbageCollector {
 	}
 
 	/**
-	 * Find metadata-only directories without changing storage.
+	 * Find eligible cache-bookkeeping directories without changing storage.
 	 * @param repositoryId the repository to inspect
-	 * @param olderThan the minimum age of both metadata files; must not be negative
+	 * @param olderThan the minimum age of all files in a candidate; must not be negative
 	 * @return the matching directories, sorted by repository-relative path
 	 * @throws IOException if an I/O error occurs while listing storage
 	 */
@@ -63,10 +64,11 @@ public class RepositoryGarbageCollector {
 	}
 
 	/**
-	 * Remove metadata-only directories that pass the age check.
+	 * Remove eligible cache-bookkeeping directories that pass the age check.
 	 * @param repositoryId the repository to inspect
-	 * @param olderThan the minimum age of both metadata files; must not be negative
-	 * @return the directories whose metadata was collected and any per-directory failures
+	 * @param olderThan the minimum age of all files in a candidate; must not be negative
+	 * @return the directories whose eligible files were collected and any per-directory
+	 * failures
 	 * @throws IOException if an I/O error occurs while listing storage
 	 */
 	public GarbageCollectionResult collect(String repositoryId, Duration olderThan) throws IOException {
@@ -77,15 +79,17 @@ public class RepositoryGarbageCollector {
 		for (GarbageDirectory candidate : candidates) {
 			ArtifactLocation directory = new ArtifactLocation(repositoryId, candidate.path());
 			try {
-				// Re-check immediately before deleting. This protects against a metadata
-				// refresh or an artifact download that completed after the initial walk.
-				if (garbageDirectory(directory, cutoff).isEmpty()) {
+				// Re-check immediately before deleting. This protects against a cache
+				// bookkeeping refresh or an artifact download that completed after the
+				// initial walk.
+				Optional<EligibleDirectory> eligible = garbageDirectory(directory, cutoff);
+				if (eligible.isEmpty()) {
 					continue;
 				}
-				collectFiles(directory);
+				collectFiles(directory, eligible.get().fileNames());
 				// Local storage has real directory entries; object storage disappears
 				// automatically after its last object is deleted. Directory cleanup is
-				// best effort: the metadata files are already gone at this point.
+				// best effort: the eligible files are already gone at this point.
 				try {
 					this.storageService.deleteIfEmpty(directory);
 					pruneEmptyAncestors(directory);
@@ -94,12 +98,13 @@ public class RepositoryGarbageCollector {
 					logger.warn("Failed to prune empty ancestors for {}/{}", repositoryId, candidate.path(), e);
 				}
 				collectedPaths.add(candidate.path());
-				logger.info("Collected metadata-only directory {}/{}", repositoryId, candidate.path());
+				logger.info("Collected cache-bookkeeping-only directory {}/{}", repositoryId, candidate.path());
 			}
 			catch (IOException e) {
 				String message = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
 				failures.add(new GarbageCollectionFailure(candidate.path(), message));
-				logger.warn("Failed to collect metadata-only directory {}/{}", repositoryId, candidate.path(), e);
+				logger.warn("Failed to collect cache-bookkeeping-only directory {}/{}", repositoryId, candidate.path(),
+						e);
 			}
 		}
 		return new GarbageCollectionResult(List.copyOf(collectedPaths), List.copyOf(failures));
@@ -112,9 +117,9 @@ public class RepositoryGarbageCollector {
 				continue;
 			}
 			ArtifactLocation child = new ArtifactLocation(directory.repositoryId(), entry.path());
-			Optional<GarbageDirectory> candidate = garbageDirectory(child, cutoff);
+			Optional<EligibleDirectory> candidate = garbageDirectory(child, cutoff);
 			if (candidate.isPresent()) {
-				candidates.add(candidate.get());
+				candidates.add(candidate.get().directory());
 			}
 			else {
 				findCandidates(child, cutoff, candidates);
@@ -122,32 +127,42 @@ public class RepositoryGarbageCollector {
 		}
 	}
 
-	private Optional<GarbageDirectory> garbageDirectory(ArtifactLocation directory, Instant cutoff) throws IOException {
+	private Optional<EligibleDirectory> garbageDirectory(ArtifactLocation directory, Instant cutoff)
+			throws IOException {
 		List<StorageEntry> children = this.storageService.list(directory);
-		if (children.size() != METADATA_FILES.size()) {
+		List<String> eligibleFileNames = findEligibleFileNames(children);
+		if (eligibleFileNames.isEmpty() || children.size() != eligibleFileNames.size()) {
 			return Optional.empty();
 		}
-		Set<String> names = new HashSet<>();
 		List<Instant> modifiedTimes = new ArrayList<>(children.size());
 		for (StorageEntry child : children) {
 			Instant modified = child.lastModified();
-			if (!child.isFile() || !METADATA_FILE_SET.contains(child.name()) || modified == null
+			if (!child.isFile() || !eligibleFileNames.contains(child.name()) || modified == null
 					|| modified.isAfter(cutoff)) {
 				return Optional.empty();
 			}
-			names.add(child.name());
 			modifiedTimes.add(modified);
 		}
-		if (!names.equals(METADATA_FILE_SET)) {
-			return Optional.empty();
-		}
-		return Optional.of(new GarbageDirectory(directory.artifactPath(),
-				modifiedTimes.stream().max(Comparator.naturalOrder()).orElseThrow()));
+		return Optional.of(new EligibleDirectory(new GarbageDirectory(directory.artifactPath(),
+				modifiedTimes.stream().max(Comparator.naturalOrder()).orElseThrow()), eligibleFileNames));
 	}
 
-	private void collectFiles(ArtifactLocation directory) throws IOException {
+	private static List<String> findEligibleFileNames(List<StorageEntry> children) {
+		Set<String> names = new HashSet<>();
+		for (StorageEntry child : children) {
+			names.add(child.name());
+		}
+		for (Set<String> eligibleFiles : ELIGIBLE_FILE_SETS) {
+			if (names.equals(eligibleFiles)) {
+				return eligibleFiles.stream().sorted().toList();
+			}
+		}
+		return List.of();
+	}
+
+	private void collectFiles(ArtifactLocation directory, List<String> fileNames) throws IOException {
 		IOException failure = null;
-		for (String fileName : METADATA_FILES) {
+		for (String fileName : fileNames) {
 			try {
 				this.storageService.deleteFile(directory.resolve(fileName));
 			}
@@ -193,30 +208,33 @@ public class RepositoryGarbageCollector {
 	}
 
 	/**
-	 * A directory that contains only the two Maven metadata files.
+	 * A directory that contains only an eligible cache-bookkeeping file set.
 	 *
 	 * @param path the path relative to the repository root
-	 * @param lastModified the newer of the two file modification timestamps
+	 * @param lastModified the newest file modification timestamp in the directory
 	 */
 	public record GarbageDirectory(String path, Instant lastModified) {
 	}
 
 	/**
-	 * The result of collecting metadata-only directories.
+	 * The result of collecting eligible cache-bookkeeping directories.
 	 *
-	 * @param collectedPaths repository-relative paths whose metadata files were removed
+	 * @param collectedPaths repository-relative paths whose eligible files were removed
 	 * @param failures paths that could not be collected and their error messages
 	 */
 	public record GarbageCollectionResult(List<String> collectedPaths, List<GarbageCollectionFailure> failures) {
 	}
 
 	/**
-	 * A failure to collect one metadata-only directory.
+	 * A failure to collect one eligible cache-bookkeeping directory.
 	 *
 	 * @param path the path relative to the repository root
 	 * @param message the storage error message
 	 */
 	public record GarbageCollectionFailure(String path, String message) {
+	}
+
+	private record EligibleDirectory(GarbageDirectory directory, List<String> fileNames) {
 	}
 
 }

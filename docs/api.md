@@ -85,7 +85,8 @@ GET /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3.21
 - `Content-Length` header with file size
 - `Cache-Control` header: `max-age=31536000, public` for public repositories,
   `max-age=31536000, private` for private repositories
-- `Content-Disposition: attachment` header with the file name
+- `Content-Disposition: inline` for XML and text files, including `.properties`; other
+  files use `attachment`. The file name is included in the header.
 
 **Status Codes:**
 - `200 OK`: File found and returned
@@ -121,10 +122,14 @@ DELETE /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3
 
 ### Cache Garbage Collection
 
-The garbage collection endpoints remove metadata-only cache directories from one
-repository. A candidate directory must contain exactly `maven-metadata.xml` and
-`maven-metadata.xml.sha1`; both files must be older than `olderThan`. The default is
-one hour. Directories with any other file or subdirectory are left unchanged.
+The garbage collection endpoints remove cache-bookkeeping-only directories from one
+repository. A candidate directory must contain exactly one of these file sets:
+
+- `maven-metadata.xml` and `maven-metadata.xml.sha1`
+- `resolver-status.properties` only
+
+Every file in the candidate must be older than `olderThan`. The default is one hour.
+Directories with any other file or subdirectory are left unchanged.
 
 These endpoints require the `artifacts:admin` authority, including for public
 repositories. The default `editors` group does not include this authority. The `gc`
@@ -158,8 +163,8 @@ Authorization: Bearer <jwt>
 #### POST /artifacts/{repositoryId}/gc
 
 Collect eligible directories. The operation rechecks each directory before deleting
-it and removes only the two metadata files, so a concurrent artifact download is
-preserved.
+it and removes only its eligible bookkeeping files, so a concurrent artifact download
+is preserved.
 
 **Parameters:**
 - `repositoryId` (path, required): Repository identifier
