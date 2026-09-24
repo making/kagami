@@ -581,6 +581,7 @@ tr.group:hover .row-arrow {
 
 .button-primary.button-loading.htmx-request::after {
   border-color: #fff;
+  border-top-color: transparent;
 }
 
 @keyframes button-spin {
