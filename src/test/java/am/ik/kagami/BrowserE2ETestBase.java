@@ -369,6 +369,8 @@ public abstract class BrowserE2ETestBase {
 
 	@Test
 	void fileViewAndDeleteActions() {
+		Assumptions.assumeTrue(canDelete());
+
 		String path = "actions/tmp/1.0/sample-1.0.pom";
 		mirror(path, "<project><artifactId>sample</artifactId></project>");
 		login();
@@ -384,9 +386,6 @@ public abstract class BrowserE2ETestBase {
 		assertThat(artifactPage).hasURL(baseUrl + "/artifacts/mock/" + path);
 		assertThat(artifactPage.locator("span").getByText("sample", new Locator.GetByTextOptions().setExact(true)))
 			.isVisible();
-
-		// The delete actions are only exercised when the principal may delete
-		Assumptions.assumeTrue(canDelete());
 
 		// Dismissing the delete confirmation keeps the file
 		fileRow.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Del")).click();
