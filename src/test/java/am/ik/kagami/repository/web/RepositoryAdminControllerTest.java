@@ -70,6 +70,8 @@ class RepositoryAdminControllerTest {
 			.andExpect(status().isOk())
 			.andExpect(content().string(containsString("href=\"/admin\"")))
 			.andExpect(content().string(containsString("Run Garbage Collection")))
+			.andExpect(content().string(containsString("hx-indicator=\"#gc-run-button\"")))
+			.andExpect(content().string(containsString("id=\"gc-run-button\"")))
 			.andExpect(content().string(containsString("built-in default PEM key pair")))
 			.andExpect(content().string(containsString("maven-metadata.xml")))
 			.andExpect(content().string(containsString("resolver-status.properties")));

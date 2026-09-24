@@ -22,7 +22,7 @@
     <div class="section-head">
       <p>Only directories containing exactly maven-metadata.xml and maven-metadata.xml.sha1, or only resolver-status.properties, are eligible.</p>
     </div>
-    <form id="gc-form" action="/app/admin/gc" method="post" hx-post="/app/admin/gc" hx-target="#gc-result" hx-swap="innerHTML">
+    <form id="gc-form" action="/app/admin/gc" method="post" hx-post="/app/admin/gc" hx-indicator="#gc-run-button" hx-target="#gc-result" hx-swap="innerHTML">
       {{#_csrf}}<input type="hidden" name="_csrf" value="{{_csrf.token}}"/>{{/_csrf}}
       <div class="gc-form">
         <div class="gc-form-fields">
@@ -45,7 +45,7 @@
                   hx-get="/app/admin/gc/preview" hx-include="closest form"
                   hx-target="#gc-result" hx-swap="innerHTML"
                   {{^hasRepositories}}disabled{{/hasRepositories}}>Preview</button>
-          <button type="submit" class="button button-loading"
+          <button type="submit" id="gc-run-button" class="button button-loading"
                   hx-confirm="Collect eligible metadata-only directories? This operation cannot be undone."
                   {{^hasRepositories}}disabled{{/hasRepositories}}>Run Garbage Collection</button>
         </div>
