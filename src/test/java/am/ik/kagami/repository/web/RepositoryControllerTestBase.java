@@ -22,6 +22,8 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import org.springframework.http.HttpHeaders;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -29,6 +31,8 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -213,6 +217,9 @@ public abstract class RepositoryControllerTestBase {
 		assertThat(body).contains(
 				"hx-post=\"/fragments/repositories/test-repo/verify-sigstore?path&#x3D;att.jar&amp;bundle&#x3D;att.jar.attestation.sigstore.json\"");
 		assertThat(body).contains("Verify with cosign");
+		// The pinned public key is offered as a download for the equivalent command
+		assertThat(body).contains("href=\"/repositories/test-repo/sigstore/public-key\"");
+		assertThat(body).contains("kagami-public.pem");
 
 		// A file without a bundle does not show the section
 		seed("bare.jar", "dummy jar content");
@@ -279,6 +286,19 @@ public abstract class RepositoryControllerTestBase {
 	void fileInfoFragmentOfMissingFileIsRejected() throws Exception {
 		this.mockMvc.perform(get("/fragments/repositories/test-repo/info").param("path", "nonexistent.jar"))
 			.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void pinnedPublicKeyIsDownloadable() throws Exception {
+		this.mockMvc.perform(get("/repositories/test-repo/sigstore/public-key"))
+			.andExpect(status().isOk())
+			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"kagami-public.pem\""))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("BEGIN PUBLIC KEY")));
+	}
+
+	@Test
+	void publicKeyOfUnknownRepositoryIsNotFound() throws Exception {
+		this.mockMvc.perform(get("/repositories/unknown-repo/sigstore/public-key")).andExpect(status().isNotFound());
 	}
 
 	@Test

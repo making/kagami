@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -149,7 +150,6 @@ public class CosignVerifier {
 
 	private List<String> command(KagamiProperties.Repository repoConfig, String repositoryId, Path bundleFile,
 			String digest) throws IOException {
-		KagamiProperties.Sigstore sigstore = repoConfig.sigstore();
 		List<String> command = new ArrayList<>();
 		command.add(cosignExecutable(this.properties.sigstore().cosignPath()).toString());
 		command.add("verify-blob-attestation");
@@ -160,7 +160,168 @@ public class CosignVerifier {
 		command.add("--digestAlg");
 		command.add("sha256");
 		command.add("--type");
+		command.add(repoConfig.sigstore().attestationType());
+		List<String> flags = verificationFlags(repoConfig.sigstore(), repositoryId);
+		// In the executed command the public key is handed over as a local temporary file
+		if (repoConfig.sigstore().verification() == KagamiProperties.Verification.KEY) {
+			int keyFlag = flags.indexOf("--key");
+			// verificationFlags has already rejected a missing public key URL
+			flags.set(keyFlag + 1,
+					publicKeyFile(Objects.requireNonNull(repoConfig.sigstore().publicKeyUrl())).toString());
+		}
+		command.addAll(flags);
+		return command;
+	}
+
+	/**
+	 * The inputs a user needs to reproduce the verification outside Kagami: the artifact
+	 * and the bundle under their downloaded file names, the pinned public key under its
+	 * download file name, and the digest of the stored artifact.
+	 */
+	public record VerificationInputs(String artifactFile, String bundleFile, @Nullable String digest,
+			@Nullable String keyFile) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			@Nullable private String artifactFile;
+
+			@Nullable private String bundleFile;
+
+			@Nullable private String digest;
+
+			@Nullable private String keyFile;
+
+			private Builder() {
+			}
+
+			public Builder artifactFile(String artifactFile) {
+				this.artifactFile = artifactFile;
+				return this;
+			}
+
+			public Builder bundleFile(String bundleFile) {
+				this.bundleFile = bundleFile;
+				return this;
+			}
+
+			public Builder digest(@Nullable String digest) {
+				this.digest = digest;
+				return this;
+			}
+
+			public Builder keyFile(@Nullable String keyFile) {
+				this.keyFile = keyFile;
+				return this;
+			}
+
+			public VerificationInputs build() {
+				return new VerificationInputs(Objects.requireNonNull(this.artifactFile, "artifactFile is required"),
+						Objects.requireNonNull(this.bundleFile, "bundleFile is required"), this.digest, this.keyFile);
+			}
+
+		}
+
+	}
+
+	/**
+	 * An equivalent command line for verifying the artifact against the bundle with a
+	 * locally installed {@code cosign}, or {@code null} when the repository is not
+	 * configured for sigstore verification.
+	 */
+	public @Nullable String commandLine(String repositoryId, VerificationInputs inputs) {
+		KagamiProperties.Repository repoConfig = this.properties.repositories().get(repositoryId);
+		if (repoConfig == null) {
+			return null;
+		}
+		KagamiProperties.Sigstore sigstore = repoConfig.sigstore();
+		List<String> command = new ArrayList<>();
+		command.add(DEFAULT_COSIGN);
+		command.add("verify-blob-attestation");
+		command.add(inputs.artifactFile());
+		command.add("--bundle");
+		command.add(inputs.bundleFile());
+		if (inputs.digest() != null && !inputs.digest().isEmpty()) {
+			command.add("--digest");
+			command.add(inputs.digest());
+			command.add("--digestAlg");
+			command.add("sha256");
+		}
+		command.add("--type");
 		command.add(sigstore.attestationType());
+		try {
+			command.addAll(verificationFlags(sigstore, repositoryId));
+		}
+		catch (IllegalArgumentException e) {
+			// The verification itself would fail with the same message; showing a broken
+			// command would not help
+			return null;
+		}
+		// The key is referenced under its download file name, not the server side
+		// location
+		if (sigstore.verification() == KagamiProperties.Verification.KEY && inputs.keyFile() != null
+				&& !inputs.keyFile().isEmpty()) {
+			int keyFlag = command.indexOf("--key");
+			command.set(keyFlag + 1, inputs.keyFile());
+		}
+		return String.join(" ", shellQuoted(command));
+	}
+
+	/**
+	 * Renders the raw command arguments as they would be typed in a shell: the public key
+	 * location loses its resource scheme and values the shell would interpret are single
+	 * quoted.
+	 */
+	private static List<String> shellQuoted(List<String> command) {
+		List<String> rendered = new ArrayList<>(command.size());
+		for (int i = 0; i < command.size(); i++) {
+			String argument = command.get(i);
+			String previous = i > 0 ? command.get(i - 1) : "";
+			switch (previous) {
+				case "--certificate-identity-regexp", "--certificate-oidc-issuer" -> rendered.add(shellQuote(argument));
+				default -> rendered.add(shellQuote(argument));
+			}
+		}
+		return rendered;
+	}
+
+	/**
+	 * The URL of the public key the repository pins for key verification, or {@code null}
+	 * when the repository does not verify with a key.
+	 */
+	public @Nullable String publicKeyUrl(String repositoryId) {
+		KagamiProperties.Repository repoConfig = this.properties.repositories().get(repositoryId);
+		if (repoConfig == null || repoConfig.sigstore().verification() != KagamiProperties.Verification.KEY) {
+			return null;
+		}
+		String publicKeyUrl = repoConfig.sigstore().publicKeyUrl();
+		return publicKeyUrl == null || publicKeyUrl.isEmpty() ? null : publicKeyUrl;
+	}
+
+	/**
+	 * The pinned public key of a key verification repository as a locally readable
+	 * resource, or {@code null} when the repository does not verify with a key, the key
+	 * is a remote URL (the caller redirects to it instead) or the resource does not
+	 * exist.
+	 */
+	public @Nullable Resource publicKeyResource(String repositoryId) {
+		String publicKeyUrl = publicKeyUrl(repositoryId);
+		if (publicKeyUrl == null || publicKeyUrl.startsWith("http://") || publicKeyUrl.startsWith("https://")) {
+			return null;
+		}
+		Resource resource = this.resourceLoader.getResource(publicKeyUrl);
+		return resource.exists() ? resource : null;
+	}
+
+	/**
+	 * The trust anchor flags shared by the executed command and the rendered equivalent
+	 * command line.
+	 */
+	private static List<String> verificationFlags(KagamiProperties.Sigstore sigstore, String repositoryId) {
+		List<String> flags = new ArrayList<>();
 		switch (sigstore.verification()) {
 			case KEY -> {
 				if (sigstore.publicKeyUrl() == null || sigstore.publicKeyUrl().isEmpty()) {
@@ -168,24 +329,32 @@ public class CosignVerifier {
 							"'kagami.repositories.%s.sigstore.public-key-url' is not configured"
 								.formatted(repositoryId));
 				}
-				command.add("--key");
-				command.add(publicKeyFile(sigstore.publicKeyUrl()).toString());
-				command.add("--insecure-ignore-tlog=true");
+				flags.add("--key");
+				flags.add(sigstore.publicKeyUrl());
+				flags.add("--insecure-ignore-tlog=true");
 			}
 			case KEYLESS -> {
 				if (sigstore.certificateIdentityRegExp() == null || sigstore.certificateIdentityRegExp().isEmpty()) {
 					throw new IllegalArgumentException("'kagami.repositories.%s.sigstore.certificate-identity-regexp' "
 							+ "is required for keyless verification".formatted(repositoryId));
 				}
-				command.add("--certificate-identity-regexp");
-				command.add(sigstore.certificateIdentityRegExp());
+				flags.add("--certificate-identity-regexp");
+				flags.add(sigstore.certificateIdentityRegExp());
 				if (sigstore.certificateOidcIssuer() != null && !sigstore.certificateOidcIssuer().isEmpty()) {
-					command.add("--certificate-oidc-issuer");
-					command.add(sigstore.certificateOidcIssuer());
+					flags.add("--certificate-oidc-issuer");
+					flags.add(sigstore.certificateOidcIssuer());
 				}
 			}
 		}
-		return command;
+		return flags;
+	}
+
+	/** Single quotes the value when it contains characters the shell would interpret. */
+	private static String shellQuote(String value) {
+		if (value.matches("[A-Za-z0-9_@%+=:,./-]+")) {
+			return value;
+		}
+		return "'" + value.replace("'", "'\\''") + "'";
 	}
 
 	/**

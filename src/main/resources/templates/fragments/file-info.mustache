@@ -71,6 +71,21 @@
           <button type="submit" class="button button-secondary verify-button">Verify with cosign</button>
         </form>
         <div id="verify-result-{{index}}"></div>
+        {{#hasCosignCommand}}
+        <div class="registry-label info-label sigstore-sub">Equivalent cosign command</div>
+        <div class="copy-field">
+          <div class="copy-field-value">{{cosignCommand}}</div>
+          <button type="button" class="copy-field-button" data-copy="{{cosignCommand}}" aria-label="Copy cosign command">
+            <span data-copy-label><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></span>
+          </button>
+        </div>
+        {{/hasCosignCommand}}
+        {{#hasKeyUrl}}
+        <div class="registry-label info-label sigstore-sub">Public key</div>
+        <div class="copy-field">
+          <a class="copy-field-value" href="{{keyDownloadPath}}">{{keyName}}</a>
+        </div>
+        {{/hasKeyUrl}}
         {{/sigstoreBundles}}
       </div>
       {{/hasSigstoreBundles}}

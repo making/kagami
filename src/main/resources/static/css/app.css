@@ -945,6 +945,22 @@ tr.group:hover .action-buttons {
   color: #fff;
 }
 
+/* Downloadable links inside a copy field keep the muted ink palette of the dialog */
+a.copy-field-value {
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a.copy-field-value:hover {
+  color: var(--ink);
+}
+
+/* Sections added under the verify button inside the sigstore block */
+.sigstore-sub {
+  margin-top: 0.75rem;
+}
+
 .notice {
   border: 1px solid var(--line);
   border-left: 4px solid var(--ink);

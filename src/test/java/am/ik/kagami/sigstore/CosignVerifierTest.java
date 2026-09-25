@@ -199,6 +199,51 @@ class CosignVerifierTest {
 	}
 
 	@Test
+	void commandLineMirrorsTheExecutedCommandForKeyVerification() {
+		String command = this.cosignVerifier.commandLine("sig-repo",
+				CosignVerifier.VerificationInputs.builder()
+					.artifactFile("app-1.0.jar")
+					.bundleFile("app-1.0.jar.attestation.sigstore.json")
+					.digest("abc123")
+					.keyFile("key.pub")
+					.build());
+
+		assertThat(command).isEqualTo("cosign verify-blob-attestation app-1.0.jar "
+				+ "--bundle app-1.0.jar.attestation.sigstore.json --digest abc123 --digestAlg sha256 "
+				+ "--type slsaprovenance1 --key key.pub --insecure-ignore-tlog=true");
+		// The key URL is shown alongside the command so the key can be downloaded
+		assertThat(this.cosignVerifier.publicKeyUrl("sig-repo")).isEqualTo("classpath:kagami-public.pem");
+		assertThat(this.cosignVerifier.publicKeyUrl("keyless-repo")).isNull();
+		assertThat(this.cosignVerifier.publicKeyUrl("unknown-repo")).isNull();
+	}
+
+	@Test
+	void commandLineMirrorsTheExecutedCommandForKeylessVerification() {
+		String command = this.cosignVerifier.commandLine("keyless-repo",
+				CosignVerifier.VerificationInputs.builder()
+					.artifactFile("app-1.0.jar")
+					.bundleFile("app-1.0.jar.sigstore.json")
+					.build());
+
+		assertThat(command).isEqualTo("cosign verify-blob-attestation app-1.0.jar "
+				+ "--bundle app-1.0.jar.sigstore.json --type slsaprovenance1 "
+				+ "--certificate-identity-regexp 'https://github.com/example/.*/.*' "
+				+ "--certificate-oidc-issuer https://token.actions.githubusercontent.com");
+	}
+
+	@Test
+	void commandLineIsAbsentForAnUnknownRepositoryOrMissingTrustAnchor() {
+		CosignVerifier.VerificationInputs inputs = CosignVerifier.VerificationInputs.builder()
+			.artifactFile("a.jar")
+			.bundleFile("a.jar.sig")
+			.digest("abc123")
+			.build();
+		assertThat(this.cosignVerifier.commandLine("unknown-repo", inputs)).isNull();
+		// keyless without a certificate identity regexp cannot be reproduced
+		assertThat(this.cosignVerifier.commandLine("keyless-bare-repo", inputs)).isNull();
+	}
+
+	@Test
 	void hangingCosignIsKilledAfterTheTimeout() throws Exception {
 		String base = "org/example/timeout/1.0/app-1.0.jar";
 		seed("sig-repo", base, ARTIFACT_CONTENT);

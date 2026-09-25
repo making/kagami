@@ -459,7 +459,8 @@ kagami.repositories.central.sigstore.certificate-oidc-issuer=https://token.actio
 ```
 
 The verification result (including the cosign output on failure) is shown in the file
-information dialog of the browse UI.
+information dialog of the browse UI, together with the equivalent command line for running
+the verification with a locally installed cosign.
 
 The Docker image built by CI embeds a cosign binary in the application jar (Maven profile
 `embedded-cosign`); the embedded binary takes precedence over the one on the `PATH` when

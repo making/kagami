@@ -2,6 +2,7 @@ package am.ik.kagami.repository.web;
 
 import am.ik.kagami.rbac.RbacBuiltins;
 import java.io.IOException;
+import java.net.URI;
 import java.time.InstantSource;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +21,11 @@ import am.ik.kagami.repository.RepositoryService.RepositoryEntry;
 import am.ik.kagami.repository.RepositoryService.RepositorySummary;
 import am.ik.kagami.sigstore.CosignVerifier;
 import org.jspecify.annotations.Nullable;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -120,12 +125,60 @@ public class BrowseController {
 		List<SigstoreBundleLink> sigstoreBundles = new ArrayList<>();
 		for (int i = 0; i < info.sigstoreBundles().size(); i++) {
 			RepositoryService.SigstoreBundle bundle = info.sigstoreBundles().get(i);
+			String keyName = keyName(this.cosignVerifier.publicKeyUrl(repositoryId));
+			String cosignCommand = this.cosignVerifier.commandLine(repositoryId,
+					CosignVerifier.VerificationInputs.builder()
+						.artifactFile(info.name())
+						.bundleFile(bundle.name())
+						.digest(info.sha256())
+						.keyFile(keyName)
+						.build());
 			sigstoreBundles.add(new SigstoreBundleLink(i, bundle.name(), artifactPath(repositoryId, bundle.path()),
-					verifyPath(repositoryId, info.path(), bundle.path())));
+					verifyPath(repositoryId, info.path(), bundle.path()), cosignCommand, cosignCommand != null, keyName,
+					keyName != null, keyDownloadPath(repositoryId)));
 		}
 		model.addAttribute("sigstoreBundles", sigstoreBundles);
 		model.addAttribute("hasSigstoreBundles", !sigstoreBundles.isEmpty());
 		return "fragments/file-info";
+	}
+
+	/**
+	 * Serves the public key pinned for sigstore verification of the repository, so the
+	 * key can be downloaded for running the equivalent cosign command locally. Remote key
+	 * URLs are redirected to; the key location always comes from the repository
+	 * configuration, never from user input, so no user controlled path is ever resolved.
+	 */
+	@GetMapping("/repositories/{repositoryId}/sigstore/public-key")
+	public ResponseEntity<?> sigstorePublicKey(@PathVariable String repositoryId) throws IOException {
+		String keyUrl = this.cosignVerifier.publicKeyUrl(repositoryId);
+		if (keyUrl != null && (keyUrl.startsWith("http://") || keyUrl.startsWith("https://"))) {
+			return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(keyUrl)).build();
+		}
+		Resource key = this.cosignVerifier.publicKeyResource(repositoryId);
+		if (key == null) {
+			return ResponseEntity.notFound().build();
+		}
+		return ResponseEntity.ok()
+			.contentType(MediaType.valueOf("application/x-pem-file"))
+			.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + keyName(keyUrl) + "\"")
+			.body(key);
+	}
+
+	/** The download path of the pinned public key of the repository. */
+	private static String keyDownloadPath(String repositoryId) {
+		return "/repositories/" + repositoryId + "/sigstore/public-key";
+	}
+
+	/** The file name of a public key location, used as the download file name. */
+	private static @Nullable String keyName(@Nullable String keyUrl) {
+		if (keyUrl == null || keyUrl.isEmpty()) {
+			return null;
+		}
+		// Resource schemes are not part of the file name
+		String location = keyUrl.startsWith("classpath:") || keyUrl.startsWith("file:")
+				? keyUrl.substring(keyUrl.indexOf(':') + 1) : keyUrl;
+		String name = location.split("\\?")[0].substring(location.split("\\?")[0].lastIndexOf('/') + 1);
+		return name.isEmpty() ? "public-key.pem" : name;
 	}
 
 	/**
@@ -330,9 +383,12 @@ public class BrowseController {
 
 	/**
 	 * A downloadable sigstore attestation bundle shown in the file info modal, with the
-	 * endpoint that verifies the file against the bundle.
+	 * endpoint that verifies the file against the bundle, the equivalent command line for
+	 * a locally installed cosign, and the pinned public key URL in key verification mode.
 	 */
-	public record SigstoreBundleLink(int index, String name, String href, String verifyPath) {
+	public record SigstoreBundleLink(int index, String name, String href, String verifyPath,
+			@Nullable String cosignCommand, boolean hasCosignCommand, @Nullable String keyName, boolean hasKeyUrl,
+			String keyDownloadPath) {
 	}
 
 	/**
