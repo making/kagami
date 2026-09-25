@@ -133,9 +133,15 @@ public class BrowseController {
 						.digest(info.sha256())
 						.keyFile(keyName)
 						.build());
-			sigstoreBundles.add(new SigstoreBundleLink(i, bundle.name(), artifactPath(repositoryId, bundle.path()),
-					verifyPath(repositoryId, info.path(), bundle.path()), cosignCommand, cosignCommand != null, keyName,
-					keyName != null, keyDownloadPath(repositoryId)));
+			sigstoreBundles.add(SigstoreBundleLink.builder()
+				.index(i)
+				.name(bundle.name())
+				.href(artifactPath(repositoryId, bundle.path()))
+				.verifyPath(verifyPath(repositoryId, info.path(), bundle.path()))
+				.cosignCommand(cosignCommand)
+				.keyName(keyName)
+				.keyDownloadPath(keyDownloadPath(repositoryId))
+				.build());
 		}
 		model.addAttribute("sigstoreBundles", sigstoreBundles);
 		model.addAttribute("hasSigstoreBundles", !sigstoreBundles.isEmpty());
@@ -389,6 +395,75 @@ public class BrowseController {
 	public record SigstoreBundleLink(int index, String name, String href, String verifyPath,
 			@Nullable String cosignCommand, boolean hasCosignCommand, @Nullable String keyName, boolean hasKeyUrl,
 			String keyDownloadPath) {
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			private int index;
+
+			@Nullable private String name;
+
+			@Nullable private String href;
+
+			@Nullable private String verifyPath;
+
+			@Nullable private String cosignCommand;
+
+			@Nullable private String keyName;
+
+			@Nullable private String keyDownloadPath;
+
+			private Builder() {
+			}
+
+			public Builder index(int index) {
+				this.index = index;
+				return this;
+			}
+
+			public Builder name(String name) {
+				this.name = name;
+				return this;
+			}
+
+			public Builder href(String href) {
+				this.href = href;
+				return this;
+			}
+
+			public Builder verifyPath(String verifyPath) {
+				this.verifyPath = verifyPath;
+				return this;
+			}
+
+			public Builder cosignCommand(@Nullable String cosignCommand) {
+				this.cosignCommand = cosignCommand;
+				return this;
+			}
+
+			public Builder keyName(@Nullable String keyName) {
+				this.keyName = keyName;
+				return this;
+			}
+
+			public Builder keyDownloadPath(String keyDownloadPath) {
+				this.keyDownloadPath = keyDownloadPath;
+				return this;
+			}
+
+			public SigstoreBundleLink build() {
+				return new SigstoreBundleLink(this.index, Objects.requireNonNull(this.name, "name is required"),
+						Objects.requireNonNull(this.href, "href is required"),
+						Objects.requireNonNull(this.verifyPath, "verifyPath is required"), this.cosignCommand,
+						this.cosignCommand != null, this.keyName, this.keyName != null,
+						Objects.requireNonNull(this.keyDownloadPath, "keyDownloadPath is required"));
+			}
+
+		}
+
 	}
 
 	/**
