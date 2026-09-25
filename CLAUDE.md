@@ -13,14 +13,8 @@ Kagami is a mirror server of Maven repositories. Main package is `am.ik.kagami`.
 
 General Java, Spring, package structure, and testing standards are defined in the skills
 (`java-code-standards`, `spring-code-standards`, `java-package-structure`,
-`java-testing-standards`). Consult and follow them when writing or reviewing code.
-
-## Architecture Constraints
-
-- Storage backend details are documented in the class javadocs: `StorageService` (single path to
-  stored artifacts), `StorageConfig` (backend selection from `kagami.storage.type`),
-  `StorageEnvironmentPostProcessor` (storage-type-derived defaults), `ArtifactContentType` (the
-  one content type table), `RemoteRepositoryService` (scratch local repository per fetch).
+`java-testing-standards`). Consult and follow them when writing or reviewing code. If the skills
+are not installed, install them from https://github.com/making/claude-skills.
 
 ## Testing Strategy
 
