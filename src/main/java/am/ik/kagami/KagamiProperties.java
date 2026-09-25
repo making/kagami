@@ -11,6 +11,7 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,7 +34,7 @@ import org.springframework.util.StreamUtils;
 @ConfigurationProperties(prefix = "kagami")
 public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<String, Repository> repositories,
 		@Nullable Proxy proxy, @DefaultValue Jwt jwt, @DefaultValue Authentication authentication,
-		@DefaultValue Rbac rbac) {
+		@DefaultValue Rbac rbac, @DefaultValue SigstoreConfig sigstore) {
 
 	public static Builder builder() {
 		return new Builder();
@@ -52,6 +53,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 		@Nullable private Authentication authentication;
 
 		@Nullable private Rbac rbac;
+
+		@Nullable private SigstoreConfig sigstore;
 
 		private Builder() {
 		}
@@ -86,12 +89,18 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			return this;
 		}
 
+		public Builder sigstore(@Nullable SigstoreConfig sigstore) {
+			this.sigstore = sigstore;
+			return this;
+		}
+
 		public KagamiProperties build() {
 			return new KagamiProperties(Objects.requireNonNull(this.storage, "storage is required"),
 					Objects.requireNonNull(this.repositories, "repositories is required"), this.proxy,
 					Objects.requireNonNull(this.jwt, "jwt is required"),
 					Objects.requireNonNull(this.authentication, "authentication is required"),
-					this.rbac == null ? Rbac.builder().build() : this.rbac);
+					this.rbac == null ? Rbac.builder().build() : this.rbac,
+					Objects.requireNonNullElse(this.sigstore, new SigstoreConfig("cosign", Duration.ofSeconds(60))));
 		}
 
 	}
@@ -250,6 +259,38 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	}
 
 	/**
+	 * Sigstore bundle verification settings that apply to the whole application.
+	 *
+	 * @param cosignPath the path of the cosign binary used to verify bundles; defaults to
+	 * {@code cosign}, relying on the {@code PATH} environment variable
+	 * @param timeout the timeout of a single cosign invocation; defaults to 60 seconds
+	 */
+	public record SigstoreConfig(@DefaultValue("cosign") String cosignPath, @DefaultValue("60s") Duration timeout) {
+
+		public SigstoreConfig {
+			Objects.requireNonNull(cosignPath, "cosignPath is required");
+			Objects.requireNonNull(timeout, "timeout is required");
+		}
+	}
+
+	/**
+	 * The trust anchor of the bundle verification: a pinned public key or the keyless
+	 * Fulcio certificate embedded in the bundle.
+	 */
+	public enum Verification {
+
+		/** Verify the bundle against the pinned public key ({@code publicKeyUrl}). */
+		KEY,
+
+		/**
+		 * Verify the bundle's embedded certificate against identity and OIDC issuer
+		 * constraints, with full transparency log verification.
+		 */
+		KEYLESS
+
+	}
+
+	/**
 	 * Sigstore attestation bundle settings for a repository.
 	 *
 	 * @param enabled whether Kagami fetches sigstore attestation bundles distributed by
@@ -259,10 +300,20 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * {@code attestation.sigstore.json} (Tanzu Spring) and {@code sigstore.json} (Maven
 	 * Central)
 	 * @param publicKeyUrl the URL of the public key used to verify the bundles; used by
-	 * bundle verification, not by proxying
+	 * {@link Verification#KEY} bundle verification, not by proxying
+	 * @param verification the trust anchor used by bundle verification; defaults to
+	 * {@link Verification#KEY}
+	 * @param attestationType the attestation type passed to
+	 * {@code cosign verify-blob-attestation}; defaults to {@code slsaprovenance1}
+	 * @param certificateIdentityRegExp the OIDC identity regexp the certificate embedded
+	 * in a keyless bundle must match ({@code --certificate-identity-regexp})
+	 * @param certificateOidcIssuer the OIDC issuer the certificate embedded in a keyless
+	 * bundle must carry ({@code --certificate-oidc-issuer})
 	 */
 	public record Sigstore(@DefaultValue("false") boolean enabled, @Nullable List<String> bundleSuffixes,
-			@Nullable String publicKeyUrl) {
+			@Nullable String publicKeyUrl, @DefaultValue("KEY") Verification verification,
+			@DefaultValue("slsaprovenance1") String attestationType, @Nullable String certificateIdentityRegExp,
+			@Nullable String certificateOidcIssuer) {
 
 		public static final List<String> DEFAULT_BUNDLE_SUFFIXES = List.of("attestation.sigstore.json",
 				"sigstore.json");
@@ -272,6 +323,10 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 				bundleSuffixes = DEFAULT_BUNDLE_SUFFIXES;
 			}
 			bundleSuffixes = List.copyOf(bundleSuffixes);
+			verification = verification == null ? Verification.KEY : verification;
+			if (attestationType == null || attestationType.isEmpty()) {
+				attestationType = "slsaprovenance1";
+			}
 		}
 
 		public static Builder builder() {
@@ -285,6 +340,14 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			@Nullable private List<String> bundleSuffixes;
 
 			@Nullable private String publicKeyUrl;
+
+			@Nullable private Verification verification;
+
+			@Nullable private String attestationType;
+
+			@Nullable private String certificateIdentityRegExp;
+
+			@Nullable private String certificateOidcIssuer;
 
 			private Builder() {
 			}
@@ -304,8 +367,31 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 				return this;
 			}
 
+			public Builder verification(@Nullable Verification verification) {
+				this.verification = verification;
+				return this;
+			}
+
+			public Builder attestationType(@Nullable String attestationType) {
+				this.attestationType = attestationType;
+				return this;
+			}
+
+			public Builder certificateIdentityRegExp(@Nullable String certificateIdentityRegExp) {
+				this.certificateIdentityRegExp = certificateIdentityRegExp;
+				return this;
+			}
+
+			public Builder certificateOidcIssuer(@Nullable String certificateOidcIssuer) {
+				this.certificateOidcIssuer = certificateOidcIssuer;
+				return this;
+			}
+
 			public Sigstore build() {
-				return new Sigstore(this.enabled, this.bundleSuffixes, this.publicKeyUrl);
+				return new Sigstore(this.enabled, this.bundleSuffixes, this.publicKeyUrl,
+						Objects.requireNonNullElse(this.verification, Verification.KEY),
+						Objects.requireNonNullElse(this.attestationType, "slsaprovenance1"),
+						this.certificateIdentityRegExp, this.certificateOidcIssuer);
 			}
 
 		}

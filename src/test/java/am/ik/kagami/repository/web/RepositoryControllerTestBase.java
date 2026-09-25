@@ -4,13 +4,19 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.stream.Stream;
 
 import am.ik.kagami.storage.ArtifactLocation;
 import am.ik.kagami.storage.StorageService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -20,7 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -30,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * every backend.
  */
 @SpringBootTest(properties = { "kagami.repositories.test-repo.url=https://repo.maven.apache.org/maven2",
+		"kagami.repositories.test-repo.sigstore.public-key-url=classpath:kagami-public.pem",
 		"kagami.repositories.stats-repo.url=https://repo.maven.apache.org/maven2",
 		"spring.security.user.name=test-user", "spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
@@ -37,11 +46,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 		authorities = { "artifacts:read", "artifacts:delete" })
 public abstract class RepositoryControllerTestBase {
 
+	static final Path MOCK_COSIGN = mockCosignPath();
+
 	@Autowired
 	MockMvc mockMvc;
 
 	@MockitoSpyBean
 	private StorageService storageService;
+
+	@DynamicPropertySource
+	static void cosignProperties(DynamicPropertyRegistry registry) {
+		// The mock cosign script keeps the fragment tests free of a real cosign binary
+		registry.add("kagami.sigstore.cosign-path", () -> MOCK_COSIGN.toString());
+	}
+
+	private static Path mockCosignPath() {
+		try {
+			return Path.of(RepositoryControllerTestBase.class.getResource("/cosign-mock.sh").toURI());
+		}
+		catch (Exception e) {
+			throw new IllegalStateException("cosign-mock.sh not found on the classpath", e);
+		}
+	}
 
 	void seed(String path, String content) throws IOException {
 		seed("test-repo", path, content);
@@ -157,6 +183,22 @@ public abstract class RepositoryControllerTestBase {
 		assertThat(body).contains("def456");
 	}
 
+	@BeforeEach
+	void resetCosignControlFiles() throws IOException {
+		Path controlDir = Path.of("/tmp/kagami-cosign-mock");
+		Files.createDirectories(controlDir);
+		try (Stream<Path> files = Files.list(controlDir)) {
+			files.forEach(path -> {
+				try {
+					Files.delete(path);
+				}
+				catch (IOException e) {
+					throw new IllegalStateException(e);
+				}
+			});
+		}
+	}
+
 	@Test
 	void fileInfoFragmentShowsSigstoreBundleWhenPresent() throws Exception {
 		seed("att.jar", "dummy jar content");
@@ -167,11 +209,70 @@ public abstract class RepositoryControllerTestBase {
 		assertThat(body).contains("Sigstore Attestation");
 		assertThat(body).contains("att.jar.attestation.sigstore.json");
 		assertThat(body).contains("href=\"/artifacts/test-repo/att.jar.attestation.sigstore.json\"");
+		// Each bundle offers a verify action posting to the verification fragment
+		assertThat(body).contains(
+				"hx-post=\"/fragments/repositories/test-repo/verify-sigstore?path&#x3D;att.jar&amp;bundle&#x3D;att.jar.attestation.sigstore.json\"");
+		assertThat(body).contains("Verify with cosign");
 
 		// A file without a bundle does not show the section
 		seed("bare.jar", "dummy jar content");
 		String bare = bodyOf("/fragments/repositories/test-repo/info", "path", "bare.jar");
 		assertThat(bare).doesNotContain("Sigstore Attestation");
+	}
+
+	@Test
+	void verifySigstoreFragmentShowsSuccess() throws Exception {
+		seed("att.jar", "dummy jar content");
+		seed("att.jar.attestation.sigstore.json",
+				"{\"mediaType\":\"application/vnd.dev.sigstore.bundle+json;version=0.3\"}");
+
+		String body = this.mockMvc
+			.perform(post("/fragments/repositories/test-repo/verify-sigstore").param("path", "att.jar")
+				.param("bundle", "att.jar.attestation.sigstore.json")
+				.with(csrf()))
+			.andExpect(status().isOk())
+			.andReturn()
+			.getResponse()
+			.getContentAsString(StandardCharsets.UTF_8);
+		assertThat(body).contains("Verified OK");
+		assertThat(body).contains("mock cosign stdout");
+	}
+
+	@Test
+	void verifySigstoreFragmentShowsFailure() throws Exception {
+		seed("att.jar", "dummy jar content");
+		seed("att.jar.attestation.sigstore.json",
+				"{\"mediaType\":\"application/vnd.dev.sigstore.bundle+json;version=0.3\"}");
+		Files.writeString(Path.of("/tmp/kagami-cosign-mock/exit-code"), "1");
+
+		String body = this.mockMvc
+			.perform(post("/fragments/repositories/test-repo/verify-sigstore").param("path", "att.jar")
+				.param("bundle", "att.jar.attestation.sigstore.json")
+				.with(csrf()))
+			.andExpect(status().isOk())
+			.andReturn()
+			.getResponse()
+			.getContentAsString(StandardCharsets.UTF_8);
+		assertThat(body).contains("Verification failed");
+		assertThat(body).contains("cosign exited with code 1");
+		assertThat(body).contains("mock cosign stderr");
+	}
+
+	@Test
+	void verifySigstoreFragmentShowsErrorWhenTheBundleIsMissing() throws Exception {
+		// A unique path: the storage is shared by every test in this class
+		seed("lonely.jar", "dummy jar content");
+
+		String body = this.mockMvc
+			.perform(post("/fragments/repositories/test-repo/verify-sigstore").param("path", "lonely.jar")
+				.param("bundle", "lonely.jar.attestation.sigstore.json")
+				.with(csrf()))
+			.andExpect(status().isOk())
+			.andReturn()
+			.getResponse()
+			.getContentAsString(StandardCharsets.UTF_8);
+		assertThat(body).contains("Verification failed");
+		assertThat(body).contains("Bundle not found in storage");
 	}
 
 	@Test

@@ -22,6 +22,7 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **Token Management**: Web-based JWT token generation with configurable expiration, permissions, and build tool configuration examples
 - **User Interface**: Consistent header across all pages showing logged-in username, logout functionality, and token generation access
 - **Security Features**: OAuth2 Resource Server with JWT tokens, repository-specific access control, group-based RBAC, scope-capped token generation, CSRF protection partially disabled for API usage
+- **Sigstore Attestation Support**: Fetches sigstore attestation bundles distributed by the upstream as sidecar files, and verifies them in the web UI with cosign against a pinned public key or keyless identity constraints
 - **OIDC Support**: OpenID Connect authentication with multiple identity providers (Google, Microsoft Entra ID, etc.)
 
 ## Quick Start
@@ -425,6 +426,40 @@ The operation works with both local and S3 storage. It scans the repository befo
 collecting, so very large S3 repositories may take time. A concurrent artifact download
 is preserved; the collector removes only the eligible bookkeeping files and then removes
 an empty local directory when possible.
+
+### Sigstore Attestation Bundles
+
+Kagami can fetch sigstore attestation bundles distributed by the upstream as sidecar files of
+artifacts (e.g. `lib-1.0.jar.attestation.sigstore.json`) and store them next to the artifact:
+
+```properties
+kagami.repositories.tanzu.sigstore.enabled=true
+# Optional: extra bundle suffixes to try; defaults to attestation.sigstore.json (Tanzu Spring)
+# and sigstore.json (Maven Central)
+kagami.repositories.tanzu.sigstore.bundle-suffixes[0]=attestation.sigstore.json
+```
+
+Bundles that reached the storage are shown in the browse UI and can be verified with the
+external `cosign` binary, which must be installed in the Kagami runtime environment
+(configurable via `kagami.sigstore.cosign-path`, default `cosign`). Verification runs entirely
+on trust anchors from the repository configuration; user input is never passed to cosign.
+
+Two verification modes exist, configured per repository:
+
+```properties
+# Pinned key mode: verify against a public key, skipping transparency log verification
+kagami.repositories.tanzu.sigstore.verification=key
+kagami.repositories.tanzu.sigstore.public-key-url=https://storage.googleapis.com/tanzu-signing-bucket/build-factory/public-key.pem
+
+# Keyless mode: verify the Fulcio certificate embedded in the bundle, with full
+# transparency log verification
+kagami.repositories.central.sigstore.verification=keyless
+kagami.repositories.central.sigstore.certificate-identity-regexp=https://github.com/<owner>/<repo>/.*
+kagami.repositories.central.sigstore.certificate-oidc-issuer=https://token.actions.githubusercontent.com
+```
+
+The verification result (including the cosign output on failure) is shown in the file
+information dialog of the browse UI.
 
 ### HTTP Proxy Configuration
 

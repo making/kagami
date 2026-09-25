@@ -1659,3 +1659,40 @@ pre.config-code code {
   letter-spacing: -0.015em;
   line-height: 1.05;
 }
+
+/* ---- Sigstore verification result ---- */
+
+.verify-form {
+  margin: 0.25rem 0;
+}
+
+.verify-result {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  font-size: 0.75rem;
+}
+
+.verify-result-ok {
+  border-left: 4px solid #16a34a;
+  color: #166534;
+}
+
+.verify-result-fail {
+  border-left: 4px solid var(--accent);
+  color: var(--accent);
+}
+
+.verify-result-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.verify-result-detail {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 0.7rem;
+  max-height: 12rem;
+  overflow-y: auto;
+}

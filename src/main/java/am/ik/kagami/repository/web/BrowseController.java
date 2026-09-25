@@ -18,6 +18,7 @@ import am.ik.kagami.repository.RepositoryService.BrowseResult;
 import am.ik.kagami.repository.RepositoryService.FileInfo;
 import am.ik.kagami.repository.RepositoryService.RepositoryEntry;
 import am.ik.kagami.repository.RepositoryService.RepositorySummary;
+import am.ik.kagami.sigstore.CosignVerifier;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.ModelAndView;
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -47,10 +49,14 @@ public class BrowseController {
 
 	private final RepositoryService repositoryService;
 
+	private final CosignVerifier cosignVerifier;
+
 	private final InstantSource instantSource;
 
-	public BrowseController(RepositoryService repositoryService, InstantSource instantSource) {
+	public BrowseController(RepositoryService repositoryService, CosignVerifier cosignVerifier,
+			InstantSource instantSource) {
 		this.repositoryService = repositoryService;
+		this.cosignVerifier = cosignVerifier;
 		this.instantSource = instantSource;
 	}
 
@@ -111,10 +117,12 @@ public class BrowseController {
 		model.addAttribute("hasSha1", info.sha1() != null);
 		model.addAttribute("sha256", info.sha256());
 		model.addAttribute("hasSha256", info.sha256() != null);
-		List<SigstoreBundleLink> sigstoreBundles = info.sigstoreBundles()
-			.stream()
-			.map(bundle -> new SigstoreBundleLink(bundle.name(), artifactPath(repositoryId, bundle.path())))
-			.toList();
+		List<SigstoreBundleLink> sigstoreBundles = new ArrayList<>();
+		for (int i = 0; i < info.sigstoreBundles().size(); i++) {
+			RepositoryService.SigstoreBundle bundle = info.sigstoreBundles().get(i);
+			sigstoreBundles.add(new SigstoreBundleLink(i, bundle.name(), artifactPath(repositoryId, bundle.path()),
+					verifyPath(repositoryId, info.path(), bundle.path())));
+		}
 		model.addAttribute("sigstoreBundles", sigstoreBundles);
 		model.addAttribute("hasSigstoreBundles", !sigstoreBundles.isEmpty());
 		return "fragments/file-info";
@@ -162,6 +170,36 @@ public class BrowseController {
 
 	private static String artifactPath(String repositoryId, String path) {
 		return "/artifacts/" + repositoryId + "/" + path;
+	}
+
+	private static String verifyPath(String repositoryId, String artifactPath, String bundlePath) {
+		return UriComponentsBuilder.fromPath("/fragments/repositories/" + repositoryId + "/verify-sigstore")
+			.queryParam("path", artifactPath)
+			.queryParam("bundle", bundlePath)
+			.build()
+			.toString();
+	}
+
+	/**
+	 * Fragment: the cosign verification result for an artifact and one of its sigstore
+	 * bundles. The verification runs synchronously; htmx swaps the result into the file
+	 * info modal.
+	 */
+	@PostMapping("/fragments/repositories/{repositoryId}/verify-sigstore")
+	public String verifySigstore(@PathVariable String repositoryId, @RequestParam String path,
+			@RequestParam String bundle, Model model) {
+		CosignVerifier.VerificationResult result = this.cosignVerifier.verify(repositoryId, path, bundle);
+		model.addAttribute("verified", result.verified());
+		model.addAttribute("bundle", bundle);
+		model.addAttribute("exitCode", result.exitCode());
+		model.addAttribute("hasExitCode", result.exitCode() != null);
+		model.addAttribute("stdout", result.stdout());
+		model.addAttribute("hasStdout", result.stdout() != null && !result.stdout().isEmpty());
+		model.addAttribute("stderr", result.stderr());
+		model.addAttribute("hasStderr", result.stderr() != null && !result.stderr().isEmpty());
+		model.addAttribute("error", result.error());
+		model.addAttribute("hasError", result.error() != null);
+		return "fragments/verify-result";
 	}
 
 	private void addEntryListModel(Model model, String repositoryId, @Nullable String path,
@@ -291,9 +329,10 @@ public class BrowseController {
 	}
 
 	/**
-	 * A downloadable sigstore attestation bundle shown in the file info modal.
+	 * A downloadable sigstore attestation bundle shown in the file info modal, with the
+	 * endpoint that verifies the file against the bundle.
 	 */
-	public record SigstoreBundleLink(String name, String href) {
+	public record SigstoreBundleLink(int index, String name, String href, String verifyPath) {
 	}
 
 	/**

@@ -66,6 +66,11 @@
         <div class="copy-field">
           <a class="copy-field-value" href="{{href}}" target="_blank">{{name}}</a>
         </div>
+        <form class="verify-form" hx-post="{{verifyPath}}" hx-target="#verify-result-{{index}}" hx-swap="innerHTML">
+          {{#_csrf}}<input type="hidden" name="_csrf" value="{{_csrf.token}}"/>{{/_csrf}}
+          <button type="submit" class="button button-secondary verify-button">Verify with cosign</button>
+        </form>
+        <div id="verify-result-{{index}}"></div>
         {{/sigstoreBundles}}
       </div>
       {{/hasSigstoreBundles}}

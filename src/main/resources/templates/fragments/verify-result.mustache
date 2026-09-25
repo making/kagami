@@ -1,0 +1,23 @@
+<div class="verify-result {{#verified}}verify-result-ok{{/verified}}{{^verified}}verify-result-fail{{/verified}}">
+  {{#verified}}
+  <div class="verify-result-title">Verified OK</div>
+  {{#hasStdout}}
+  <pre class="verify-result-detail">{{stdout}}</pre>
+  {{/hasStdout}}
+  {{/verified}}
+  {{^verified}}
+  <div class="verify-result-title">Verification failed</div>
+  {{#hasError}}
+  <pre class="verify-result-detail">{{error}}</pre>
+  {{/hasError}}
+  {{#hasExitCode}}
+  <div class="verify-result-title">cosign exited with code {{exitCode}}</div>
+  {{/hasExitCode}}
+  {{#hasStderr}}
+  <pre class="verify-result-detail">{{stderr}}</pre>
+  {{/hasStderr}}
+  {{#hasStdout}}
+  <pre class="verify-result-detail">{{stdout}}</pre>
+  {{/hasStdout}}
+  {{/verified}}
+</div>
