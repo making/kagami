@@ -1,11 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this
-repository.
-
-Kagami is a mirror server of Maven repositories.
-
-**Build Commands:**
+Kagami is a mirror server of Maven repositories. Main package is `am.ik.kagami`.
 
 ```bash
 ./mvnw clean spring-javaformat:apply compile                    # Compile application
@@ -14,105 +9,22 @@ Kagami is a mirror server of Maven repositories.
 ./mvnw spring-boot:build-image                                  # Create Docker image
 ```
 
-**Docker:**
-- Pre-built image: `ghcr.io/making/kagami:jvm`
+## Code Standards
+
+General Java, Spring, package structure, and testing standards are defined in the skills
+(`java-code-standards`, `spring-code-standards`, `java-package-structure`,
+`java-testing-standards`). Consult and follow them when writing or reviewing code.
 
 ## Architecture Constraints
 
-- `StorageService` (`am.ik.kagami.storage`) is the single path to stored artifacts; no other
-  package touches the filesystem or S3, so a new backend touches no other package.
-- `StorageConfig` picks the backend from `kagami.storage.type`: `LocalStorageService` (default)
-  or `S3StorageService` (Spring Cloud AWS, client settings under `spring.cloud.aws.*`).
-  `StorageEnvironmentPostProcessor` contributes every property that can only be derived from the
-  storage type, as overridable defaults: the S3 auto-configuration is off for `local` and the disk
-  space health indicator and metric watch `kagami.storage.path`; for `s3` both are off. Such values
-  belong there, not in `application.properties`, which cannot branch on the type.
-- `ArtifactContentType` is the one content type table. Object storage keeps the content type with
-  the object, so the backend decides it at upload time and the web layer reads the same table.
-- S3 timestamps are truncated to seconds so that `ListObjectsV2` and `HeadObject` agree.
-- `S3StorageService#delete` lists once with the key itself as the prefix and keeps only keys that
-  are the key or sit under `<key>/`, so `org/example/lib` never takes `org/example/library.jar`.
-- Tests that need S3 import `TestcontainersConfiguration` and set `kagami.storage.type=s3` as a
-  static test property; the RustFS container and the `spring.cloud.aws.*` properties follow.
-- `spring.http.clients.imperative.factory=jdk` is pinned: `ProxyConfig` applies the proxy settings to the JDK
-  client only, and the AWS SDK puts Apache HttpClient 5 on the classpath, which Spring Boot would
-  otherwise pick for `RestClient`.
-- `ArtifactLocation` rejects `..`, `~` and absolute paths; an empty path is the repository root.
-- No `Path` / `File` in the `StorageService` interface; `delete` removes everything at or under
-  a location.
-- `lastModified` of a directory entry is optional: object storage has no directory timestamp.
-- `BasicToBearerTokenResolver` resolves the password part of Basic auth as a JWT bearer token;
-  the username is ignored.
-- Token generation requires the USER role - JWT tokens cannot generate new tokens.
-- CSRF is partially disabled (`/artifacts/**`, `/token`) to support REST API usage.
-- Maven Resolver resolves into a scratch local repository (temp directory) per fetch, removed
-  afterwards. The resolved file is copied into `StorageService`; resolver bookkeeping files never
-  reach the storage. A scratch directory per fetch means no shared local-repository locking
-  between requests.
-- Non-standard files (like maven-metadata.xml) are fetched via `RestClient`, not Maven Resolver.
+- Storage backend details are documented in the class javadocs: `StorageService` (single path to
+  stored artifacts), `StorageConfig` (backend selection from `kagami.storage.type`),
+  `StorageEnvironmentPostProcessor` (storage-type-derived defaults), `ArtifactContentType` (the
+  one content type table), `RemoteRepositoryService` (scratch local repository per fetch).
 
-## Development Requirements
-
-### Code Standards
-
-- Use builder pattern if the number of arguments is more than two
-- Write javadoc and comments in English
-- Spring Java Format enforced via Maven plugin
-- All code must pass formatting validation before commit
-- Target Java 25
-- Use modern Java technics as much as possible like Java Records, Pattern Matching, Text Block
-  etc ...
-- Be sure to avoid circular references between classes and packages.
-- Don't use Lombok.
-- Don't use Google Guava.
-
-### Spring Specific Rules
-
-- Always use constructor injection for Spring beans. No `@Autowired` required except for test code.
-- Use `RestClient` for external API calls. Don't use `RestTemplate`.
-- `RestClient` should be used with injected/autoconfigured `RestClient.Builder`.
-- Use `JdbcClient` for database operations. Don't use `JdbcTemplate` except for batch update.
-- Use `@Configuration(proxyBeanMethods = false)` for configuration classes to avoid proxying issues.
-- Use `@ConfigurationProperties` + Java Records for configuration properties classes. Don't use `@Value` for configuration properties.
-- Use `@DefaultValue` for non-null default values in configuration properties classes.
-
-### Package Structure
-
-Main package is `am.ik.kagami`.
-
-Package structure should follow the "package by feature" principle, grouping related classes
-together. Not by technical layers.
-
-For DTOs, use inner record classes in the appropriate classes. For example, if you have a
-`UserController`, define the request/response class inside that controller class.
-
-`web` package should not be shared across different features. Each feature should have its own `web`
-domain objects should be clean and not contain external layers like web or database.
-
-### Testing Strategy
+## Testing Strategy
 
 - **Contract Tests**: `StorageServiceContractTest` is the abstract contract every `StorageService`
   backend test must extend
 - **E2E Tests**: `BrowserE2ETestBase` drives the built UI with Playwright (Chromium); each backend
   has a subclass, as do `KagamiIntegrationTestBase` and `BrowserControllerTestBase`
-- Use `@TempDir` for filesystem testing, maintain test independence
-- All tests must pass consistently; use specific MockMvc expectations
-- All tests must pass before completing tasks
-
-### After Task completion
-
-- Ensure all code is formatted using `./mvnw spring-javaformat:apply`
-- Run full test suite with `./mvnw test`
-- For every task, notify that the task is complete and ready for review by the following command:
-
-```
-osascript -e 'display notification "<Message Body>" with title "<Message Title>"'
-```
-
-## important-instruction-reminders
-
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files
-if explicitly requested by the User.
