@@ -154,6 +154,7 @@ public class RemoteRepositoryService {
 			try (InputStream inputStream = Files.newInputStream(resolvedFile)) {
 				this.storageService.store(location, inputStream);
 			}
+			fetchSigstoreBundles(location, repository);
 			return true;
 		}
 		catch (Exception e) {
@@ -211,6 +212,56 @@ public class RemoteRepositoryService {
 	 */
 	public boolean isRepositoryConfigured(String repositoryId) {
 		return this.repositories.containsKey(repositoryId);
+	}
+
+	/**
+	 * Fetch the sigstore attestation bundles distributed by the upstream as sidecar files
+	 * of the artifact at {@code location} (e.g.
+	 * {@code <artifact>.attestation.sigstore.json}) and store them next to it. Every
+	 * failure is fail-open: a missing or unreadable bundle never affects the artifact
+	 * response itself.
+	 */
+	private void fetchSigstoreBundles(ArtifactLocation location, RemoteRepository repository) {
+		KagamiProperties.Repository repoConfig = this.kagamiProperties.repositories().get(location.repositoryId());
+		KagamiProperties.Sigstore sigstore = repoConfig == null ? null : repoConfig.sigstore();
+		if (sigstore == null || !sigstore.enabled()) {
+			return;
+		}
+		String fileName = location.name();
+		List<String> suffixes = Objects.requireNonNullElse(sigstore.bundleSuffixes(),
+				KagamiProperties.Sigstore.DEFAULT_BUNDLE_SUFFIXES);
+		for (String suffix : suffixes) {
+			String bundleName = fileName + "." + suffix;
+			ArtifactLocation bundleLocation = location.sibling(bundleName);
+			try {
+				// The bundle path is already encoded and must be sent as is, its path
+				// separators must not be encoded into "%2F"
+				byte[] bundle = this.restClient.get()
+					.uri(URI.create(repository.getUrl() + "/" + bundleLocation.artifactPath()))
+					.headers(headers -> {
+						if (repoConfig != null && StringUtils.hasText(repoConfig.username())
+								&& StringUtils.hasText(repoConfig.password())) {
+							headers.setBasicAuth(repoConfig.username(), repoConfig.password());
+						}
+					})
+					.retrieve()
+					.body(byte[].class);
+				if (bundle != null && bundle.length > 0) {
+					try (InputStream inputStream = new ByteArrayInputStream(bundle)) {
+						this.storageService.store(bundleLocation, inputStream);
+					}
+					logger.info("Stored sigstore bundle {}", bundleLocation.artifactPath());
+				}
+			}
+			catch (RestClientException e) {
+				// A bundle absent from the upstream (404) is the normal case: not every
+				// artifact carries one
+				logger.debug("Sigstore bundle {} not available from upstream: {}", bundleName, e.getMessage());
+			}
+			catch (Exception e) {
+				logger.warn("Failed to fetch sigstore bundle {}: {}", bundleName, e.getMessage());
+			}
+		}
 	}
 
 	/**

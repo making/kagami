@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -28,6 +29,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/artifacts")
 public class ArtifactController {
+
+	/**
+	 * Content types served inline so that the browser renders them instead of forcing a
+	 * file download: text-like files such as checksums, POMs, signatures and sigstore
+	 * bundles.
+	 */
+	private static final Set<MediaType> INLINE_MEDIA_TYPES = Set.of(MediaType.APPLICATION_XML, MediaType.TEXT_PLAIN,
+			MediaType.APPLICATION_JSON, MediaType.parseMediaType("application/pgp-signature"));
 
 	private final StorageService storageService;
 
@@ -72,8 +81,7 @@ public class ArtifactController {
 			Resource resource = retrieved.get();
 			try {
 				MediaType contentType = determineContentType(artifactPath);
-				String disposition = MediaType.APPLICATION_XML.equals(contentType)
-						|| MediaType.TEXT_PLAIN.equals(contentType) ? "inline" : "attachment";
+				String disposition = INLINE_MEDIA_TYPES.contains(contentType) ? "inline" : "attachment";
 				CacheControl cacheControl = CacheControl.maxAge(Duration.ofSeconds(31536000));
 				return ResponseEntity.ok()
 					.contentType(contentType)

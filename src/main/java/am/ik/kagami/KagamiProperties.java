@@ -173,10 +173,11 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * @param priority the display priority; repositories with a higher priority are
 	 * listed first on the web UI and in the generated configuration examples. Defaults to
 	 * {@code 0}
+	 * @param sigstore the sigstore attestation bundle settings
 	 */
 	public record Repository(String url, @Nullable String username, @Nullable String password,
-			@DefaultValue("false") boolean isPrivate,
-			@DefaultValue("0") int priority) implements Comparable<Repository> {
+			@DefaultValue("false") boolean isPrivate, @DefaultValue("0") int priority,
+			@DefaultValue Sigstore sigstore) implements Comparable<Repository> {
 
 		/**
 		 * The natural ordering sorts by priority, higher first, so that a plain
@@ -202,6 +203,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			private boolean isPrivate;
 
 			private int priority;
+
+			@Nullable private Sigstore sigstore;
 
 			private Builder() {
 			}
@@ -233,7 +236,76 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 			public Repository build() {
 				return new Repository(Objects.requireNonNull(this.url, "url is required"), this.username, this.password,
-						this.isPrivate, this.priority);
+						this.isPrivate, this.priority,
+						this.sigstore == null ? Sigstore.builder().build() : this.sigstore);
+			}
+
+			public Builder sigstore(@Nullable Sigstore sigstore) {
+				this.sigstore = sigstore;
+				return this;
+			}
+
+		}
+
+	}
+
+	/**
+	 * Sigstore attestation bundle settings for a repository.
+	 *
+	 * @param enabled whether Kagami fetches sigstore attestation bundles distributed by
+	 * the upstream repository as sidecar files of artifacts; defaults to {@code false}
+	 * @param bundleSuffixes the suffixes of bundle files tried as
+	 * {@code <artifact filename> + "." + suffix} against the upstream; defaults to
+	 * {@code attestation.sigstore.json} (Tanzu Spring) and {@code sigstore.json} (Maven
+	 * Central)
+	 * @param publicKeyUrl the URL of the public key used to verify the bundles; used by
+	 * bundle verification, not by proxying
+	 */
+	public record Sigstore(@DefaultValue("false") boolean enabled, @Nullable List<String> bundleSuffixes,
+			@Nullable String publicKeyUrl) {
+
+		public static final List<String> DEFAULT_BUNDLE_SUFFIXES = List.of("attestation.sigstore.json",
+				"sigstore.json");
+
+		public Sigstore {
+			if (bundleSuffixes == null || bundleSuffixes.isEmpty()) {
+				bundleSuffixes = DEFAULT_BUNDLE_SUFFIXES;
+			}
+			bundleSuffixes = List.copyOf(bundleSuffixes);
+		}
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			private boolean enabled;
+
+			@Nullable private List<String> bundleSuffixes;
+
+			@Nullable private String publicKeyUrl;
+
+			private Builder() {
+			}
+
+			public Builder enabled(boolean enabled) {
+				this.enabled = enabled;
+				return this;
+			}
+
+			public Builder bundleSuffixes(@Nullable List<String> bundleSuffixes) {
+				this.bundleSuffixes = bundleSuffixes;
+				return this;
+			}
+
+			public Builder publicKeyUrl(@Nullable String publicKeyUrl) {
+				this.publicKeyUrl = publicKeyUrl;
+				return this;
+			}
+
+			public Sigstore build() {
+				return new Sigstore(this.enabled, this.bundleSuffixes, this.publicKeyUrl);
 			}
 
 		}

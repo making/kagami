@@ -24,6 +24,7 @@ public final class ArtifactContentType {
 			case "pom", "xml" -> "application/xml";
 			case "properties", "repositories", "sha1", "sha256", "sha512", "md5" -> "text/plain";
 			case "asc" -> "application/pgp-signature";
+			case "json" -> "application/json";
 			default -> "application/octet-stream";
 		};
 	}
