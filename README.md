@@ -461,6 +461,11 @@ kagami.repositories.central.sigstore.certificate-oidc-issuer=https://token.actio
 The verification result (including the cosign output on failure) is shown in the file
 information dialog of the browse UI.
 
+The Docker image built by CI embeds a cosign binary in the application jar (Maven profile
+`embedded-cosign`); the embedded binary takes precedence over the one on the `PATH` when
+`kagami.sigstore.cosign-path` is left at its default, so the image needs no cosign
+installation.
+
 ### HTTP Proxy Configuration
 
 Kagami sends every outgoing request through the configured proxy, both the artifact

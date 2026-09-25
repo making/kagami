@@ -2,9 +2,11 @@ package am.ik.kagami.sigstore;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
@@ -47,6 +49,15 @@ public class CosignVerifier {
 
 	private static final Logger logger = LoggerFactory.getLogger(CosignVerifier.class);
 
+	/** The default cosign path, resolved through the {@code PATH}. */
+	static final String DEFAULT_COSIGN = "cosign";
+
+	/**
+	 * The cosign binary embedded in the application jar by the {@code embedded-cosign}
+	 * Maven profile.
+	 */
+	static final String EMBEDDED_COSIGN = "classpath:cosign/cosign";
+
 	private final StorageService storageService;
 
 	private final KagamiProperties properties;
@@ -58,6 +69,8 @@ public class CosignVerifier {
 	private final ResourceLoader resourceLoader = ApplicationResourceLoader.get();
 
 	private final ConcurrentHashMap<String, String> publicKeyCache = new ConcurrentHashMap<>();
+
+	private final ConcurrentHashMap<String, Path> cosignBinaryCache = new ConcurrentHashMap<>();
 
 	public CosignVerifier(StorageService storageService, KagamiProperties properties,
 			RestClient.Builder restClientBuilder, AsyncTaskExecutor taskExecutor) {
@@ -138,7 +151,7 @@ public class CosignVerifier {
 			String digest) throws IOException {
 		KagamiProperties.Sigstore sigstore = repoConfig.sigstore();
 		List<String> command = new ArrayList<>();
-		command.add(this.properties.sigstore().cosignPath());
+		command.add(cosignExecutable(this.properties.sigstore().cosignPath()).toString());
 		command.add("verify-blob-attestation");
 		command.add("--bundle");
 		command.add(bundleFile.toString());
@@ -195,6 +208,41 @@ public class CosignVerifier {
 			throw new IOException("Failed to fetch public key from " + publicKeyUrl);
 		}
 		return tempFile(pem.getBytes(StandardCharsets.UTF_8), "kagami-public-key");
+	}
+
+	/**
+	 * Resolves the cosign binary to a local executable: {@code classpath:} locations (the
+	 * binary embedded in the application jar by the {@code embedded-cosign} Maven
+	 * profile) are extracted once to a temporary executable file, anything else is used
+	 * as a plain path and resolved through the {@code PATH}.
+	 */
+	private Path cosignExecutable(String cosignPath) throws IOException {
+		if (!cosignPath.startsWith("classpath:") && DEFAULT_COSIGN.equals(cosignPath)
+				&& this.resourceLoader.getResource(EMBEDDED_COSIGN).exists()) {
+			logger.debug("Using the cosign binary embedded in the application jar");
+			cosignPath = EMBEDDED_COSIGN;
+		}
+		if (!cosignPath.startsWith("classpath:")) {
+			return Path.of(cosignPath);
+		}
+		try {
+			return this.cosignBinaryCache.computeIfAbsent(cosignPath, path -> {
+				logger.info("Extracting the embedded cosign binary from {}", path);
+				try (InputStream inputStream = this.resourceLoader.getResource(path).getInputStream()) {
+					Path file = Files.createTempFile("kagami-cosign", null);
+					Files.write(file, inputStream.readAllBytes());
+					Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rwxr-xr-x"));
+					file.toFile().deleteOnExit();
+					return file;
+				}
+				catch (IOException e) {
+					throw new UncheckedIOException("Failed to extract cosign from " + path, e);
+				}
+			});
+		}
+		catch (UncheckedIOException e) {
+			throw e.getCause();
+		}
 	}
 
 	// ---------- process execution ----------

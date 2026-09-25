@@ -59,6 +59,24 @@ class CosignVerifierRealCosignIntegrationTest {
 		registry.add("kagami.storage.path", () -> workspace.resolve("storage").toString());
 		registry.add("kagami.repositories.sig-repo.sigstore.public-key-url",
 				() -> workspace.resolve("keys.pub").toUri().toString());
+		// Pin the real binary: a cosign embedded on the test classpath would otherwise
+		// take precedence over the PATH one
+		registry.add("kagami.sigstore.cosign-path", CosignVerifierRealCosignIntegrationTest::realCosignPath);
+	}
+
+	private static String realCosignPath() {
+		try {
+			Process process = new ProcessBuilder("which", "cosign").start();
+			String path = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).strip();
+			process.waitFor(10, TimeUnit.SECONDS);
+			if (process.exitValue() == 0 && !path.isEmpty()) {
+				return path;
+			}
+		}
+		catch (Exception e) {
+			// fall through to the default
+		}
+		return CosignVerifier.DEFAULT_COSIGN;
 	}
 
 	static boolean cosignAvailable() {

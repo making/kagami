@@ -19,35 +19,106 @@ on:
 jobs:
   unit-test:
     uses: categolj/workflows/.github/workflows/unit-test.yaml@main
-  build-oci-image-jvm-amd64:
+  build-oci-image-jvm:
     needs: unit-test
-    uses: categolj/workflows/.github/workflows/build-oci-image-jvm.yaml@main
-    with:
-      image_name: jvm_amd64
-      image_file: jvm_amd64.yaml
-      runs_on: ubuntu-latest
-  build-oci-image-jvm-aarch64:
-    needs: unit-test
-    uses: categolj/workflows/.github/workflows/build-oci-image-jvm.yaml@main
-    with:
-      image_name: jvm_aarch64
-      image_file: jvm_aarch64.yaml
-      runs_on: ubuntu-24.04-arm
+    strategy:
+      matrix:
+        include:
+        - arch: amd64
+          runs_on: ubuntu-latest
+        - arch: aarch64
+          runs_on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs_on }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      MAVEN_SERVER_ID: ${{ secrets.MAVEN_SERVER_ID }}
+      MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+      MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+      MAVEN_TOKEN: ${{ secrets.MAVEN_TOKEN }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Get tags
+      run: git fetch --tags origin
+    - uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '25'
+        distribution: graalvm
+        cache: 'maven'
+    - name: Prepare Maven settings.xml (username/password)
+      if: ${{ env.MAVEN_SERVER_ID != '' && env.MAVEN_USERNAME != '' && env.MAVEN_PASSWORD != '' }}
+      uses: categolj/workflows/.github/actions/prepare-settings-xml@main
+      with:
+        server_id: ${{ secrets.MAVEN_SERVER_ID }}
+        username: ${{ secrets.MAVEN_USERNAME }}
+        password: ${{ secrets.MAVEN_PASSWORD }}
+    - name: Prepare Maven settings.xml (token)
+      if: ${{ env.MAVEN_SERVER_ID != '' && env.MAVEN_TOKEN != '' }}
+      uses: categolj/workflows/.github/actions/prepare-settings-xml@main
+      with:
+        server_id: ${{ secrets.MAVEN_SERVER_ID }}
+        token: ${{ secrets.MAVEN_TOKEN }}
+    - name: Set version
+      run: |
+        CURRENT_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+        NEW_VERSION=$(echo $CURRENT_VERSION | sed "s/-SNAPSHOT/.${GITHUB_SHA}/")
+        ./mvnw versions:set -DnewVersion=${NEW_VERSION} -DgenerateBackupPoms=false --no-transfer-progress
+    - name: build image (Paketo Buildpack with embedded cosign)
+      run: |
+        IMAGE_BASE=$(echo "ghcr.io/${{ github.repository }}" | sed 's|/\.||')
+        ./mvnw -V --no-transfer-progress -Pembedded-cosign -Dcosign.os=linux -Dcosign.arch=${{ matrix.arch }} \
+          spring-boot:build-image -DskipTests -Dspring-boot.build-image.imageName=${IMAGE_BASE}:jvm_${{ matrix.arch }}_${GITHUB_SHA}
+    - name: Login to GitHub Container Registry
+      if: github.ref == 'refs/heads/main'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: docker push
+      if: github.ref == 'refs/heads/main'
+      run: |
+        IMAGE_BASE=$(echo "ghcr.io/${{ github.repository }}" | sed 's|/\.||')
+        docker push ${IMAGE_BASE}:jvm_${{ matrix.arch }}_${GITHUB_SHA}
+        docker tag ${IMAGE_BASE}:jvm_${{ matrix.arch }}_${GITHUB_SHA} ${IMAGE_BASE}:jvm_${{ matrix.arch }}
+        docker push ${IMAGE_BASE}:jvm_${{ matrix.arch }}
+    - name: Generate digest
+      if: github.ref == 'refs/heads/main'
+      run: |
+        IMAGE_BASE=$(echo "ghcr.io/${{ github.repository }}" | sed 's|/\.||')
+        IMAGE=$(docker inspect --format='{{index .RepoDigests 0}}' ${IMAGE_BASE}:jvm_${{ matrix.arch }}_${GITHUB_SHA})
+        IMAGE_DIGEST=$(echo ${IMAGE} | cut -d'@' -f2)
+        cat <<EOF > jvm_${{ matrix.arch }}.yaml
+        image: ${IMAGE}
+        git_revision: ${GITHUB_SHA}
+        deployment:
+          image:
+            repository: ${IMAGE_BASE}
+            digest: ${IMAGE_DIGEST}
+          podLabels:
+            github.com/revision: ${GITHUB_SHA}
+        EOF
+    - name: Upload artifact
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v4
+      with:
+        name: jvm_${{ matrix.arch }}
+        path: jvm_${{ matrix.arch }}.yaml
   push-multi-arch-image-jvm:
-    needs:
-    - build-oci-image-jvm-amd64
-    - build-oci-image-jvm-aarch64
+    needs: build-oci-image-jvm
     uses: categolj/workflows/.github/workflows/push-multi-arch-image.yaml@main
     with:
       prefix: jvm
   save-image-jvm-amd64:
-    needs: build-oci-image-jvm-amd64
+    needs: build-oci-image-jvm
     uses: categolj/workflows/.github/workflows/save-images.yaml@main
     with:
       image_name: jvm_amd64
       image_file: jvm_amd64.yaml
   save-image-jvm-aarch64:
-    needs: build-oci-image-jvm-aarch64
+    needs: build-oci-image-jvm
     uses: categolj/workflows/.github/workflows/save-images.yaml@main
     with:
       image_name: jvm_aarch64
