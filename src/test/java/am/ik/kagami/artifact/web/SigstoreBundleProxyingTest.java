@@ -17,7 +17,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.util.TestSocketUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,7 +53,7 @@ class SigstoreBundleProxyingTest {
 	private MockMvc mockMvc;
 
 	static MockServer startMockServer() {
-		MockServer mockServer = new MockServer(TestSocketUtils.findAvailableTcpPort());
+		MockServer mockServer = new MockServer(0);
 		mockServer.addFilter(new Filter() {
 			@Override
 			public void doFilter(HttpExchange exchange, Chain chain) throws java.io.IOException {

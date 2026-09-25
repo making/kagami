@@ -16,7 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.util.TestSocketUtils;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -66,7 +65,7 @@ class LegacyProxyIntegrationTest {
 	RestClient restClient;
 
 	static MockServer startMockServer() {
-		MockServer mockServer = new MockServer(TestSocketUtils.findAvailableTcpPort());
+		MockServer mockServer = new MockServer(0);
 		mockServer.run();
 		// Make the mock server reachable from the proxy container as
 		// "host.testcontainers.internal"

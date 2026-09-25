@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.util.TestSocketUtils;
 
 import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
 
@@ -20,7 +19,7 @@ import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertTha
  */
 class OidcLocalStorageBrowserE2ETest extends BrowserE2ETestBase {
 
-	static final MockOidcServer MOCK_OIDC_SERVER = new MockOidcServer(TestSocketUtils.findAvailableTcpPort());
+	static final MockOidcServer MOCK_OIDC_SERVER = new MockOidcServer(0);
 
 	static {
 		MOCK_OIDC_SERVER.run();

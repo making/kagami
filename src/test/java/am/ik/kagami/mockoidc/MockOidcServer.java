@@ -54,7 +54,9 @@ public class MockOidcServer implements AutoCloseable {
 		catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
-		this.port = port;
+		// An ephemeral port (0) resolves to the actually bound port, which avoids the
+		// race of probing a free port first and binding it later
+		this.port = this.server.getAddress().getPort();
 		this.privateKey = loadPrivateKey();
 		this.keyId = keyId(this.privateKey);
 		this.server.createContext("/.well-known/openid-configuration", exchange -> json(exchange, discovery()));
