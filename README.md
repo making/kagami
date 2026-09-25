@@ -219,6 +219,10 @@ kagami.repositories.private.password=your-password
 kagami.repositories.private-repo.url=https://internal.repo.com/maven2
 kagami.repositories.private-repo.is-private=true
 
+# Optional display priority (default 0); higher priorities are listed first
+# on the web UI and in the generated configuration examples
+kagami.repositories.private-repo.priority=10
+
 # JWT key pair configuration
 kagami.jwt.private-key=classpath:kagami-private.pem
 kagami.jwt.public-key=classpath:kagami-public.pem

@@ -8,6 +8,7 @@ import java.util.Set;
 
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.repository.RepositoryService;
+import am.ik.kagami.repository.RepositoryService.RepositorySummary;
 import am.ik.kagami.rbac.RbacService;
 import am.ik.kagami.repository.web.BrowseController.ConfigItem;
 import am.ik.kagami.buildconfig.ConfigExamples;
@@ -129,8 +130,22 @@ public class TokenPageController {
 		model.addAttribute("token", token);
 		model.addAttribute("panesId", "token-result-panes");
 		model.addAttribute("hasAuthTabs", true);
-		model.addAttribute("configs", configItems(repositories, token, builder.path("").build().toString()));
+		model.addAttribute("configs",
+				configItems(sortedRepositoryIds(repositories), token, builder.path("").build().toString()));
 		return "fragments/token-result";
+	}
+
+	/**
+	 * Filters the selected repository ids to the configured ones, in the priority order
+	 * of {@link RepositoryService#getRepositories()}.
+	 */
+	private List<String> sortedRepositoryIds(List<String> repositoryIds) {
+		Set<String> selected = Set.copyOf(repositoryIds);
+		return this.repositoryService.getRepositories()
+			.stream()
+			.map(RepositorySummary::id)
+			.filter(selected::contains)
+			.toList();
 	}
 
 	private ModelAndView formWithError(Model model, String message) {

@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -48,13 +49,20 @@ public class RepositoryService {
 
 	/**
 	 * Get all configured repositories without touching the storage.
-	 * @return list of repository summaries in configuration order
+	 * @return list of repository summaries sorted by priority (higher first), keeping the
+	 * configuration order among repositories of the same priority
 	 */
 	public List<RepositorySummary> getRepositories() {
 		return this.properties.repositories()
 			.entrySet()
 			.stream()
-			.map(entry -> new RepositorySummary(entry.getKey(), entry.getValue().url(), entry.getValue().isPrivate()))
+			.sorted(Map.Entry.<String, KagamiProperties.Repository>comparingByValue())
+			.map(entry -> RepositorySummary.builder()
+				.id(entry.getKey())
+				.url(entry.getValue().url())
+				.isPrivate(entry.getValue().isPrivate())
+				.priority(entry.getValue().priority())
+				.build())
 			.toList();
 	}
 
@@ -65,7 +73,12 @@ public class RepositoryService {
 	 */
 	public Optional<RepositorySummary> findRepository(String repositoryId) {
 		return Optional.ofNullable(this.properties.repositories().get(repositoryId))
-			.map(repository -> new RepositorySummary(repositoryId, repository.url(), repository.isPrivate()));
+			.map(repository -> RepositorySummary.builder()
+				.id(repositoryId)
+				.url(repository.url())
+				.isPrivate(repository.isPrivate())
+				.priority(repository.priority())
+				.build());
 	}
 
 	/**
@@ -203,7 +216,61 @@ public class RepositoryService {
 	/**
 	 * A configured repository, known without touching the storage.
 	 */
-	public record RepositorySummary(String id, String url, boolean isPrivate) {
+	public record RepositorySummary(String id, String url, boolean isPrivate,
+			int priority) implements Comparable<RepositorySummary> {
+
+		/**
+		 * The natural ordering matches {@link KagamiProperties.Repository}: sorts by
+		 * priority, higher first.
+		 */
+		@Override
+		public int compareTo(RepositorySummary other) {
+			return Integer.compare(other.priority, this.priority);
+		}
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			@Nullable private String id;
+
+			@Nullable private String url;
+
+			private boolean isPrivate;
+
+			private int priority;
+
+			private Builder() {
+			}
+
+			public Builder id(String id) {
+				this.id = id;
+				return this;
+			}
+
+			public Builder url(String url) {
+				this.url = url;
+				return this;
+			}
+
+			public Builder isPrivate(boolean isPrivate) {
+				this.isPrivate = isPrivate;
+				return this;
+			}
+
+			public Builder priority(int priority) {
+				this.priority = priority;
+				return this;
+			}
+
+			public RepositorySummary build() {
+				return new RepositorySummary(Objects.requireNonNull(this.id, "id is required"),
+						Objects.requireNonNull(this.url, "url is required"), this.isPrivate, this.priority);
+			}
+
+		}
 	}
 
 	public record RepositoryInfo(String id, String url, long artifactCount, long totalSize,

@@ -161,8 +161,31 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 	}
 
+	/**
+	 * A remote repository mirrored by Kagami.
+	 *
+	 * @param url the base URL of the remote repository
+	 * @param username optional user name for Basic authentication against the remote
+	 * repository
+	 * @param password optional password for Basic authentication against the remote
+	 * repository
+	 * @param isPrivate whether the repository requires authentication to access
+	 * @param priority the display priority; repositories with a higher priority are
+	 * listed first on the web UI and in the generated configuration examples. Defaults to
+	 * {@code 0}
+	 */
 	public record Repository(String url, @Nullable String username, @Nullable String password,
-			@DefaultValue("false") boolean isPrivate) {
+			@DefaultValue("false") boolean isPrivate,
+			@DefaultValue("0") int priority) implements Comparable<Repository> {
+
+		/**
+		 * The natural ordering sorts by priority, higher first, so that a plain
+		 * {@code sorted()} call lists repositories in display order.
+		 */
+		@Override
+		public int compareTo(Repository other) {
+			return Integer.compare(other.priority, this.priority);
+		}
 
 		public static Builder builder() {
 			return new Builder();
@@ -177,6 +200,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			@Nullable private String password;
 
 			private boolean isPrivate;
+
+			private int priority;
 
 			private Builder() {
 			}
@@ -201,9 +226,14 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 				return this;
 			}
 
+			public Builder priority(int priority) {
+				this.priority = priority;
+				return this;
+			}
+
 			public Repository build() {
 				return new Repository(Objects.requireNonNull(this.url, "url is required"), this.username, this.password,
-						this.isPrivate);
+						this.isPrivate, this.priority);
 			}
 
 		}
