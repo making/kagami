@@ -17,7 +17,7 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **Multiple Repository Support**: Configure multiple remote repositories with individual settings
 - **Private Repository Support**: JWT-based authentication for secure repository access
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
-- **Web Dashboard**: Modern React-based UI for repository browsing and management with unified header navigation
+- **Web Dashboard**: Server-rendered UI built with htmx for repository browsing and management with unified header navigation
 - **Authentication**: Form-based authentication or OIDC/OAuth2 login for web UI access with styled login/logout pages
 - **Token Management**: Web-based JWT token generation with configurable expiration, permissions, and build tool configuration examples
 - **User Interface**: Consistent header across all pages showing logged-in username, logout functionality, and token generation access
