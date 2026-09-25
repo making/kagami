@@ -217,6 +217,30 @@ public abstract class BrowserE2ETestBase {
 	}
 
 	@Test
+	void fileInfoModalShowsSigstoreBundle() {
+		String path = "sig/att/1.0/att-1.0.pom";
+		mirror(path, "<project/>");
+		String bundleName = "att-1.0.pom.attestation.sigstore.json";
+		this.mockServer.GET("/" + path + ".attestation.sigstore.json",
+				req -> Response.json("{\"mediaType\":\"application/vnd.dev.sigstore.bundle+json;version=0.3\"}"));
+		// A direct request stores the sidecar in the storage backend
+		restClient().get().uri("/artifacts/mock/" + path + ".attestation.sigstore.json").retrieve().toBodilessEntity();
+
+		login();
+		String baseUrl = "http://localhost:" + this.port;
+		this.page.navigate(baseUrl + "/browse/mock/sig/att/1.0");
+		Locator fileRow = this.page.locator("div.group", new Page.LocatorOptions()
+			.setHas(this.page.getByText("att-1.0.pom", new Page.GetByTextOptions().setExact(true))));
+		fileRow.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Info")).click();
+		Locator modal = this.page.locator("div.fixed",
+				new Page.LocatorOptions().setHasText("File Information / att-1.0.pom"));
+		assertThat(modal).isVisible();
+		assertThat(modal.getByText("Sigstore Attestation")).isVisible();
+		Locator bundleLink = modal.locator("a", new Locator.LocatorOptions().setHasText(bundleName));
+		assertThat(bundleLink).hasAttribute("href", "/artifacts/mock/" + path + ".attestation.sigstore.json");
+	}
+
+	@Test
 	void loginFailureShowsError() {
 		// Skipped under OIDC, where the login page has no username/password form
 		Assumptions.assumeTrue(formLoginAvailable());

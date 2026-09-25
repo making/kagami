@@ -162,7 +162,31 @@ public class RepositoryService {
 			.contentType(ArtifactContentType.of(fileName))
 			.sha1(readChecksum(location.sibling(fileName + ".sha1")))
 			.sha256(readChecksum(location.sibling(fileName + ".sha256")))
+			.sigstoreBundles(sigstoreBundles(repositoryId, location, fileName))
 			.build();
+	}
+
+	/**
+	 * The sigstore attestation bundles stored next to the file, one per configured bundle
+	 * suffix that exists in the storage. The presence check is independent of the
+	 * {@code sigstore.enabled} setting: a bundle that reached the storage, either through
+	 * proactive fetching or a direct request, is shown.
+	 */
+	private List<SigstoreBundle> sigstoreBundles(String repositoryId, ArtifactLocation location, String fileName)
+			throws IOException {
+		KagamiProperties.Repository repoConfig = this.properties.repositories().get(repositoryId);
+		List<String> suffixes = repoConfig == null ? KagamiProperties.Sigstore.DEFAULT_BUNDLE_SUFFIXES
+				: Objects.requireNonNullElse(repoConfig.sigstore().bundleSuffixes(),
+						KagamiProperties.Sigstore.DEFAULT_BUNDLE_SUFFIXES);
+		List<SigstoreBundle> bundles = new ArrayList<>();
+		for (String suffix : suffixes) {
+			String bundleName = fileName + "." + suffix;
+			ArtifactLocation bundleLocation = location.sibling(bundleName);
+			if (this.storageService.stat(bundleLocation).filter(StorageEntry::isFile).isPresent()) {
+				bundles.add(new SigstoreBundle(bundleName, bundleLocation.artifactPath()));
+			}
+		}
+		return bundles;
 	}
 
 	private ArtifactLocation toLocation(String repositoryId, @Nullable String path) {
@@ -449,9 +473,20 @@ public class RepositoryService {
 
 	}
 
+	/**
+	 * A sigstore attestation bundle stored as a sidecar file of an artifact.
+	 *
+	 * @param name the bundle file name (e.g.
+	 * {@code lib-1.0.jar.attestation.sigstore.json})
+	 * @param path the path of the bundle within the repository
+	 */
+	public record SigstoreBundle(String name, String path) {
+	}
+
 	public record FileInfo(String repositoryId, String path, String name, String type, long size, Instant lastModified,
 			String contentType, @JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String sha1,
-			@JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String sha256) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String sha256,
+			@JsonInclude(JsonInclude.Include.NON_NULL) List<SigstoreBundle> sigstoreBundles) {
 
 		public static Builder builder() {
 			return new Builder();
@@ -476,6 +511,8 @@ public class RepositoryService {
 			@Nullable private String sha1;
 
 			@Nullable private String sha256;
+
+			@Nullable private List<SigstoreBundle> sigstoreBundles;
 
 			private Builder() {
 			}
@@ -525,13 +562,19 @@ public class RepositoryService {
 				return this;
 			}
 
+			public Builder sigstoreBundles(@Nullable List<SigstoreBundle> sigstoreBundles) {
+				this.sigstoreBundles = sigstoreBundles;
+				return this;
+			}
+
 			public FileInfo build() {
 				return new FileInfo(Objects.requireNonNull(this.repositoryId, "repositoryId is required"),
 						Objects.requireNonNull(this.path, "path is required"),
 						Objects.requireNonNull(this.name, "name is required"),
 						Objects.requireNonNull(this.type, "type is required"), this.size,
 						Objects.requireNonNull(this.lastModified, "lastModified is required"),
-						Objects.requireNonNull(this.contentType, "contentType is required"), this.sha1, this.sha256);
+						Objects.requireNonNull(this.contentType, "contentType is required"), this.sha1, this.sha256,
+						Objects.requireNonNullElse(this.sigstoreBundles, List.of()));
 			}
 
 		}

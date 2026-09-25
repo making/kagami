@@ -111,6 +111,12 @@ public class BrowseController {
 		model.addAttribute("hasSha1", info.sha1() != null);
 		model.addAttribute("sha256", info.sha256());
 		model.addAttribute("hasSha256", info.sha256() != null);
+		List<SigstoreBundleLink> sigstoreBundles = info.sigstoreBundles()
+			.stream()
+			.map(bundle -> new SigstoreBundleLink(bundle.name(), artifactPath(repositoryId, bundle.path())))
+			.toList();
+		model.addAttribute("sigstoreBundles", sigstoreBundles);
+		model.addAttribute("hasSigstoreBundles", !sigstoreBundles.isEmpty());
 		return "fragments/file-info";
 	}
 
@@ -282,6 +288,12 @@ public class BrowseController {
 	 * links.
 	 */
 	public record Breadcrumb(String name, String href, boolean current, boolean first) {
+	}
+
+	/**
+	 * A downloadable sigstore attestation bundle shown in the file info modal.
+	 */
+	public record SigstoreBundleLink(String name, String href) {
 	}
 
 	/**

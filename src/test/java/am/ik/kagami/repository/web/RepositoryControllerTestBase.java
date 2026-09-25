@@ -158,6 +158,23 @@ public abstract class RepositoryControllerTestBase {
 	}
 
 	@Test
+	void fileInfoFragmentShowsSigstoreBundleWhenPresent() throws Exception {
+		seed("att.jar", "dummy jar content");
+		seed("att.jar.attestation.sigstore.json",
+				"{\"mediaType\":\"application/vnd.dev.sigstore.bundle+json;version=0.3\"}");
+
+		String body = bodyOf("/fragments/repositories/test-repo/info", "path", "att.jar");
+		assertThat(body).contains("Sigstore Attestation");
+		assertThat(body).contains("att.jar.attestation.sigstore.json");
+		assertThat(body).contains("href=\"/artifacts/test-repo/att.jar.attestation.sigstore.json\"");
+
+		// A file without a bundle does not show the section
+		seed("bare.jar", "dummy jar content");
+		String bare = bodyOf("/fragments/repositories/test-repo/info", "path", "bare.jar");
+		assertThat(bare).doesNotContain("Sigstore Attestation");
+	}
+
+	@Test
 	void fileInfoFragmentOfMissingFileIsRejected() throws Exception {
 		this.mockMvc.perform(get("/fragments/repositories/test-repo/info").param("path", "nonexistent.jar"))
 			.andExpect(status().isBadRequest());
