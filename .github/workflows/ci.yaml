@@ -25,8 +25,11 @@ jobs:
       matrix:
         include:
         - arch: amd64
+          cosign_arch: amd64
           runs_on: ubuntu-latest
         - arch: aarch64
+          # cosign release assets use arm64, not aarch64
+          cosign_arch: arm64
           runs_on: ubuntu-24.04-arm
     runs-on: ${{ matrix.runs_on }}
     permissions:
@@ -68,7 +71,7 @@ jobs:
     - name: build image (Paketo Buildpack with embedded cosign)
       run: |
         IMAGE_BASE=$(echo "ghcr.io/${{ github.repository }}" | sed 's|/\.||')
-        ./mvnw -V --no-transfer-progress -Pembedded-cosign -Dcosign.os=linux -Dcosign.arch=${{ matrix.arch }} \
+        ./mvnw -V --no-transfer-progress -Pembedded-cosign -Dcosign.os=linux -Dcosign.arch=${{ matrix.cosign_arch }} \
           spring-boot:build-image -DskipTests -Dspring-boot.build-image.imageName=${IMAGE_BASE}:jvm_${{ matrix.arch }}_${GITHUB_SHA}
     - name: Login to GitHub Container Registry
       if: github.ref == 'refs/heads/main'
