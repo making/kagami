@@ -29,7 +29,7 @@
   </scm>
   <properties>
     <java.version>25</java.version>
-    <spring-cloud-aws.version>4.1.1</spring-cloud-aws.version>
+    <spring-cloud-aws.version>4.2.0</spring-cloud-aws.version>
   </properties>
   <dependencyManagement>
     <dependencies>
