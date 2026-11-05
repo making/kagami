@@ -34,7 +34,7 @@ import org.springframework.util.StreamUtils;
 @ConfigurationProperties(prefix = "kagami")
 public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<String, Repository> repositories,
 		@Nullable Proxy proxy, @DefaultValue Jwt jwt, @DefaultValue Authentication authentication,
-		@DefaultValue Rbac rbac, @DefaultValue SigstoreConfig sigstore) {
+		@DefaultValue Rbac rbac, @DefaultValue SigstoreConfig sigstore, @DefaultValue UpstreamConfig upstream) {
 
 	public static Builder builder() {
 		return new Builder();
@@ -56,7 +56,14 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 		@Nullable private SigstoreConfig sigstore;
 
+		@Nullable private UpstreamConfig upstream;
+
 		private Builder() {
+		}
+
+		public Builder upstream(@Nullable UpstreamConfig upstream) {
+			this.upstream = upstream;
+			return this;
 		}
 
 		public Builder storage(Storage storage) {
@@ -100,7 +107,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 					Objects.requireNonNull(this.jwt, "jwt is required"),
 					Objects.requireNonNull(this.authentication, "authentication is required"),
 					this.rbac == null ? Rbac.builder().build() : this.rbac,
-					Objects.requireNonNullElse(this.sigstore, new SigstoreConfig("cosign", Duration.ofSeconds(60))));
+					Objects.requireNonNullElse(this.sigstore, new SigstoreConfig("cosign", Duration.ofSeconds(60))),
+					Objects.requireNonNullElseGet(this.upstream, UpstreamConfig::new));
 		}
 
 	}
@@ -270,6 +278,34 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 		public SigstoreConfig {
 			Objects.requireNonNull(cosignPath, "cosignPath is required");
 			Objects.requireNonNull(timeout, "timeout is required");
+		}
+	}
+
+	/**
+	 * Outbound fetch settings for the configured upstream repositories.
+	 *
+	 * @param connectTimeout the connect timeout of an outbound fetch; defaults to 5
+	 * seconds
+	 * @param requestTimeout the read timeout of an outbound fetch; defaults to 30 seconds
+	 * @param failureThreshold how many consecutive failures open the circuit; defaults to
+	 * 5
+	 * @param openDuration how long the circuit stays open; defaults to 30 seconds
+	 */
+	public record UpstreamConfig(@DefaultValue("5s") Duration connectTimeout,
+			@DefaultValue("30s") Duration requestTimeout, @DefaultValue("5") int failureThreshold,
+			@DefaultValue("30s") Duration openDuration) {
+
+		public UpstreamConfig() {
+			this(Duration.ofSeconds(5), Duration.ofSeconds(30), 5, Duration.ofSeconds(30));
+		}
+
+		public UpstreamConfig {
+			Objects.requireNonNull(connectTimeout, "connectTimeout is required");
+			Objects.requireNonNull(requestTimeout, "requestTimeout is required");
+			Objects.requireNonNull(openDuration, "openDuration is required");
+			if (failureThreshold < 1) {
+				throw new IllegalArgumentException("failureThreshold must be at least 1");
+			}
 		}
 	}
 

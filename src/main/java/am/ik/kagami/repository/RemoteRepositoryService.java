@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.time.InstantSource;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -36,7 +37,10 @@ import org.eclipse.aether.util.repository.AuthenticationBuilder;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -66,8 +70,11 @@ public class RemoteRepositoryService {
 
 	private final KagamiProperties kagamiProperties;
 
+	private final UpstreamCircuitBreaker circuitBreaker;
+
 	public RemoteRepositoryService(KagamiProperties properties, StorageService storageService,
-			RestClient.Builder restClientBuilder, ProxySettings proxySettings) {
+			RestClient.Builder restClientBuilder, ProxySettings proxySettings,
+			ClientHttpRequestFactoryBuilder<?> requestFactoryBuilder) {
 		this.storageService = storageService;
 		this.repositories = new ConcurrentHashMap<>();
 
@@ -75,8 +82,14 @@ public class RemoteRepositoryService {
 		this.kagamiProperties = properties;
 
 		// The RestClient is already routed through the proxy by the auto-configured
-		// request factory
-		this.restClient = restClientBuilder.build();
+		// request factory; the timeouts keep a stalled upstream from holding the caller
+		KagamiProperties.UpstreamConfig upstream = properties.upstream();
+		HttpClientSettings settings = HttpClientSettings.defaults()
+			.withConnectTimeout(upstream.connectTimeout())
+			.withReadTimeout(upstream.requestTimeout());
+		this.restClient = restClientBuilder.requestFactory(requestFactoryBuilder.build(settings)).build();
+		this.circuitBreaker = new UpstreamCircuitBreaker(upstream.failureThreshold(), upstream.openDuration(),
+				InstantSource.system());
 
 		// Initialize Maven Resolver components
 		this.repositorySystem = new RepositorySystemSupplier().get();
@@ -115,8 +128,14 @@ public class RemoteRepositoryService {
 	 */
 	public boolean fetchArtifact(ArtifactLocation location) {
 		String artifactPath = location.artifactPath();
-		RemoteRepository repository = this.repositories.get(location.repositoryId());
+		String repositoryId = location.repositoryId();
+		RemoteRepository repository = this.repositories.get(repositoryId);
 		if (repository == null) {
+			return false;
+		}
+		if (!this.circuitBreaker.allowsRequest(repositoryId)) {
+			logger.debug("Skipping upstream fetch of {}: the circuit for repository {} is open", artifactPath,
+					repositoryId);
 			return false;
 		}
 
@@ -149,17 +168,21 @@ public class RemoteRepositoryService {
 			Path resolvedFile = result.isResolved() && result.getArtifact() != null
 					&& result.getArtifact().getFile() != null ? result.getArtifact().getFile().toPath() : null;
 			if (resolvedFile == null || !Files.isRegularFile(resolvedFile)) {
+				// The upstream answered, the artifact simply does not exist there
+				this.circuitBreaker.recordSuccess(repositoryId);
 				return false;
 			}
 			try (InputStream inputStream = Files.newInputStream(resolvedFile)) {
 				this.storageService.store(location, inputStream);
 			}
 			fetchSigstoreBundles(location, repository);
+			this.circuitBreaker.recordSuccess(repositoryId);
 			return true;
 		}
 		catch (Exception e) {
 			// Log error but don't throw - return false to indicate failure
 			logger.debug("Failed to fetch artifact via Maven Resolver: {}", artifactPath, e);
+			this.circuitBreaker.recordFailure(repositoryId);
 			return false;
 		}
 		finally {
@@ -174,6 +197,7 @@ public class RemoteRepositoryService {
 		// For non-standard files like maven-metadata.xml, we still need HTTP client
 		// Maven Resolver doesn't handle these directly
 		String artifactPath = location.artifactPath();
+		String repositoryId = location.repositoryId();
 		try {
 			// Get repository configuration for authentication
 			KagamiProperties.Repository repoConfig = this.kagamiProperties.repositories().get(location.repositoryId());
@@ -192,11 +216,20 @@ public class RemoteRepositoryService {
 			if (responseBytes != null && responseBytes.length > 0) {
 				try (InputStream is = new ByteArrayInputStream(responseBytes)) {
 					this.storageService.store(location, is);
+					this.circuitBreaker.recordSuccess(repositoryId);
 					return true;
 				}
 			}
+			this.circuitBreaker.recordSuccess(repositoryId);
 		}
 		catch (RestClientException e) {
+			// A 4xx is the upstream answering "not here", which is not a failure
+			if (e instanceof HttpClientErrorException) {
+				this.circuitBreaker.recordSuccess(repositoryId);
+			}
+			else {
+				this.circuitBreaker.recordFailure(repositoryId);
+			}
 			logger.debug("RestClient error fetching non-standard file {}: {}", artifactPath, e.getMessage());
 		}
 		catch (Exception e) {
@@ -272,6 +305,9 @@ public class RemoteRepositoryService {
 		DefaultRepositorySystemSession session = MavenRepositorySystemUtils.newSession();
 		LocalRepository localRepo = new LocalRepository(scratchDirectory.toFile());
 		session.setLocalRepositoryManager(this.repositorySystem.newLocalRepositoryManager(session, localRepo));
+		KagamiProperties.UpstreamConfig upstream = this.kagamiProperties.upstream();
+		session.setConfigProperty("aether.connector.connectTimeout", (int) upstream.connectTimeout().toMillis());
+		session.setConfigProperty("aether.connector.requestTimeout", (int) upstream.requestTimeout().toMillis());
 		return session;
 	}
 
