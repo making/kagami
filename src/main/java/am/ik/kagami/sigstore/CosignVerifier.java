@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.KagamiProperties.Verification;
@@ -32,6 +33,8 @@ import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.client.RestClient;
+
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * Verifies a stored artifact against its sigstore attestation bundle by running the
@@ -73,10 +76,13 @@ public class CosignVerifier {
 
 	private final ConcurrentHashMap<String, Path> cosignBinaryCache = new ConcurrentHashMap<>();
 
+	private final Semaphore verificationSlots;
+
 	public CosignVerifier(StorageService storageService, KagamiProperties properties,
 			RestClient.Builder restClientBuilder, AsyncTaskExecutor taskExecutor) {
 		this.storageService = storageService;
 		this.properties = properties;
+		this.verificationSlots = new Semaphore(properties.sigstore().maxConcurrentVerifications(), true);
 		// The RestClient is already routed through the proxy by the auto-configured
 		// request factory
 		this.restClient = restClientBuilder.build();
@@ -116,6 +122,9 @@ public class CosignVerifier {
 		if (repoConfig == null) {
 			return VerificationResult.error("Repository not found: " + repositoryId);
 		}
+		if (!acquireVerificationSlot()) {
+			return VerificationResult.error("Too many concurrent verifications; try again later");
+		}
 		try {
 			Path artifactFile = tempCopy(new ArtifactLocation(repositoryId, artifactPath), "artifact");
 			if (artifactFile == null) {
@@ -143,6 +152,19 @@ public class CosignVerifier {
 		}
 		catch (IllegalArgumentException e) {
 			return VerificationResult.error("Verification is not possible: " + e.getMessage());
+		}
+		finally {
+			this.verificationSlots.release();
+		}
+	}
+
+	private boolean acquireVerificationSlot() {
+		try {
+			return this.verificationSlots.tryAcquire(this.properties.sigstore().maxWait().toMillis(), MILLISECONDS);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return false;
 		}
 	}
 

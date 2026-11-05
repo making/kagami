@@ -99,8 +99,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 					Objects.requireNonNull(this.repositories, "repositories is required"), this.proxy,
 					Objects.requireNonNull(this.jwt, "jwt is required"),
 					Objects.requireNonNull(this.authentication, "authentication is required"),
-					this.rbac == null ? Rbac.builder().build() : this.rbac,
-					Objects.requireNonNullElse(this.sigstore, new SigstoreConfig("cosign", Duration.ofSeconds(60))));
+					this.rbac == null ? Rbac.builder().build() : this.rbac, Objects.requireNonNullElse(this.sigstore,
+							new SigstoreConfig("cosign", Duration.ofSeconds(60), 2, Duration.ofSeconds(5))));
 		}
 
 	}
@@ -264,12 +264,24 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * @param cosignPath the path of the cosign binary used to verify bundles; defaults to
 	 * {@code cosign}, relying on the {@code PATH} environment variable
 	 * @param timeout the timeout of a single cosign invocation; defaults to 60 seconds
+	 * @param maxConcurrentVerifications the maximum number of cosign processes that run
+	 * at the same time; defaults to 2
+	 * @param maxWait how long a request waits for a verification slot before it is
+	 * rejected; defaults to 5 seconds
 	 */
-	public record SigstoreConfig(@DefaultValue("cosign") String cosignPath, @DefaultValue("60s") Duration timeout) {
+	public record SigstoreConfig(@DefaultValue("cosign") String cosignPath, @DefaultValue("60s") Duration timeout,
+			@DefaultValue("2") int maxConcurrentVerifications, @DefaultValue("5s") Duration maxWait) {
 
 		public SigstoreConfig {
 			Objects.requireNonNull(cosignPath, "cosignPath is required");
 			Objects.requireNonNull(timeout, "timeout is required");
+			Objects.requireNonNull(maxWait, "maxWait is required");
+			if (maxConcurrentVerifications < 1) {
+				throw new IllegalArgumentException("maxConcurrentVerifications must be at least 1");
+			}
+			if (maxWait.isNegative()) {
+				throw new IllegalArgumentException("maxWait must not be negative");
+			}
 		}
 	}
 
