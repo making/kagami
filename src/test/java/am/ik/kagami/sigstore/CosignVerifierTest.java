@@ -10,6 +10,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import am.ik.kagami.storage.ArtifactLocation;
 import am.ik.kagami.storage.StorageService;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,7 +41,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 		"kagami.repositories.keyless-repo.sigstore.certificate-oidc-issuer=https://token.actions.githubusercontent.com",
 		"kagami.repositories.keyless-bare-repo.url=https://repo.example.com/maven2",
 		"kagami.repositories.keyless-bare-repo.sigstore.verification=keyless",
-		"kagami.repositories.nokey-repo.url=https://repo.example.com/maven2" })
+		"kagami.repositories.nokey-repo.url=https://repo.example.com/maven2",
+		"kagami.sigstore.max-concurrent-verifications=1", "kagami.sigstore.max-wait=0s" })
 class CosignVerifierTest {
 
 	/** Content every seeded artifact carries; its digest is asserted in the arguments. */
@@ -104,6 +109,41 @@ class CosignVerifierTest {
 		int keyFlag = args.indexOf("--key");
 		assertThat(args.get(keyFlag + 1)).doesNotContain(tempDir.toString());
 		assertThat(args).doesNotContain("--certificate-identity-regexp");
+	}
+
+	@Test
+	void concurrentVerificationsAreLimitedByTheConfiguredSlots() throws Exception {
+		String base = "org/example/concurrent/1.0/app-1.0.jar";
+		seed("sig-repo", base, ARTIFACT_CONTENT);
+		seed("sig-repo", base + ".attestation.sigstore.json", BUNDLE_CONTENT);
+		// The mock cosign blocks until the verification times out, so the first call
+		// holds the only slot for the whole duration of the second call.
+		Files.writeString(CONTROL_DIR.resolve("sleep"), "");
+
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		try {
+			Future<CosignVerifier.VerificationResult> first = executor
+				.submit(() -> this.cosignVerifier.verify("sig-repo", base, base + ".attestation.sigstore.json"));
+			awaitMockStarted();
+			CosignVerifier.VerificationResult second = this.cosignVerifier.verify("sig-repo", base,
+					base + ".attestation.sigstore.json");
+			assertThat(second.verified()).isFalse();
+			assertThat(second.error()).contains("Too many concurrent verifications");
+			assertThat(first.get()).isNotNull();
+		}
+		finally {
+			executor.shutdownNow();
+		}
+	}
+
+	private static void awaitMockStarted() throws InterruptedException {
+		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+		while (!Files.exists(CONTROL_DIR.resolve("args"))) {
+			if (System.nanoTime() > deadline) {
+				throw new AssertionError("mock cosign did not start");
+			}
+			Thread.sleep(10);
+		}
 	}
 
 	@Test
