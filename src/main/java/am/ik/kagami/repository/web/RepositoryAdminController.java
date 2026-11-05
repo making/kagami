@@ -6,6 +6,7 @@ import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageCollectionResul
 import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageDirectory;
 import am.ik.kagami.repository.RepositoryService;
 import am.ik.kagami.repository.RepositoryService.RepositorySummary;
+import am.ik.kagami.support.Durations;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.time.Duration;
@@ -26,6 +27,9 @@ import org.springframework.web.servlet.ModelAndView;
 public class RepositoryAdminController {
 
 	private static final long DEFAULT_OLDER_THAN_HOURS = 1;
+
+	/** The largest accepted age, in hours. */
+	private static final long MAX_OLDER_THAN_HOURS = 24 * 365 * 10;
 
 	private final RepositoryService repositoryService;
 
@@ -152,15 +156,7 @@ public class RepositoryAdminController {
 	}
 
 	private static Duration olderThan(long olderThanHours) {
-		if (olderThanHours < 1) {
-			throw new IllegalArgumentException("Older than must be at least one hour.");
-		}
-		try {
-			return Duration.ofHours(olderThanHours);
-		}
-		catch (ArithmeticException e) {
-			throw new IllegalArgumentException("Older than is too large.", e);
-		}
+		return Durations.hours(olderThanHours, MAX_OLDER_THAN_HOURS, "Older than");
 	}
 
 	private static boolean isPartial(HttpServletRequest request) {

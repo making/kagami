@@ -5,6 +5,9 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -131,6 +134,56 @@ class GroupRbacSecurityTest {
 				.param("repositories", "secure")
 				.param("scope", "artifacts:admin"))
 			.andExpect(status().isOk());
+	}
+
+	@Test
+	@WithMockUser(username = "test-user", authorities = { "artifacts:read" })
+	void tokenIssuanceAtTheMaximumValidityIsAllowed() throws Exception {
+		this.mockMvc
+			.perform(post("/token").with(csrf())
+				.param("expires_in", "8760")
+				.param("repositories", "secure")
+				.param("scope", "artifacts:read"))
+			.andExpect(status().isOk());
+	}
+
+	@ParameterizedTest
+	@ValueSource(longs = { 0, -1, 8761, Long.MAX_VALUE })
+	@WithMockUser(username = "test-user", authorities = { "artifacts:read" })
+	void tokenIssuanceOutsideTheValidityRangeIsRejected(long expiresIn) throws Exception {
+		this.mockMvc
+			.perform(post("/token").with(csrf())
+				.param("expires_in", Long.toString(expiresIn))
+				.param("repositories", "secure")
+				.param("scope", "artifacts:read"))
+			.andExpect(status().isBadRequest());
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "1, hours", "365, days", "12, months" })
+	@WithMockUser(username = "test-user", authorities = { "artifacts:read" })
+	void tokenFormAcceptsDurationsAtTheValidityLimit(long duration, String unit) throws Exception {
+		this.mockMvc
+			.perform(post("/app/token").with(csrf())
+				.param("duration", Long.toString(duration))
+				.param("unit", unit)
+				.param("repositories", "secure")
+				.param("scope", "artifacts:read"))
+			.andExpect(status().isOk());
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "0, hours", "-1, days", "366, days", "13, months", "9223372036854775807, days",
+			"9223372036854775807, months" })
+	@WithMockUser(username = "test-user", authorities = { "artifacts:read" })
+	void tokenFormRejectsDurationsOutsideTheValidityLimit(long duration, String unit) throws Exception {
+		this.mockMvc
+			.perform(post("/app/token").with(csrf())
+				.param("duration", Long.toString(duration))
+				.param("unit", unit)
+				.param("repositories", "secure")
+				.param("scope", "artifacts:read"))
+			.andExpect(status().isUnprocessableEntity());
 	}
 
 	@Test

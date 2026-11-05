@@ -1,15 +1,18 @@
 package am.ik.kagami.token.web;
 
 import am.ik.kagami.rbac.RbacBuiltins;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 import am.ik.kagami.KagamiProperties;
 import am.ik.kagami.repository.RepositoryService;
 import am.ik.kagami.repository.RepositoryService.RepositorySummary;
 import am.ik.kagami.rbac.RbacService;
+import am.ik.kagami.support.Durations;
 import am.ik.kagami.repository.web.BrowseController.ConfigItem;
 import am.ik.kagami.buildconfig.ConfigExamples;
 import am.ik.kagami.buildconfig.ConfigExamples.AuthMethod;
@@ -112,17 +115,20 @@ public class TokenPageController {
 		if (!this.rbacService.issuableScopes(authentication).containsAll(scope)) {
 			return formWithError(model, "You are not allowed to issue tokens with the selected scopes.");
 		}
-		if (duration < 1) {
-			return formWithError(model, "Duration must be at least 1.");
+		Duration validity;
+		try {
+			validity = switch (unit) {
+				case "days" -> Durations.days(duration, TokenIssuer.MAX_VALIDITY_HOURS / 24, "Duration");
+				case "months" -> Durations.months(duration, TokenIssuer.MAX_VALIDITY_HOURS / (24 * 30), "Duration");
+				default -> Durations.hours(duration, TokenIssuer.MAX_VALIDITY_HOURS, "Duration");
+			};
 		}
-		long hours = switch (unit) {
-			case "days" -> duration * 24;
-			case "months" -> duration * 24 * 30;
-			default -> duration;
-		};
+		catch (IllegalArgumentException e) {
+			return formWithError(model, Objects.requireNonNullElse(e.getMessage(), "Invalid duration."));
+		}
 		String token = this.tokenIssuer.issue(TokenRequest.builder()
 			.issuer(builder.path("").build().toString())
-			.expiresIn(hours)
+			.validity(validity)
 			.repositories(repositories)
 			.scope(scope)
 			.userName(authentication.getName())

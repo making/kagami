@@ -1,8 +1,8 @@
 package am.ik.kagami.token;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.InstantSource;
-import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -22,6 +22,13 @@ import com.nimbusds.jwt.JWTClaimsSet;
 @Service
 public class TokenIssuer {
 
+	/** The longest token validity accepted, in hours. */
+	public static final long MAX_VALIDITY_HOURS = 24 * 365;
+
+	private static final Duration MIN_VALIDITY = Duration.ofHours(1);
+
+	private static final Duration MAX_VALIDITY = Duration.ofHours(MAX_VALIDITY_HOURS);
+
 	private final TokenSigner tokenSigner;
 
 	private final InstantSource instantSource;
@@ -38,7 +45,7 @@ public class TokenIssuer {
 	 */
 	public String issue(TokenRequest request) {
 		Instant issueAt = this.instantSource.instant();
-		Instant expiresAt = issueAt.plus(request.expiresIn(), ChronoUnit.HOURS);
+		Instant expiresAt = issueAt.plus(request.validity());
 		JWTClaimsSet claimsSet = new JWTClaimsSet.Builder().expirationTime(Date.from(expiresAt))
 			.subject(request.userName())
 			.issuer(request.issuer())
@@ -54,13 +61,25 @@ public class TokenIssuer {
 	 * A token issuance request.
 	 *
 	 * @param issuer the issuer URL of this Kagami instance
-	 * @param expiresIn the token validity in hours
+	 * @param validity the token validity
 	 * @param repositories the repositories the token grants access to
 	 * @param scope the OAuth scopes the token grants
 	 * @param userName the subject the token is issued to
 	 */
-	public record TokenRequest(String issuer, long expiresIn, List<String> repositories, Set<String> scope,
+	public record TokenRequest(String issuer, Duration validity, List<String> repositories, Set<String> scope,
 			String userName) {
+
+		public TokenRequest {
+			Objects.requireNonNull(issuer, "issuer is required");
+			Objects.requireNonNull(validity, "validity is required");
+			Objects.requireNonNull(repositories, "repositories is required");
+			Objects.requireNonNull(scope, "scope is required");
+			Objects.requireNonNull(userName, "userName is required");
+			if (validity.compareTo(MIN_VALIDITY) < 0 || validity.compareTo(MAX_VALIDITY) > 0) {
+				throw new IllegalArgumentException(
+						"Token validity must be between 1 and %d hours.".formatted(MAX_VALIDITY_HOURS));
+			}
+		}
 
 		public static Builder builder() {
 			return new Builder();
@@ -70,7 +89,7 @@ public class TokenIssuer {
 
 			@Nullable private String issuer;
 
-			private long expiresIn;
+			@Nullable private Duration validity;
 
 			private List<String> repositories = List.of();
 
@@ -86,8 +105,8 @@ public class TokenIssuer {
 				return this;
 			}
 
-			public Builder expiresIn(long expiresIn) {
-				this.expiresIn = expiresIn;
+			public Builder validity(Duration validity) {
+				this.validity = validity;
 				return this;
 			}
 
@@ -107,9 +126,8 @@ public class TokenIssuer {
 			}
 
 			public TokenRequest build() {
-				return new TokenRequest(Objects.requireNonNull(this.issuer, "issuer is required"), this.expiresIn,
-						Objects.requireNonNull(this.repositories, "repositories is required"),
-						Objects.requireNonNull(this.scope, "scope is required"),
+				return new TokenRequest(Objects.requireNonNull(this.issuer, "issuer is required"),
+						Objects.requireNonNull(this.validity, "validity is required"), this.repositories, this.scope,
 						Objects.requireNonNull(this.userName, "userName is required"));
 			}
 

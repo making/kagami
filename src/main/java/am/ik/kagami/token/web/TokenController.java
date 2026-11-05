@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Set;
 
 import am.ik.kagami.rbac.RbacService;
+import am.ik.kagami.support.Durations;
 import am.ik.kagami.token.TokenIssuer;
 import am.ik.kagami.token.TokenIssuer.TokenRequest;
 import org.springframework.http.HttpStatus;
@@ -29,7 +30,8 @@ public class TokenController {
 
 	/**
 	 * Issues a token. The requested scopes are capped at the scopes the principal may
-	 * issue; a request beyond that cap is rejected with 403.
+	 * issue; a request beyond that cap is rejected with 403. An {@code expires_in}
+	 * outside the accepted range is rejected with 400.
 	 */
 	@PostMapping(path = "/token")
 	public ResponseEntity<String> generateToken(@RequestParam(name = "expires_in", defaultValue = "3") long expiresIn,
@@ -42,15 +44,20 @@ public class TokenController {
 		if (!this.rbacService.issuableScopes(authentication).containsAll(scope)) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 		}
-		String issuer = builder.path("").build().toString();
-		String token = this.tokenIssuer.issue(TokenRequest.builder()
-			.issuer(issuer)
-			.expiresIn(expiresIn)
-			.repositories(repositories)
-			.scope(scope)
-			.userName(authentication.getName())
-			.build());
-		return ResponseEntity.ok(token);
+		TokenRequest request;
+		try {
+			request = TokenRequest.builder()
+				.issuer(builder.path("").build().toString())
+				.validity(Durations.hours(expiresIn, TokenIssuer.MAX_VALIDITY_HOURS, "expires_in"))
+				.repositories(repositories)
+				.scope(scope)
+				.userName(authentication.getName())
+				.build();
+		}
+		catch (IllegalArgumentException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+		}
+		return ResponseEntity.ok(this.tokenIssuer.issue(request));
 	}
 
 }

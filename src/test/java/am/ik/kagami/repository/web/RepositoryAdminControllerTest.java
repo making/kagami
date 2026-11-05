@@ -12,6 +12,8 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -104,11 +106,31 @@ class RepositoryAdminControllerTest {
 			.andExpect(content().string(containsString("preview/missing")));
 	}
 
+	@ParameterizedTest
+	@ValueSource(longs = { 0, -1, 87601, Long.MAX_VALUE })
+	void previewRejectsOutOfRangeAge(long olderThanHours) throws Exception {
+		this.mockMvc
+			.perform(get("/app/admin/gc/preview").param("repositoryId", "test-repo")
+				.param("olderThanHours", Long.toString(olderThanHours))
+				.header("HX-Request", "true"))
+			.andExpect(status().isUnprocessableEntity());
+	}
+
+	@Test
+	void collectionRejectsOutOfRangeAge() throws Exception {
+		this.mockMvc
+			.perform(post("/app/admin/gc").param("repositoryId", "test-repo")
+				.param("olderThanHours", Long.toString(Long.MAX_VALUE))
+				.header("HX-Request", "true")
+				.with(csrf()))
+			.andExpect(status().isUnprocessableEntity());
+	}
+
 	@Test
 	void emptyPreviewUsesInformationalMessage() throws Exception {
 		this.mockMvc
 			.perform(get("/app/admin/gc/preview").param("repositoryId", "test-repo")
-				.param("olderThanHours", "1")
+				.param("olderThanHours", "87600")
 				.header("HX-Request", "true"))
 			.andExpect(status().isOk())
 			.andExpect(content().string(containsString("alert alert-info")))
