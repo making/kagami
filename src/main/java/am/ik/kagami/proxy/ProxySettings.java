@@ -9,7 +9,6 @@ import java.net.ProxySelector;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
@@ -21,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriUtils;
 
 /**
  * Resolved HTTP proxy settings for outgoing connections.
@@ -32,6 +32,9 @@ import org.springframework.util.StringUtils;
  * <p>
  * When only a proxy for {@code http} is configured it is used for {@code https} as well,
  * because legacy environments usually route every protocol through a single proxy.
+ * <p>
+ * A proxy URL that cannot be interpreted fails startup rather than silently falling back
+ * to a direct connection. To connect directly, leave the property empty on purpose.
  */
 public final class ProxySettings {
 
@@ -102,6 +105,7 @@ public final class ProxySettings {
 	 * @param proxy proxy properties, may be {@code null}
 	 * @param environment lookup function for environment variables
 	 * @return resolved proxy settings
+	 * @throws IllegalStateException if a configured proxy URL cannot be interpreted
 	 */
 	public static ProxySettings from(KagamiProperties.@Nullable Proxy proxy,
 			Function<String, @Nullable String> environment) {
@@ -140,7 +144,8 @@ public final class ProxySettings {
 			return proxyFor(new URI(url));
 		}
 		catch (URISyntaxException e) {
-			logger.warn("Invalid URL: {}", url, e);
+			String masked = maskCredentials(url);
+			logger.warn("Invalid URL: {}", masked, maskedCause(e, masked));
 			return Optional.empty();
 		}
 	}
@@ -240,18 +245,19 @@ public final class ProxySettings {
 		}
 		// Legacy environments often set the proxy without a scheme, e.g. "proxy:8080"
 		String normalized = url.contains("://") ? url.trim() : "http://" + url.trim();
+		String masked = maskCredentials(normalized);
 		URI uri;
 		try {
 			uri = new URI(normalized);
 		}
 		catch (URISyntaxException e) {
-			logger.warn("Invalid proxy URL: {}", url, e);
-			return null;
+			// A proxy written in the configuration must never be silently skipped: fail
+			// closed instead of connecting directly.
+			throw new IllegalStateException("Invalid proxy URL: " + masked, maskedCause(e, masked));
 		}
 		String host = uri.getHost();
 		if (host == null) {
-			logger.warn("Invalid proxy URL: {}", url);
-			return null;
+			throw new IllegalStateException("Invalid proxy URL: " + masked);
 		}
 		String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
 		if (!"http".equals(scheme)) {
@@ -261,18 +267,46 @@ public final class ProxySettings {
 		int port = uri.getPort() != -1 ? uri.getPort() : ("https".equals(scheme) ? 443 : 80);
 		String username = proxy != null ? proxy.username() : null;
 		String password = proxy != null ? proxy.password() : null;
-		String userInfo = uri.getUserInfo();
-		if (userInfo != null) {
-			// Credentials embedded in the URL take precedence over the configured ones
-			int colonIndex = userInfo.indexOf(':');
-			username = decode(colonIndex < 0 ? userInfo : userInfo.substring(0, colonIndex));
-			password = colonIndex < 0 ? null : decode(userInfo.substring(colonIndex + 1));
+		String rawUserInfo = uri.getRawUserInfo();
+		if (rawUserInfo != null) {
+			// Credentials embedded in the URL take precedence over the configured ones.
+			// The raw user info is split and decoded here, exactly once.
+			int colonIndex = rawUserInfo.indexOf(':');
+			username = decodeUserInfo(colonIndex < 0 ? rawUserInfo : rawUserInfo.substring(0, colonIndex));
+			password = colonIndex < 0 ? null : decodeUserInfo(rawUserInfo.substring(colonIndex + 1));
 		}
 		return HttpProxy.builder().scheme(scheme).host(host).port(port).username(username).password(password).build();
 	}
 
-	private static String decode(String value) {
-		return URLDecoder.decode(value, StandardCharsets.UTF_8);
+	/**
+	 * Decode the given raw user info component. Unlike {@link java.net.URLDecoder} a
+	 * literal {@code +} is kept as is, because user info is not form encoded.
+	 */
+	private static String decodeUserInfo(String rawUserInfo) {
+		return UriUtils.decode(rawUserInfo, StandardCharsets.UTF_8);
+	}
+
+	/**
+	 * Return the given URL with its user info replaced by {@code ***}, so that
+	 * credentials embedded in it never reach a log.
+	 */
+	private static String maskCredentials(String url) {
+		int authorityStart = url.indexOf("://");
+		authorityStart = authorityStart < 0 ? 0 : authorityStart + 3;
+		int authorityEnd = url.indexOf('/', authorityStart);
+		if (authorityEnd < 0) {
+			authorityEnd = url.length();
+		}
+		int atIndex = url.lastIndexOf('@', authorityEnd - 1);
+		if (atIndex < authorityStart) {
+			return url;
+		}
+		return url.substring(0, authorityStart) + "***" + url.substring(atIndex);
+	}
+
+	private static URISyntaxException maskedCause(URISyntaxException e, String masked) {
+		// URISyntaxException includes the offending input in its message
+		return new URISyntaxException(masked, e.getReason(), e.getIndex());
 	}
 
 	private static List<String> splitNonProxyHosts(@Nullable String nonProxyHosts) {

@@ -3,13 +3,18 @@ package am.ik.kagami.proxy;
 import am.ik.kagami.KagamiProperties;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
  * Unit tests for ProxySettings
@@ -124,6 +129,17 @@ class ProxySettingsTest {
 	}
 
 	@Test
+	void credentialsWithReservedCharactersAreDecodedExactlyOnce() {
+		ProxySettings settings = ProxySettings.from(proxy("http://user:p+ss%25word%2Bx@proxy.company.com:8080"),
+				noEnvironment());
+
+		assertThat(settings.proxyFor("http://example.com/maven2")).hasValueSatisfying(httpProxy -> {
+			assertThat(httpProxy.username()).isEqualTo("user");
+			assertThat(httpProxy.password()).isEqualTo("p+ss%word+x");
+		});
+	}
+
+	@Test
 	void credentialsAreReadFromTheProperties() {
 		ProxySettings settings = ProxySettings.from(KagamiProperties.Proxy.builder()
 			.url("http://proxy.company.com:8080")
@@ -231,10 +247,28 @@ class ProxySettingsTest {
 	}
 
 	@Test
-	void invalidProxyUrlIsIgnored() {
-		ProxySettings settings = ProxySettings.from(proxy("http://"), noEnvironment());
+	void invalidProxyUrlFailsClosed() {
+		assertThatIllegalStateException().isThrownBy(() -> ProxySettings.from(proxy("http://"), noEnvironment()))
+			.withMessage("Invalid proxy URL: http://");
+	}
 
-		assertThat(settings.hasProxy()).isFalse();
+	@Test
+	void invalidProxyUrlDoesNotExposeCredentials() {
+		assertThatIllegalStateException()
+			.isThrownBy(() -> ProxySettings.from(proxy("http://user:secret@proxy company.com:8080"), noEnvironment()))
+			.withMessage("Invalid proxy URL: http://***@proxy company.com:8080")
+			.withCauseInstanceOf(URISyntaxException.class)
+			.satisfies(thrown -> assertThat(thrown.getCause()).hasMessageContaining("http://***@")
+				.hasMessageNotContaining("secret"));
+	}
+
+	@Test
+	@ExtendWith(OutputCaptureExtension.class)
+	void invalidTargetUrlIsLoggedWithoutCredentials(CapturedOutput output) {
+		ProxySettings settings = ProxySettings.from(proxy("http://proxy:8080"), noEnvironment());
+
+		assertThat(settings.proxyFor("http://user:secret@exa mple.com/maven2")).isEmpty();
+		assertThat(output).contains("Invalid URL: http://***@exa mple.com/maven2").doesNotContain("secret");
 	}
 
 }
