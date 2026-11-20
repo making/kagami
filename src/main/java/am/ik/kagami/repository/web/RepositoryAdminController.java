@@ -51,7 +51,7 @@ public class RepositoryAdminController {
 	}
 
 	/**
-	 * Preview eligible cache-bookkeeping directories for the selected repository.
+	 * Preview eligible leftover directories for the selected repository.
 	 */
 	@GetMapping("/app/admin/gc/preview")
 	public Object preview(@RequestParam String repositoryId,
@@ -87,7 +87,7 @@ public class RepositoryAdminController {
 	}
 
 	/**
-	 * Collect eligible cache-bookkeeping directories for the selected repository.
+	 * Collect eligible leftover directories for the selected repository.
 	 */
 	@PostMapping("/app/admin/gc")
 	public Object collect(@RequestParam String repositoryId,

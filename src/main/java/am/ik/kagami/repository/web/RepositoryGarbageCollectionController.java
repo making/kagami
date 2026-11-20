@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Provides the administrator API for collecting eligible cache-bookkeeping directories.
+ * Provides the administrator API for collecting eligible leftover directories.
  */
 @RestController
 @RequestMapping("/artifacts")
@@ -33,7 +33,7 @@ public class RepositoryGarbageCollectionController {
 	}
 
 	/**
-	 * Preview the eligible cache-bookkeeping directories that would be collected.
+	 * Preview the eligible leftover directories that would be collected.
 	 */
 	@GetMapping("/{repositoryId}/gc")
 	public ResponseEntity<List<GarbageDirectory>> findCandidates(@PathVariable String repositoryId,
@@ -56,7 +56,7 @@ public class RepositoryGarbageCollectionController {
 	}
 
 	/**
-	 * Collect the eligible cache-bookkeeping directories that pass the age check.
+	 * Collect the eligible leftover directories that pass the age check.
 	 */
 	@PostMapping("/{repositoryId}/gc")
 	public ResponseEntity<GarbageCollectionResult> collect(@PathVariable String repositoryId,

@@ -80,8 +80,10 @@ class RepositoryAdminControllerTest {
 			.andExpect(content().string(containsString("id=\"gc-run-button\"")))
 			.andExpect(content().string(containsString("button-primary")))
 			.andExpect(content().string(containsString("built-in default PEM key pair")))
-			.andExpect(content().string(containsString("maven-metadata.xml")))
-			.andExpect(content().string(containsString("resolver-status.properties")));
+			.andExpect(content().string(containsString("maven-metadata*.xml")))
+			.andExpect(content().string(containsString("resolver-status.properties")))
+			.andExpect(content().string(containsString("empty directories")))
+			.andExpect(content().string(not(containsString("metadata-only"))));
 	}
 
 	@Test
@@ -152,7 +154,7 @@ class RepositoryAdminControllerTest {
 				.header("HX-Request", "true"))
 			.andExpect(status().isOk())
 			.andExpect(content().string(containsString("alert alert-info")))
-			.andExpect(content().string(containsString("No eligible metadata-only directories were found.")));
+			.andExpect(content().string(containsString("No eligible directories were found.")));
 	}
 
 	@Test

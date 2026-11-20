@@ -257,14 +257,19 @@ GET downloads it from the upstream again.
 
 ### Cache Garbage Collection
 
-The garbage collection endpoints remove cache-bookkeeping-only directories from one
-repository. A candidate directory must contain exactly one of these file sets:
+The garbage collection endpoints remove leftover cache directories from one repository.
+A candidate directory is either empty, or contains only cache bookkeeping files:
 
-- `maven-metadata.xml` and `maven-metadata.xml.sha1`
-- `resolver-status.properties` only
+- `maven-metadata*.xml` and their checksums (`.sha1`, `.sha256`, `.sha512`, `.md5`,
+  `.asc`)
+- `resolver-status.properties`
+- `_remote.repositories`
+- `*.lastUpdated`
 
-Every file in the candidate must be older than `olderThan`. The default is one hour.
-Directories with any other file or subdirectory are left unchanged.
+The candidate and every file in it must be older than `olderThan`. The default is one
+hour. Directories with any other file or subdirectory are left unchanged. The rules are
+independent of the repository format: npm and PyPI repositories are collected by the same
+rules, and only the local backend has empty directories to remove.
 
 These endpoints require the `artifacts:admin` authority, including for public
 repositories. The default `editors` group does not include this authority. The `gc`

@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for the administrator cache collection API.
  */
 @SpringBootTest(properties = { "kagami.repositories.test-repo.url=https://repo.maven.apache.org/maven2",
+		"kagami.repositories.npm-repo.url=https://registry.npmjs.org", "kagami.repositories.npm-repo.format=npm",
 		"spring.security.user.name=test-user", "spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
 @WithMockUser(username = "test-user", authorities = "artifacts:admin")
@@ -48,17 +49,19 @@ class RepositoryGarbageCollectionControllerTest {
 	}
 
 	@BeforeEach
-	void clearRepository() throws IOException {
-		Path repository = tempDir.resolve("test-repo");
-		if (!Files.exists(repository)) {
-			return;
-		}
-		List<Path> paths;
-		try (Stream<Path> stream = Files.walk(repository)) {
-			paths = stream.sorted(Comparator.reverseOrder()).toList();
-		}
-		for (Path path : paths) {
-			Files.deleteIfExists(path);
+	void clearRepositories() throws IOException {
+		for (String repositoryId : List.of("test-repo", "npm-repo")) {
+			Path repository = tempDir.resolve(repositoryId);
+			if (!Files.exists(repository)) {
+				continue;
+			}
+			List<Path> paths;
+			try (Stream<Path> stream = Files.walk(repository)) {
+				paths = stream.sorted(Comparator.reverseOrder()).toList();
+			}
+			for (Path path : paths) {
+				Files.deleteIfExists(path);
+			}
 		}
 	}
 
@@ -84,6 +87,32 @@ class RepositoryGarbageCollectionControllerTest {
 			.andExpect(jsonPath("$[0].lastModified").exists());
 
 		assertThat(candidate).exists();
+	}
+
+	@Test
+	void emptyDirectoriesInAnNpmRepositoryAreCollectedOnlyWhenOldEnough() throws Exception {
+		Path repository = tempDir.resolve("npm-repo");
+		Path old = Files.createDirectories(repository.resolve("lodash/-/empty"));
+		Path recent = Files.createDirectories(repository.resolve("lodash/-/recent"));
+		Path artifact = Files.createDirectories(repository.resolve("react/-"));
+		Files.writeString(artifact.resolve("react-1.0.tgz"), "tarball");
+		FileTime oldTime = FileTime.from(Instant.now().minus(Duration.ofHours(2)));
+		Files.setLastModifiedTime(old, oldTime);
+		Files.setLastModifiedTime(artifact.resolve("react-1.0.tgz"), oldTime);
+
+		this.mockMvc.perform(get("/artifacts/npm-repo/gc"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.length()").value(1))
+			.andExpect(jsonPath("$[0].path").value("lodash/-/empty"));
+
+		this.mockMvc.perform(post("/artifacts/npm-repo/gc").with(csrf()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.collectedPaths[0]").value("lodash/-/empty"))
+			.andExpect(jsonPath("$.failures").isEmpty());
+
+		assertThat(old).doesNotExist();
+		assertThat(recent).exists();
+		assertThat(artifact.resolve("react-1.0.tgz")).exists();
 	}
 
 	@Test

@@ -232,16 +232,19 @@ public abstract class StorageServiceContractTest {
 	}
 
 	@Test
-	void garbageCollectorRemovesOnlyOldMetadataOnlyDirectories() throws IOException {
+	void garbageCollectorRemovesOnlyOldBookkeepingDirectories() throws IOException {
 		StorageService storage = storageService();
 		String candidatePath = "org/old/missing";
 		String resolverCandidatePath = "org/old/resolver-missing";
+		String remoteCandidatePath = "org/old/remote-missing";
+		String lastUpdatedCandidatePath = "org/old/failed-fetch";
 		store(storage, location(candidatePath + "/maven-metadata.xml"), "metadata");
 		store(storage, location(candidatePath + "/maven-metadata.xml.sha1"), "checksum");
 		store(storage, location(resolverCandidatePath + "/resolver-status.properties"), "resolver status");
+		store(storage, location(remoteCandidatePath + "/_remote.repositories"), "remote repositories");
+		store(storage, location(lastUpdatedCandidatePath + "/lib-1.0.jar.lastUpdated"), "last updated");
 		store(storage, location("org/resolver-extra/resolver-status.properties"), "resolver status");
 		store(storage, location("org/resolver-extra/keep.txt"), "keep");
-		store(storage, location("org/partial/maven-metadata.xml"), "metadata");
 		store(storage, location("org/extra/maven-metadata.xml"), "metadata");
 		store(storage, location("org/extra/maven-metadata.xml.sha1"), "checksum");
 		store(storage, location("org/extra/keep.txt"), "keep");
@@ -255,17 +258,20 @@ public abstract class StorageServiceContractTest {
 		RepositoryGarbageCollector collector = new RepositoryGarbageCollector(storage, future);
 
 		List<GarbageDirectory> candidates = collector.findCandidates(REPOSITORY_ID, Duration.ofHours(1));
-		assertThat(candidates).extracting(GarbageDirectory::path).containsExactly(candidatePath, resolverCandidatePath);
+		assertThat(candidates).extracting(GarbageDirectory::path)
+			.containsExactly(lastUpdatedCandidatePath, candidatePath, remoteCandidatePath, resolverCandidatePath);
 
 		GarbageCollectionResult result = collector.collect(REPOSITORY_ID, Duration.ofHours(1));
-		assertThat(result.collectedPaths()).containsExactly(candidatePath, resolverCandidatePath);
+		assertThat(result.collectedPaths()).containsExactly(lastUpdatedCandidatePath, candidatePath,
+				remoteCandidatePath, resolverCandidatePath);
 		assertThat(result.failures()).isEmpty();
 		assertThat(storage.stat(location(candidatePath))).isEmpty();
 		assertThat(storage.stat(location(resolverCandidatePath))).isEmpty();
+		assertThat(storage.stat(location(remoteCandidatePath))).isEmpty();
+		assertThat(storage.stat(location(lastUpdatedCandidatePath))).isEmpty();
 		assertThat(storage.stat(location("org/old"))).isEmpty();
 		assertThat(storage.retrieve(location("org/resolver-extra/resolver-status.properties"))).isPresent();
 		assertThat(storage.retrieve(location("org/resolver-extra/keep.txt"))).isPresent();
-		assertThat(storage.retrieve(location("org/partial/maven-metadata.xml"))).isPresent();
 		assertThat(storage.retrieve(location("org/extra/keep.txt"))).isPresent();
 		assertThat(storage.retrieve(location("org/nested/child/keep.txt"))).isPresent();
 		assertThat(storage.retrieve(location("org/valid/artifact.jar"))).isPresent();
