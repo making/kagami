@@ -1,6 +1,6 @@
 # Kagami 🪞
 
-A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, meaning "mirror" in Japanese) provides efficient caching and proxying of Maven artifacts from multiple remote repositories.
+A mirror server for Maven, npm and PyPI repositories built with Spring Boot. Kagami (鏡, meaning "mirror" in Japanese) caches and proxies artifacts from multiple remote repositories, and rewrites the metadata that a client follows so that downloads go through the mirror.
 
 <img width="1717" height="800" alt="Image" src="https://github.com/user-attachments/assets/e369b689-0085-4530-bd1e-e9ca98fbb338" />
 
@@ -15,6 +15,8 @@ A simple Maven repository mirror server built with Spring Boot. Kagami (鏡, mea
 - **Local Caching**: Automatically caches artifacts from remote repositories to reduce download times
 - **Pluggable Storage**: Local file system (default) or Amazon S3 / S3-compatible object storage
 - **Multiple Repository Support**: Configure multiple remote repositories with individual settings
+- **Maven, npm and PyPI Mirrors**: A repository serves one format; npm packuments and PyPI simple indexes are rewritten so that clients download tarballs and wheels through the mirror
+- **Read-Only Registry Mirrors**: Uploads are not stored; a publish request is rejected with `405`
 - **Private Repository Support**: JWT-based authentication for secure repository access
 - **REST API**: Simple REST endpoints for artifact retrieval and cache management
 - **Web Dashboard**: Server-rendered UI built with htmx for repository browsing and management with unified header navigation
@@ -170,6 +172,44 @@ kagami.repositories.central.url=https://repo.maven.apache.org/maven2
 kagami.repositories.jcenter.url=https://jcenter.bintray.com
 ```
 
+### Repository Formats
+
+A repository serves one package format, selected with `kagami.repositories.<id>.format`:
+`maven` (default), `npm` or `pypi`. Every format is addressed under
+`/artifacts/{repositoryId}/...` and shares storage, authentication and the browse UI. An
+unknown format stops the application at startup rather than failing the first request.
+
+```properties
+# npm registry mirror
+kagami.repositories.npm.url=https://registry.npmjs.org
+kagami.repositories.npm.format=npm
+# Hosts an npm tarball URL from a packument may point at, in addition to the host of
+# the repository URL. When empty, only the repository host is allowed.
+kagami.upstream.tarball-hosts=registry.npmjs.org
+
+# PyPI mirror. Links to pypi.org and files.pythonhosted.org are allowed by default,
+# together with the host of the repository URL.
+kagami.repositories.pypi.url=https://pypi.org
+kagami.repositories.pypi.format=pypi
+```
+
+Format-specific settings:
+
+- `kagami.repositories.<id>.token`: bearer token sent to the upstream registry instead of
+  Basic authentication, for upstreams such as Artifactory, GitHub Packages or a private
+  npm registry.
+- `kagami.repositories.<id>.allowed-hosts`: hosts an index may link to for artifact
+  downloads. For npm it adds to `kagami.upstream.tarball-hosts`; for PyPI it replaces the
+  default hosts. The host of `kagami.repositories.<id>.url` is always allowed. A link to
+  any other host is not fetched and the request returns `502`.
+- `kagami.repositories.<id>.sigstore.enabled` is Maven-only; enabling it on an npm or PyPI
+  repository stops the application.
+
+npm and PyPI repositories are read-only. `npm publish` sends `PUT` and returns `405`; the
+PyPI upload API is not served, and pip only needs the simple index. Uploads are never
+stored. `DELETE /artifacts/{repositoryId}/{artifactPath}` works and removes the artifact
+from the local cache; the next request downloads it again.
+
 ### S3 Storage
 
 Artifacts can be mirrored into Amazon S3 or any S3-compatible object storage (MinIO, RustFS, etc.)
@@ -206,9 +246,11 @@ Notes:
 
 ### Mutable Index Cache
 
-Maven `maven-metadata.xml` changes upstream after it has been fetched once. Kagami keeps mutable
-indexes in an in-memory cache instead of artifact storage, so they are revalidated rather than
-served stale forever, keep their upstream Content-Type, and do not appear in the browse listing.
+Maven `maven-metadata.xml`, npm packuments and version manifests, and PyPI simple indexes
+change upstream after they have been fetched once. Kagami keeps these mutable indexes in an
+in-memory cache instead of artifact storage, so they are revalidated rather than served stale
+forever, keep their upstream Content-Type, and do not appear in the browse listing. Tarballs,
+wheels and sdist files are immutable and live in artifact storage.
 
 ```properties
 # Serve a cached index without revalidating for this long (default 5m)
@@ -839,6 +881,117 @@ credentials(HttpHeaderCredentials::class) {
     name = "Authorization"
     value = "Bearer YOUR_JWT_TOKEN"
 }
+```
+
+## npm Client Configuration
+
+Create an `.npmrc` in the project or in the home directory that points npm at the mirror.
+The registry URL is the repository root and ends with `/`:
+
+```ini
+# .npmrc
+registry=http://localhost:8080/artifacts/npm/
+```
+
+Install through the mirror:
+
+```bash
+npm install lodash
+npm view lodash version
+```
+
+The packument the mirror returns has its `dist.tarball` URLs rewritten to
+`/artifacts/npm/<package>/-/<file>`, so npm downloads the tarball from Kagami as well. The
+`dist.integrity` and `dist.shasum` hashes are kept unchanged, and npm verifies the tarball
+against them.
+
+To send only one scope through the mirror:
+
+```ini
+@my-scope:registry=http://localhost:8080/artifacts/npm/
+```
+
+### Private Repository
+
+A repository configured with `kagami.repositories.<id>.is-private=true` needs a JWT token
+carrying the `artifacts:read` scope; generate it in the web UI as described in
+[Private Repository Access](#private-repository-access). Configure the token for the
+registry host and path so that npm sends it as a bearer token:
+
+```ini
+# .npmrc
+registry=http://localhost:8080/artifacts/npm/
+//localhost:8080/artifacts/npm/:_authToken=${KAGAMI_TOKEN}
+```
+
+```bash
+export KAGAMI_TOKEN=YOUR_JWT_TOKEN
+npm install lodash
+```
+
+`/-/ping`, `/-/v1/search` and the npm audit endpoint are served under the same registry
+URL, so they follow the same configuration.
+
+## PyPI Client Configuration
+
+Create a `pip.conf`; Linux and macOS read `~/.config/pip/pip.conf` (or `pip.conf` in the
+virtual environment), Windows reads `%APPDATA%\pip\pip.ini`.
+
+```ini
+# pip.conf
+[global]
+index-url = http://localhost:8080/artifacts/pypi/simple/
+```
+
+pip refuses a plain HTTP index unless the host is trusted, so add `trusted-host` when
+Kagami is reached without TLS:
+
+```ini
+[global]
+index-url = http://localhost:8080/artifacts/pypi/simple/
+trusted-host = localhost
+```
+
+Install through the mirror:
+
+```bash
+pip install requests
+```
+
+The project index pip receives links to `/artifacts/pypi/files/...`, so wheels and sdists
+are downloaded from Kagami. When the upstream index advertises a `#sha256=` fragment, the
+mirror verifies the downloaded file against it and does not store a mismatching file. The
+same settings can be passed on the command line:
+
+```bash
+pip install --index-url http://localhost:8080/artifacts/pypi/simple/ --trusted-host localhost requests
+```
+
+uv reads the same index through environment variables:
+
+```bash
+export UV_INDEX_URL=http://localhost:8080/artifacts/pypi/simple/
+export UV_INSECURE_HOST=localhost
+```
+
+### Private Repository
+
+A private PyPI repository needs a JWT token. pip accepts credentials embedded in the index
+URL:
+
+```ini
+[global]
+index-url = http://kagami:YOUR_JWT_TOKEN@localhost:8080/artifacts/pypi/simple/
+trusted-host = localhost
+```
+
+The username is ignored and the password is resolved as the token, the same as for Maven.
+A `~/.netrc` entry avoids putting the token in `pip.conf`:
+
+```
+machine localhost
+  login kagami
+  password YOUR_JWT_TOKEN
 ```
 
 ## Deploying Kagami to Cloud Foundry
