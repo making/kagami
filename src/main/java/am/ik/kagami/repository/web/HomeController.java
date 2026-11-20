@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 import am.ik.kagami.KagamiProperties;
+import am.ik.kagami.buildconfig.ConfigExampleCatalog;
 import am.ik.kagami.repository.RepositoryService;
 import am.ik.kagami.repository.RepositoryService.RepositoryInfo;
 import am.ik.kagami.repository.RepositoryService.RepositorySummary;
@@ -46,10 +47,17 @@ public class HomeController {
 		model.addAttribute("userName", authentication.getName());
 		model.addAttribute("repoCount", repositories.size());
 		model.addAttribute("statsPending", true);
-		model.addAttribute("repositories", repositories.stream()
-			.<RepositoryRow>map(
-					repo -> RepositoryRow.builder().id(repo.id()).url(repo.url()).isPrivate(repo.isPrivate()).build())
-			.toList());
+		model.addAttribute("formats", FormatOption.all());
+		model.addAttribute("repositories",
+				repositories.stream()
+					.<RepositoryRow>map(repo -> RepositoryRow.builder()
+						.id(repo.id())
+						.url(repo.url())
+						.isPrivate(repo.isPrivate())
+						.format(repo.format())
+						.formatLabel(ConfigExampleCatalog.formatLabel(repo.format()))
+						.build())
+					.toList());
 		return "pages/home";
 	}
 
@@ -64,6 +72,7 @@ public class HomeController {
 		long totalSize = repositories.stream().mapToLong(RepositoryInfo::totalSize).sum();
 		model.addAttribute("repoCount", repositories.size());
 		model.addAttribute("statsPending", false);
+		model.addAttribute("formats", FormatOption.all());
 		model.addAttribute("totalArtifacts", String.format(Locale.ENGLISH, "%,d", totalArtifacts));
 		model.addAttribute("totalSize", Formats.fileSize(totalSize));
 		model.addAttribute("repositories",
@@ -77,6 +86,8 @@ public class HomeController {
 								? Formats.relativeTime(repo.lastUpdated(), this.instantSource) : null)
 						.hasUpdated(repo.lastUpdated() != null)
 						.isPrivate(repo.isPrivate())
+						.format(repo.format())
+						.formatLabel(ConfigExampleCatalog.formatLabel(repo.format()))
 						.build())
 					.toList());
 		return "fragments/repository-stats";
@@ -87,7 +98,7 @@ public class HomeController {
 	 * they are still being loaded.
 	 */
 	record RepositoryRow(String id, String url, @Nullable String artifactCount, @Nullable String totalSize,
-			@Nullable String updated, boolean hasUpdated, boolean isPrivate) {
+			@Nullable String updated, boolean hasUpdated, boolean isPrivate, String format, String formatLabel) {
 
 		public boolean pending() {
 			return this.artifactCount == null;
@@ -112,6 +123,10 @@ public class HomeController {
 			private boolean hasUpdated;
 
 			private boolean isPrivate;
+
+			@Nullable private String format;
+
+			@Nullable private String formatLabel;
 
 			private Builder() {
 			}
@@ -151,12 +166,40 @@ public class HomeController {
 				return this;
 			}
 
+			public Builder format(String format) {
+				this.format = format;
+				return this;
+			}
+
+			public Builder formatLabel(String formatLabel) {
+				this.formatLabel = formatLabel;
+				return this;
+			}
+
 			public RepositoryRow build() {
 				return new RepositoryRow(Objects.requireNonNull(this.id, "id is required"),
 						Objects.requireNonNull(this.url, "url is required"), this.artifactCount, this.totalSize,
-						this.updated, this.hasUpdated, this.isPrivate);
+						this.updated, this.hasUpdated, this.isPrivate,
+						Objects.requireNonNull(this.format, "format is required"),
+						Objects.requireNonNull(this.formatLabel, "formatLabel is required"));
 			}
 
+		}
+
+	}
+
+	/**
+	 * One selectable repository format in the repository filter.
+	 *
+	 * @param value the format identifier used in {@code data-format}
+	 * @param label the display label
+	 */
+	record FormatOption(String value, String label) {
+
+		static List<FormatOption> all() {
+			return List.of(new FormatOption("maven", ConfigExampleCatalog.formatLabel("maven")),
+					new FormatOption("npm", ConfigExampleCatalog.formatLabel("npm")),
+					new FormatOption("pypi", ConfigExampleCatalog.formatLabel("pypi")));
 		}
 
 	}

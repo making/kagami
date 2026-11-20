@@ -101,6 +101,11 @@ public abstract class RepositoryControllerTestBase {
 		String body = bodyOf("/");
 		assertThat(body).contains("test-repo");
 		assertThat(body).contains("Repositories");
+		// The repository type is shown and the list can be filtered by type and access
+		assertThat(body).contains("data-format=\"maven\"");
+		assertThat(body).contains("badge-format");
+		assertThat(body).contains("id=\"repository-filter-format\"");
+		assertThat(body).contains("id=\"repository-filter-visibility\"");
 	}
 
 	@Test
@@ -121,6 +126,7 @@ public abstract class RepositoryControllerTestBase {
 		row = row.substring(0, row.indexOf("</tr>"));
 		// One artifact (the checksum is not counted), 17 + 6 bytes in total
 		assertThat(row).contains("<span class=\"row-value\">1</span>");
+		assertThat(row).contains("data-format=\"maven\"");
 		assertThat(row).contains("<span class=\"row-value\">23 B</span>");
 		assertThat(body).contains("<hx-partial hx-target=\"#hero-stats\"");
 		assertThat(body).doesNotContain("hx-get=\"/fragments/repositories/stats\"");

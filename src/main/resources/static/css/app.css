@@ -287,6 +287,43 @@ body {
   color: var(--ink-3);
 }
 
+.panel-head-tools {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filter-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--ink-3);
+}
+
+.filter-select {
+  padding: 0.125rem 0.25rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .section-head {
   padding: 0.875rem 1.5rem;
   border-bottom: 1px solid var(--line);
@@ -424,6 +461,14 @@ body {
 .registry-table tbody tr {
   border-bottom: 1px solid var(--line);
   cursor: pointer;
+}
+
+.registry-table tbody tr[hidden] {
+  display: none;
+}
+
+#repository-filter-empty {
+  cursor: default;
 }
 
 .registry-table tbody tr:last-child {
@@ -640,6 +685,10 @@ tr.group:hover .action-buttons {
 /* ---- Directory browser ---- */
 
 .breadcrumb-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   border: 1px solid var(--line);
   border-bottom: 2px solid var(--ink);
   background: var(--paper);
@@ -651,8 +700,14 @@ tr.group:hover .action-buttons {
   align-items: center;
   gap: 0.25rem;
   flex-wrap: wrap;
+  min-width: 0;
   font-family: var(--mono);
   font-size: 0.75rem;
+}
+
+.breadcrumb-bar .badge-format {
+  flex: 0 0 auto;
+  margin-left: 0;
 }
 
 .breadcrumb > span:first-child {

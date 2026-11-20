@@ -1,7 +1,24 @@
-<div class="panel" id="repository-panel"{{#statsPending}} hx-get="/fragments/repositories/stats" hx-trigger="load" hx-swap="outerMorph"{{/statsPending}}>
+<div class="panel" id="repository-panel" data-repository-total="{{repoCount}}"{{#statsPending}} hx-get="/fragments/repositories/stats" hx-trigger="load" hx-swap="outerMorph"{{/statsPending}}>
   <div class="panel-head">
     <h2 class="registry-label panel-head-label">Repositories</h2>
-    <span class="registry-label panel-head-meta">{{repoCount}} entries / select to browse</span>
+    <div class="panel-head-tools">
+      <span class="registry-label panel-head-meta" id="repository-count">{{repoCount}} entries / select to browse</span>
+      <div class="filter-controls" id="repository-filter">
+        <label class="registry-label filter-control">Type
+          <select id="repository-filter-format" class="filter-select" aria-label="Filter repositories by type">
+            <option value="">All</option>
+            {{#formats}}<option value="{{value}}">{{label}}</option>{{/formats}}
+          </select>
+        </label>
+        <label class="registry-label filter-control">Access
+          <select id="repository-filter-visibility" class="filter-select" aria-label="Filter repositories by access">
+            <option value="">All</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+          </select>
+        </label>
+      </div>
+    </div>
   </div>
   <table class="registry-table">
     <thead>
@@ -16,9 +33,9 @@
     </thead>
     <tbody>
       {{#repositories}}
-      <tr id="repository-{{id}}" class="group registry-row-hover registry-rise" data-navigate="/browse/{{id}}">
+      <tr id="repository-{{id}}" class="group registry-row-hover registry-rise" data-navigate="/browse/{{id}}" data-format="{{format}}" data-visibility="{{#isPrivate}}private{{/isPrivate}}{{^isPrivate}}public{{/isPrivate}}">
         <td>
-          <div class="row-title">{{id}}{{#isPrivate}}<span class="registry-label badge-private">Private</span>{{/isPrivate}}</div>
+          <div class="row-title">{{id}}<span class="registry-label badge-format" data-format="{{format}}">{{formatLabel}}</span>{{#isPrivate}}<span class="registry-label badge-private">Private</span>{{/isPrivate}}</div>
           <div class="row-url">{{url}}</div>
         </td>
         {{#pending}}
@@ -42,6 +59,9 @@
         <td class="row-arrow">&rarr;</td>
       </tr>
       {{/repositories}}
+      <tr id="repository-filter-empty" hidden>
+        <td colspan="6" class="empty-message">No repositories match the filter.</td>
+      </tr>
     </tbody>
   </table>
 </div>

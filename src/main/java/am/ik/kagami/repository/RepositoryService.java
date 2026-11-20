@@ -108,6 +108,7 @@ public class RepositoryService {
 				.totalSize(stat.totalSize())
 				.lastUpdated(stat.lastUpdated())
 				.isPrivate(repository.isPrivate())
+				.format(repository.format())
 				.build());
 		}
 		return infos;
@@ -332,7 +333,7 @@ public class RepositoryService {
 	}
 
 	public record RepositoryInfo(String id, String url, long artifactCount, long totalSize,
-			@Nullable Instant lastUpdated, boolean isPrivate) {
+			@Nullable Instant lastUpdated, boolean isPrivate, String format) {
 
 		public static Builder builder() {
 			return new Builder();
@@ -351,6 +352,8 @@ public class RepositoryService {
 			@Nullable private Instant lastUpdated;
 
 			private boolean isPrivate;
+
+			@Nullable private String format;
 
 			private Builder() {
 			}
@@ -385,10 +388,15 @@ public class RepositoryService {
 				return this;
 			}
 
+			public Builder format(String format) {
+				this.format = format;
+				return this;
+			}
+
 			public RepositoryInfo build() {
 				return new RepositoryInfo(Objects.requireNonNull(this.id, "id is required"),
 						Objects.requireNonNull(this.url, "url is required"), this.artifactCount, this.totalSize,
-						this.lastUpdated, this.isPrivate);
+						this.lastUpdated, this.isPrivate, Objects.requireNonNullElse(this.format, "maven"));
 			}
 
 		}

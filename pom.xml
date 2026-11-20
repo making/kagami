@@ -288,8 +288,8 @@
         </executions>
       </plugin>
       <plugin>
-        <!-- Bundles the small client-side scripts (nav, clipboard, modal, tabs, token form)
-             into static/js/app.min.js. vendor/htmx.min.js is deliberately NOT bundled: htmx 4
+        <!-- Bundles the small client-side scripts (nav, clipboard, modal, tabs, token
+             form, repository filter) into static/js/app.min.js. vendor/htmx.min.js is deliberately NOT bundled: htmx 4
              is written with private class fields (#foo), which Closure Compiler cannot parse
              at any optimization level. It ships as its own <script> tag from the layout. -->
         <groupId>com.github.blutorange</groupId>
@@ -314,6 +314,7 @@
                 <include>modal.js</include>
                 <include>tabs.js</include>
                 <include>token-form.js</include>
+                <include>repository-filter.js</include>
               </includes>
               <closureCompilationLevel>SIMPLE_OPTIMIZATIONS</closureCompilationLevel>
               <closureLanguageIn>ECMASCRIPT_NEXT</closureLanguageIn>
