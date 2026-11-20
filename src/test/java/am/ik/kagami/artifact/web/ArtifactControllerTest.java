@@ -1,5 +1,6 @@
 package am.ik.kagami.artifact.web;
 
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for ArtifactController
  */
 @SpringBootTest(properties = { "kagami.repositories.test-central.url=https://repo.maven.apache.org/maven2",
+		"kagami.repositories.test-npm.url=http://localhost:1", "kagami.repositories.test-npm.format=npm",
 		"logging.level.am.ik.kagami=DEBUG", "spring.security.user.name=test-user",
 		"spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
@@ -136,6 +138,27 @@ class ArtifactControllerTest {
 			.andExpect(content().contentType("text/plain"))
 			.andExpect(content().string("resolver status"))
 			.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "inline;filename=resolver-status.properties"));
+	}
+
+	@Test
+	void getArtifact_withEncodedSlashInScopedPackage_shouldReachTheNpmHandler() throws Exception {
+		// The npm registry addresses a scoped package with an encoded slash. The router
+		// must pass the firewall, decode the path and dispatch to the npm handler, which
+		// serves the stored metadata.
+		Path metadata = tempDir.resolve("test-npm/@scope/name");
+		Files.createDirectories(metadata.getParent());
+		Files.writeString(metadata, "{\"name\":\"@scope/name\"}");
+
+		// A URI instance keeps the single "%2F" encoding, while a URL template would
+		// double-encode the percent sign
+		this.mockMvc.perform(get(URI.create("/artifacts/test-npm/@scope%2Fname")))
+			.andExpect(status().isOk())
+			.andExpect(content().string("{\"name\":\"@scope/name\"}"));
+	}
+
+	@Test
+	void getArtifact_withInvalidPath_shouldReturn400() throws Exception {
+		this.mockMvc.perform(get("/artifacts/test-npm/~unexpected/name")).andExpect(status().isBadRequest());
 	}
 
 	@Test

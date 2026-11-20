@@ -192,10 +192,12 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * listed first on the web UI and in the generated configuration examples. Defaults to
 	 * {@code 0}
 	 * @param sigstore the sigstore attestation bundle settings
+	 * @param format the repository format, one of {@code maven}, {@code npm} or
+	 * {@code pypi}; defaults to {@code maven}
 	 */
 	public record Repository(String url, @Nullable String username, @Nullable String password,
-			@DefaultValue("false") boolean isPrivate, @DefaultValue("0") int priority,
-			@DefaultValue Sigstore sigstore) implements Comparable<Repository> {
+			@DefaultValue("false") boolean isPrivate, @DefaultValue("0") int priority, @DefaultValue Sigstore sigstore,
+			@DefaultValue("maven") String format) implements Comparable<Repository> {
 
 		/**
 		 * The natural ordering sorts by priority, higher first, so that a plain
@@ -223,6 +225,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			private int priority;
 
 			@Nullable private Sigstore sigstore;
+
+			private String format = "maven";
 
 			private Builder() {
 			}
@@ -252,10 +256,16 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 				return this;
 			}
 
+			public Builder format(String format) {
+				this.format = format;
+				return this;
+			}
+
 			public Repository build() {
 				return new Repository(Objects.requireNonNull(this.url, "url is required"), this.username, this.password,
 						this.isPrivate, this.priority,
-						this.sigstore == null ? Sigstore.builder().build() : this.sigstore);
+						this.sigstore == null ? Sigstore.builder().build() : this.sigstore,
+						Objects.requireNonNull(this.format, "format is required"));
 			}
 
 			public Builder sigstore(@Nullable Sigstore sigstore) {
