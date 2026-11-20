@@ -18,9 +18,8 @@ import org.springframework.util.StringUtils;
  * @param repository the configuration of that repository
  * @param artifactPath the decoded path relative to the repository root
  * @param headers the incoming request headers
- * @param baseUrl the externally visible base URL of this Kagami instance, used to build
- * absolute URLs that a client can resolve; it already reflects the forward headers
- * configured through {@code server.forward-headers-strategy}
+ * @param baseUrl the externally visible base URL of this Kagami instance, used to rewrite
+ * absolute links in index documents
  * @param queryString the raw query string of the request, or {@code null} when the
  * request has no query
  * @param body the request body, empty for a GET or HEAD request

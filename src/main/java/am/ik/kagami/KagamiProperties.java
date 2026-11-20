@@ -204,13 +204,17 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * @param sigstore the sigstore attestation bundle settings
 	 * @param format the repository format, one of {@code maven}, {@code npm} or
 	 * {@code pypi}; defaults to {@code maven}
+	 * @param allowedHosts the hosts an index may link to for artifact downloads; empty
+	 * means the format's default hosts (for PyPI, the repository host together with
+	 * {@code pypi.org} and {@code files.pythonhosted.org})
 	 * @param token optional bearer token sent to the remote repository instead of Basic
 	 * authentication; used by registries such as Artifactory and GitHub Packages that
 	 * authenticate with a token
 	 */
 	public record Repository(String url, @Nullable String username, @Nullable String password,
 			@DefaultValue("false") boolean isPrivate, @DefaultValue("0") int priority, @DefaultValue Sigstore sigstore,
-			@DefaultValue("maven") String format, @Nullable String token) implements Comparable<Repository> {
+			@DefaultValue("maven") String format, @DefaultValue List<String> allowedHosts,
+			@Nullable String token) implements Comparable<Repository> {
 
 		/**
 		 * The natural ordering sorts by priority, higher first, so that a plain
@@ -241,9 +245,16 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 			private String format = "maven";
 
+			private List<String> allowedHosts = List.of();
+
 			@Nullable private String token;
 
 			private Builder() {
+			}
+
+			public Builder allowedHosts(List<String> allowedHosts) {
+				this.allowedHosts = allowedHosts;
+				return this;
 			}
 
 			public Builder url(String url) {
@@ -285,7 +296,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 				return new Repository(Objects.requireNonNull(this.url, "url is required"), this.username, this.password,
 						this.isPrivate, this.priority,
 						this.sigstore == null ? Sigstore.builder().build() : this.sigstore,
-						Objects.requireNonNull(this.format, "format is required"), this.token);
+						Objects.requireNonNull(this.format, "format is required"),
+						this.allowedHosts == null ? List.of() : List.copyOf(this.allowedHosts), this.token);
 			}
 
 			public Builder sigstore(@Nullable Sigstore sigstore) {

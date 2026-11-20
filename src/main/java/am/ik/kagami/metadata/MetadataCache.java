@@ -94,8 +94,28 @@ public class MetadataCache {
 	 */
 	public Optional<MetadataDocument> get(String repositoryId, KagamiProperties.Repository repository,
 			String indexPath) {
+		return get(repositoryId, repository, indexPath, null);
+	}
+
+	/**
+	 * Serve an index from the cache like
+	 * {@link #get(String, KagamiProperties.Repository, String)}, forwarding a content
+	 * negotiation header to the upstream. Indexes that vary their representation by
+	 * {@code Accept} (the PyPI simple index serves HTML or PEP 691 JSON) are cached per
+	 * representation, so a JSON request never receives a cached HTML body.
+	 * @param repositoryId the repository the index belongs to
+	 * @param repository the configuration of that repository
+	 * @param indexPath the index path relative to the repository root, already
+	 * URL-decoded
+	 * @param accept the {@code Accept} value to forward, or {@code null} to send none
+	 * @return the document, or an empty optional if the upstream answered {@code 404}
+	 * @throws MetadataUnavailableException if the upstream failed and no sufficiently
+	 * fresh stale body is available
+	 */
+	public Optional<MetadataDocument> get(String repositoryId, KagamiProperties.Repository repository, String indexPath,
+			@Nullable String accept) {
 		String upstreamUrl = upstreamUrl(repository, indexPath);
-		Key key = new Key(repositoryId, upstreamUrl);
+		Key key = new Key(repositoryId, upstreamUrl, accept);
 
 		Optional<MetadataDocument> fresh = fresh(key);
 		if (fresh != null) {
@@ -112,7 +132,7 @@ public class MetadataCache {
 			// waiting for the in-flight slot
 			Optional<MetadataDocument> justFetched = fresh(key);
 			Optional<MetadataDocument> result = justFetched != null ? justFetched
-					: revalidate(key, repository, upstreamUrl);
+					: revalidate(key, repository, upstreamUrl, accept);
 			future.complete(result);
 			return result;
 		}
@@ -151,11 +171,12 @@ public class MetadataCache {
 		}
 	}
 
-	private Optional<MetadataDocument> revalidate(Key key, KagamiProperties.Repository repository, String upstreamUrl) {
+	private Optional<MetadataDocument> revalidate(Key key, KagamiProperties.Repository repository, String upstreamUrl,
+			@Nullable String accept) {
 		CachedIndex previous = entry(key);
 		UpstreamResponse response;
 		try {
-			response = fetch(repository, upstreamUrl, previous);
+			response = fetch(repository, upstreamUrl, accept, previous);
 		}
 		catch (MetadataUnavailableException e) {
 			return stale(previous, upstreamUrl, e);
@@ -227,13 +248,16 @@ public class MetadataCache {
 				"Index " + upstreamUrl + " is stale and the upstream keeps failing: " + cause.getMessage(), cause);
 	}
 
-	private UpstreamResponse fetch(KagamiProperties.Repository repository, String upstreamUrl,
+	private UpstreamResponse fetch(KagamiProperties.Repository repository, String upstreamUrl, @Nullable String accept,
 			@Nullable CachedIndex previous) {
 		URI uri = URI.create(upstreamUrl);
 		return this.restClient.get().uri(uri).headers(headers -> {
 			// A compressed body would be stored as if it were the index itself
 			headers.set(HttpHeaders.ACCEPT_ENCODING, "identity");
 			UpstreamAuthentication.apply(headers, repository);
+			if (StringUtils.hasText(accept)) {
+				headers.set(HttpHeaders.ACCEPT, accept);
+			}
 			if (previous != null) {
 				String etag = previous.document().etag();
 				if (etag != null) {
@@ -301,7 +325,7 @@ public class MetadataCache {
 	 * Key of an entry: the repository plus the upstream URL, never the request path, so
 	 * that two request paths that resolve to the same upstream document share one entry.
 	 */
-	private record Key(String repositoryId, String upstreamUrl) {
+	private record Key(String repositoryId, String upstreamUrl, @Nullable String accept) {
 	}
 
 	private record CachedIndex(MetadataDocument document, Instant lastValidatedAt) {

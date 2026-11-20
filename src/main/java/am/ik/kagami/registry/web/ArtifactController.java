@@ -108,7 +108,9 @@ public class ArtifactController {
 			.repository(repository)
 			.artifactPath(extractArtifactPath(request, repositoryId))
 			.headers(copyHeaders(request))
-			.baseUrl(ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString())
+			// Only the context path, never the artifact path of this request: the handler
+			// builds absolute URLs below this base
+			.baseUrl(ServletUriComponentsBuilder.fromContextPath(request).build().toUriString())
 			.queryString(request.getQueryString())
 			.body(body)
 			.build();

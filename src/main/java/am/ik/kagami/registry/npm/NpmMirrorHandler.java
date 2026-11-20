@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -153,7 +154,10 @@ public class NpmMirrorHandler implements MirrorHandler {
 	private ResponseEntity<Resource> packument(MirrorRequest request, NpmRequestPath.Packument packument) {
 		Optional<MetadataDocument> document;
 		try {
-			document = this.metadataCache.get(request.repositoryId(), request.repository(), packument.packageName());
+			// npm asks for an abridged representation through the Accept header; the
+			// cache keeps the representations apart
+			document = this.metadataCache.get(request.repositoryId(), request.repository(), packument.packageName(),
+					request.headers().getFirst(HttpHeaders.ACCEPT));
 		}
 		catch (MetadataUnavailableException e) {
 			logger.debug("Packument {} is unavailable: {}", packument.packageName(), e.getMessage());
@@ -291,9 +295,10 @@ public class NpmMirrorHandler implements MirrorHandler {
 
 	/**
 	 * The tarball host allowlist: the hosts configured in
-	 * {@code kagami.upstream.tarball-hosts} plus the host of the repository URL, which is
-	 * trusted by definition. An empty allowlist therefore only accepts tarballs served by
-	 * the registry itself.
+	 * {@code kagami.upstream.tarball-hosts} or
+	 * {@code kagami.repositories.<id>.allowed-hosts}, plus the host of the repository
+	 * URL, which is trusted by definition. An empty allowlist therefore only accepts
+	 * tarballs served by the registry itself.
 	 */
 	private boolean isAllowedHost(URI url, KagamiProperties.Repository repository) {
 		String scheme = url.getScheme();
@@ -309,7 +314,12 @@ public class NpmMirrorHandler implements MirrorHandler {
 			.stream()
 			.filter(StringUtils::hasText)
 			.map(candidate -> candidate.toLowerCase(Locale.ROOT))
-			.collect(Collectors.toSet());
+			.collect(Collectors.toCollection(HashSet::new));
+		for (String candidate : repository.allowedHosts()) {
+			if (StringUtils.hasText(candidate)) {
+				allowedHosts.add(candidate.trim().toLowerCase(Locale.ROOT));
+			}
+		}
 		String repositoryHost = repositoryHost(repository.url());
 		if (repositoryHost != null) {
 			allowedHosts.add(repositoryHost);
