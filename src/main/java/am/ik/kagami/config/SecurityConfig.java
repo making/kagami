@@ -88,6 +88,8 @@ class SecurityConfig {
 					authz.requestMatchers(HEAD, garbageCollectionPath).access(anyOf(hasScope(RbacBuiltins.ADMIN_AUTHORITY), hasAuthority(RbacBuiltins.ADMIN_AUTHORITY)));
 					authz.requestMatchers(POST, garbageCollectionPath).access(anyOf(hasScope(RbacBuiltins.ADMIN_AUTHORITY), hasAuthority(RbacBuiltins.ADMIN_AUTHORITY)));
 					authz.requestMatchers(DELETE, garbageCollectionPath).access(anyOf(hasScope(RbacBuiltins.ADMIN_AUTHORITY), hasAuthority(RbacBuiltins.ADMIN_AUTHORITY)));
+					String retentionPath = "/artifacts/%s/retention".formatted(repositoryId);
+					authz.requestMatchers(POST, retentionPath).access(anyOf(hasScope(RbacBuiltins.ADMIN_AUTHORITY), hasAuthority(RbacBuiltins.ADMIN_AUTHORITY)));
 					if (repository.isPrivate()) {
 						authz.requestMatchers(GET, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope(RbacBuiltins.READ_AUTHORITY), hasAuthority(RbacBuiltins.READ_AUTHORITY)));
 						authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope(RbacBuiltins.READ_AUTHORITY), hasAuthority(RbacBuiltins.READ_AUTHORITY)));

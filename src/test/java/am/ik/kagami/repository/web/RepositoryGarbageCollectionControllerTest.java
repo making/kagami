@@ -31,8 +31,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for the administrator cache collection API.
  */
 @SpringBootTest(properties = { "kagami.repositories.test-repo.url=https://repo.maven.apache.org/maven2",
+		"kagami.repositories.test-repo.retention.max-size=1B",
 		"kagami.repositories.npm-repo.url=https://registry.npmjs.org", "kagami.repositories.npm-repo.format=npm",
-		"spring.security.user.name=test-user", "spring.security.user.password=test-password" })
+		"kagami.retention.initial-delay=PT24H", "spring.security.user.name=test-user",
+		"spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
 @WithMockUser(username = "test-user", authorities = "artifacts:admin")
 class RepositoryGarbageCollectionControllerTest {
@@ -155,10 +157,33 @@ class RepositoryGarbageCollectionControllerTest {
 	}
 
 	@Test
+	void retentionEvictsArtifactsOverTheConfiguredLimit() throws Exception {
+		Path artifact = tempDir.resolve("test-repo/retention-big.jar");
+		Path checksum = tempDir.resolve("test-repo/retention-big.jar.sha1");
+		Files.createDirectories(artifact.getParent());
+		Files.writeString(artifact, "artifact");
+		Files.writeString(checksum, "checksum");
+
+		this.mockMvc.perform(post("/artifacts/test-repo/retention").with(csrf()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.evictedPaths[0]").value("retention-big.jar"))
+			.andExpect(jsonPath("$.failures").isEmpty());
+
+		assertThat(artifact).doesNotExist();
+		assertThat(checksum).doesNotExist();
+	}
+
+	@Test
+	void retentionOfAnUnknownRepositoryReturnsNotFound() throws Exception {
+		this.mockMvc.perform(post("/artifacts/unknown/retention")).andExpect(status().isNotFound());
+	}
+
+	@Test
 	@WithMockUser(username = "test-user", authorities = { "artifacts:read", "artifacts:delete" })
 	void adminAuthorityIsRequiredForPreviewAndCollection() throws Exception {
 		this.mockMvc.perform(get("/artifacts/test-repo/gc")).andExpect(status().isForbidden());
 		this.mockMvc.perform(post("/artifacts/test-repo/gc")).andExpect(status().isForbidden());
+		this.mockMvc.perform(post("/artifacts/test-repo/retention")).andExpect(status().isForbidden());
 	}
 
 	@Test

@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.Resource;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.stereotype.Service;
@@ -41,7 +42,7 @@ public class RepositoryService {
 	private final AsyncTaskExecutor taskExecutor;
 
 	public RepositoryService(StorageService storageService, KagamiProperties properties,
-			AsyncTaskExecutor taskExecutor) {
+			@Qualifier("applicationTaskExecutor") AsyncTaskExecutor taskExecutor) {
 		this.storageService = storageService;
 		this.properties = properties;
 		this.taskExecutor = taskExecutor;

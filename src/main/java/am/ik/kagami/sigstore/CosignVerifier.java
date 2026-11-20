@@ -26,6 +26,7 @@ import am.ik.kagami.storage.StorageService;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.io.ApplicationResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -79,7 +80,8 @@ public class CosignVerifier {
 	private final Semaphore verificationSlots;
 
 	public CosignVerifier(StorageService storageService, KagamiProperties properties,
-			RestClient.Builder restClientBuilder, AsyncTaskExecutor taskExecutor) {
+			RestClient.Builder restClientBuilder,
+			@Qualifier("applicationTaskExecutor") AsyncTaskExecutor taskExecutor) {
 		this.storageService = storageService;
 		this.properties = properties;
 		this.verificationSlots = new Semaphore(properties.sigstore().maxConcurrentVerifications(), true);

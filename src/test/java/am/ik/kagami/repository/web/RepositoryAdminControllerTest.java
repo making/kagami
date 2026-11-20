@@ -35,11 +35,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for the cache administration page and its htmx fragments.
  */
 @SpringBootTest(properties = { "kagami.repositories.test-repo.url=https://repo.maven.apache.org/maven2",
+		"kagami.repositories.test-repo.retention.max-age=30d",
 		"kagami.repositories.npm-repo.url=https://registry.npmjs.org", "kagami.repositories.npm-repo.format=npm",
 		"kagami.repositories.npm-repo.token=secret-upstream-token",
 		"kagami.repositories.pypi-repo.url=https://pypi.org/simple", "kagami.repositories.pypi-repo.format=pypi",
-		"kagami.repositories.pypi-repo.allowed-hosts=files.example.com", "spring.security.user.name=test-user",
-		"spring.security.user.password=test-password" })
+		"kagami.repositories.pypi-repo.allowed-hosts=files.example.com", "kagami.retention.initial-delay=PT24H",
+		"spring.security.user.name=test-user", "spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
 @WithMockUser(username = "test-user", authorities = "artifacts:admin")
 class RepositoryAdminControllerTest {
@@ -171,6 +172,34 @@ class RepositoryAdminControllerTest {
 			.andExpect(content().string(containsString("collection/missing")));
 
 		assertThat(candidate).doesNotExist();
+	}
+
+	@Test
+	void adminPageShowsTheRetentionPolicyOfEachRepository() throws Exception {
+		this.mockMvc.perform(get("/admin"))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString("Artifact Retention")))
+			.andExpect(content().string(containsString("max age 30d")))
+			.andExpect(content().string(containsString("Keep forever")));
+	}
+
+	@Test
+	void retentionRunEvictsArtifactsOlderThanThePolicy() throws Exception {
+		Path artifact = tempDir.resolve("test-repo/retention/old.jar");
+		Files.createDirectories(artifact.getParent());
+		Files.writeString(artifact, "artifact");
+		FileTime old = FileTime.from(Instant.now().minus(Duration.ofDays(60)));
+		Files.setLastModifiedTime(artifact, old);
+
+		this.mockMvc
+			.perform(post("/app/admin/retention").param("repositoryId", "test-repo")
+				.header("HX-Request", "true")
+				.with(csrf()))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString("Retention complete")))
+			.andExpect(content().string(containsString("retention/old.jar")));
+
+		assertThat(artifact).doesNotExist();
 	}
 
 	private Path seedMetadataOnly(String name) throws IOException {

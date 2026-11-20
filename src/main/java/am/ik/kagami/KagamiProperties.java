@@ -210,11 +210,13 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * @param token optional bearer token sent to the remote repository instead of Basic
 	 * authentication; used by registries such as Artifactory and GitHub Packages that
 	 * authenticate with a token
+	 * @param retention optional artifact retention policy; when neither limit is set,
+	 * mirrored artifacts are kept forever
 	 */
 	public record Repository(String url, @Nullable String username, @Nullable String password,
 			@DefaultValue("false") boolean isPrivate, @DefaultValue("0") int priority, @DefaultValue Sigstore sigstore,
-			@DefaultValue("maven") String format, @DefaultValue List<String> allowedHosts,
-			@Nullable String token) implements Comparable<Repository> {
+			@DefaultValue("maven") String format, @DefaultValue List<String> allowedHosts, @Nullable String token,
+			@DefaultValue Retention retention) implements Comparable<Repository> {
 
 		/**
 		 * The natural ordering sorts by priority, higher first, so that a plain
@@ -249,7 +251,14 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 			@Nullable private String token;
 
+			@Nullable private Retention retention;
+
 			private Builder() {
+			}
+
+			public Builder retention(@Nullable Retention retention) {
+				this.retention = retention;
+				return this;
 			}
 
 			public Builder allowedHosts(List<String> allowedHosts) {
@@ -297,12 +306,76 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 						this.isPrivate, this.priority,
 						this.sigstore == null ? Sigstore.builder().build() : this.sigstore,
 						Objects.requireNonNull(this.format, "format is required"),
-						this.allowedHosts == null ? List.of() : List.copyOf(this.allowedHosts), this.token);
+						this.allowedHosts == null ? List.of() : List.copyOf(this.allowedHosts), this.token,
+						this.retention == null ? Retention.builder().build() : this.retention);
 			}
 
 			public Builder sigstore(@Nullable Sigstore sigstore) {
 				this.sigstore = sigstore;
 				return this;
+			}
+
+		}
+
+	}
+
+	/**
+	 * Artifact retention policy of a repository. Both limits are optional; when neither
+	 * is set, mirrored artifacts are kept forever.
+	 * <p>
+	 * The policy applies to the artifact storage only. The mutable index cache is bounded
+	 * separately by {@link MetadataCacheConfig}.
+	 *
+	 * @param maxSize the maximum total size of the repository in artifact storage; when
+	 * exceeded, the oldest artifacts are evicted first
+	 * @param maxAge the maximum age of an artifact; an artifact whose newest file is
+	 * older is evicted
+	 */
+	public record Retention(@Nullable DataSize maxSize, @Nullable Duration maxAge) {
+
+		public Retention {
+			if (maxSize != null && maxSize.toBytes() < 1) {
+				throw new IllegalArgumentException("maxSize must be positive");
+			}
+			if (maxAge != null && maxAge.isNegative()) {
+				throw new IllegalArgumentException("maxAge must not be negative");
+			}
+		}
+
+		/**
+		 * Whether the policy removes anything. A policy with neither limit keeps every
+		 * artifact.
+		 * @return {@code true} if at least one limit is set
+		 */
+		public boolean enabled() {
+			return this.maxSize != null || this.maxAge != null;
+		}
+
+		public static Builder builder() {
+			return new Builder();
+		}
+
+		public static final class Builder {
+
+			@Nullable private DataSize maxSize;
+
+			@Nullable private Duration maxAge;
+
+			private Builder() {
+			}
+
+			public Builder maxSize(@Nullable DataSize maxSize) {
+				this.maxSize = maxSize;
+				return this;
+			}
+
+			public Builder maxAge(@Nullable Duration maxAge) {
+				this.maxAge = maxAge;
+				return this;
+			}
+
+			public Retention build() {
+				return new Retention(this.maxSize, this.maxAge);
 			}
 
 		}

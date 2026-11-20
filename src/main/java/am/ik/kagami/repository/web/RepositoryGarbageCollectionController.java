@@ -4,6 +4,8 @@ import am.ik.kagami.repository.RemoteRepositoryService;
 import am.ik.kagami.repository.RepositoryGarbageCollector;
 import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageCollectionResult;
 import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageDirectory;
+import am.ik.kagami.repository.RepositoryRetentionService;
+import am.ik.kagami.repository.RepositoryRetentionService.RetentionResult;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
@@ -24,11 +26,14 @@ public class RepositoryGarbageCollectionController {
 
 	private final RepositoryGarbageCollector garbageCollector;
 
+	private final RepositoryRetentionService retentionService;
+
 	private final RemoteRepositoryService remoteRepositoryService;
 
 	public RepositoryGarbageCollectionController(RepositoryGarbageCollector garbageCollector,
-			RemoteRepositoryService remoteRepositoryService) {
+			RepositoryRetentionService retentionService, RemoteRepositoryService remoteRepositoryService) {
 		this.garbageCollector = garbageCollector;
+		this.retentionService = retentionService;
 		this.remoteRepositoryService = remoteRepositoryService;
 	}
 
@@ -52,6 +57,23 @@ public class RepositoryGarbageCollectionController {
 		}
 		catch (IllegalArgumentException e) {
 			return ResponseEntity.badRequest().build();
+		}
+	}
+
+	/**
+	 * Apply the configured retention policy to one repository now. A repository without a
+	 * policy returns an empty result and keeps every artifact.
+	 */
+	@PostMapping("/{repositoryId}/retention")
+	public ResponseEntity<RetentionResult> applyRetention(@PathVariable String repositoryId) {
+		if (!this.remoteRepositoryService.isRepositoryConfigured(repositoryId)) {
+			return ResponseEntity.notFound().build();
+		}
+		try {
+			return ResponseEntity.ok(this.retentionService.apply(repositoryId));
+		}
+		catch (IOException e) {
+			return ResponseEntity.internalServerError().build();
 		}
 	}
 

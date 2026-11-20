@@ -1,0 +1,33 @@
+{{#hasError}}
+<div class="alert" role="alert">{{error}}</div>
+{{/hasError}}
+{{#retentionCompleted}}
+<div class="gc-result-section" role="status">
+  <div class="section-head">
+    <h3 class="registry-label font-semibold">Retention complete</h3>
+    <p>{{retentionRepositoryId}} / remaining size {{remainingSize}}</p>
+  </div>
+  {{^retentionEnabled}}
+  <div class="alert alert-info">No retention limit is configured for this repository; nothing was evicted.</div>
+  {{/retentionEnabled}}
+  {{#hasEvicted}}
+  <ul class="gc-result-list">
+    {{#evictedPaths}}
+    <li><span class="gc-result-path">{{.}}</span><span class="gc-result-meta">evicted</span></li>
+    {{/evictedPaths}}
+  </ul>
+  {{/hasEvicted}}
+  {{#retentionEnabled}}
+  {{^hasEvicted}}
+  <div class="alert alert-info">No artifacts were evicted.</div>
+  {{/hasEvicted}}
+  {{/retentionEnabled}}
+  {{#hasFailures}}
+  <ul class="gc-result-list">
+    {{#failures}}
+    <li><span class="gc-result-path">{{path}}</span><span class="gc-result-meta">{{message}}</span></li>
+    {{/failures}}
+  </ul>
+  {{/hasFailures}}
+</div>
+{{/retentionCompleted}}
