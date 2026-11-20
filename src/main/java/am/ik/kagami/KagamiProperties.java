@@ -118,8 +118,12 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 					this.rbac == null ? Rbac.builder().build() : this.rbac,
 					Objects.requireNonNullElse(this.sigstore,
 							new SigstoreConfig("cosign", Duration.ofSeconds(60), 2, Duration.ofSeconds(5))),
-					Objects.requireNonNullElseGet(this.upstream, UpstreamConfig::new),
-					Objects.requireNonNullElseGet(this.metadataCache, MetadataCacheConfig::new));
+					Objects.requireNonNullElseGet(this.upstream,
+							() -> new UpstreamConfig(Duration.ofSeconds(5), Duration.ofSeconds(30), 5,
+									Duration.ofSeconds(30), List.of())),
+					Objects.requireNonNullElseGet(this.metadataCache,
+							() -> new MetadataCacheConfig(Duration.ofMinutes(5), Duration.ofHours(1), 256,
+									DataSize.ofMegabytes(10))));
 		}
 
 	}
@@ -428,15 +432,6 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			@DefaultValue("30s") Duration requestTimeout, @DefaultValue("5") int failureThreshold,
 			@DefaultValue("30s") Duration openDuration, @DefaultValue List<String> tarballHosts) {
 
-		public UpstreamConfig() {
-			this(Duration.ofSeconds(5), Duration.ofSeconds(30), 5, Duration.ofSeconds(30), List.of());
-		}
-
-		public UpstreamConfig(Duration connectTimeout, Duration requestTimeout, int failureThreshold,
-				Duration openDuration) {
-			this(connectTimeout, requestTimeout, failureThreshold, openDuration, List.of());
-		}
-
 		public UpstreamConfig {
 			Objects.requireNonNull(connectTimeout, "connectTimeout is required");
 			Objects.requireNonNull(requestTimeout, "requestTimeout is required");
@@ -468,10 +463,6 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 */
 	public record MetadataCacheConfig(@DefaultValue("5m") Duration ttl, @DefaultValue("1h") Duration staleTtl,
 			@DefaultValue("256") int maxEntries, @DefaultValue("10MB") DataSize maxBodySize) {
-
-		public MetadataCacheConfig() {
-			this(Duration.ofMinutes(5), Duration.ofHours(1), 256, DataSize.ofMegabytes(10));
-		}
 
 		public MetadataCacheConfig {
 			Objects.requireNonNull(ttl, "ttl is required");
