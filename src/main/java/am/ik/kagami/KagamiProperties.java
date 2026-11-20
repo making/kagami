@@ -27,6 +27,7 @@ import org.springframework.boot.ssl.pem.PemContent;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.util.StreamUtils;
+import org.springframework.util.unit.DataSize;
 
 /**
  * Configuration properties for Kagami mirror server
@@ -34,7 +35,8 @@ import org.springframework.util.StreamUtils;
 @ConfigurationProperties(prefix = "kagami")
 public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<String, Repository> repositories,
 		@Nullable Proxy proxy, @DefaultValue Jwt jwt, @DefaultValue Authentication authentication,
-		@DefaultValue Rbac rbac, @DefaultValue SigstoreConfig sigstore, @DefaultValue UpstreamConfig upstream) {
+		@DefaultValue Rbac rbac, @DefaultValue SigstoreConfig sigstore, @DefaultValue UpstreamConfig upstream,
+		@DefaultValue MetadataCacheConfig metadataCache) {
 
 	public static Builder builder() {
 		return new Builder();
@@ -58,11 +60,18 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 
 		@Nullable private UpstreamConfig upstream;
 
+		@Nullable private MetadataCacheConfig metadataCache;
+
 		private Builder() {
 		}
 
 		public Builder upstream(@Nullable UpstreamConfig upstream) {
 			this.upstream = upstream;
+			return this;
+		}
+
+		public Builder metadataCache(@Nullable MetadataCacheConfig metadataCache) {
+			this.metadataCache = metadataCache;
 			return this;
 		}
 
@@ -109,7 +118,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 					this.rbac == null ? Rbac.builder().build() : this.rbac,
 					Objects.requireNonNullElse(this.sigstore,
 							new SigstoreConfig("cosign", Duration.ofSeconds(60), 2, Duration.ofSeconds(5))),
-					Objects.requireNonNullElseGet(this.upstream, UpstreamConfig::new));
+					Objects.requireNonNullElseGet(this.upstream, UpstreamConfig::new),
+					Objects.requireNonNullElseGet(this.metadataCache, MetadataCacheConfig::new));
 		}
 
 	}
@@ -328,6 +338,50 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			Objects.requireNonNull(openDuration, "openDuration is required");
 			if (failureThreshold < 1) {
 				throw new IllegalArgumentException("failureThreshold must be at least 1");
+			}
+		}
+	}
+
+	/**
+	 * Settings of the in-memory cache that holds mutable upstream indexes such as
+	 * {@code maven-metadata.xml}, npm packuments and PyPI simple indexes.
+	 * <p>
+	 * Index documents are kept in memory instead of artifact storage: they have absolute
+	 * upstream URLs and a Content-Type that the artifact storage cannot preserve, and
+	 * they would pollute the browse listing. Every Kagami instance revalidates after
+	 * {@code ttl}; the cache is not shared between replicas.
+	 *
+	 * @param ttl how long a cached index is served without asking the upstream again;
+	 * defaults to 5 minutes
+	 * @param staleTtl how long a stale index may be served while the upstream fails,
+	 * after {@code ttl} has elapsed; defaults to 1 hour
+	 * @param maxEntries the maximum number of cached indexes; the least recently used
+	 * entry is evicted first; defaults to 256
+	 * @param maxBodySize the maximum size of an upstream index body; a larger body is
+	 * rejected instead of being read into memory; defaults to 10MB
+	 */
+	public record MetadataCacheConfig(@DefaultValue("5m") Duration ttl, @DefaultValue("1h") Duration staleTtl,
+			@DefaultValue("256") int maxEntries, @DefaultValue("10MB") DataSize maxBodySize) {
+
+		public MetadataCacheConfig() {
+			this(Duration.ofMinutes(5), Duration.ofHours(1), 256, DataSize.ofMegabytes(10));
+		}
+
+		public MetadataCacheConfig {
+			Objects.requireNonNull(ttl, "ttl is required");
+			Objects.requireNonNull(staleTtl, "staleTtl is required");
+			Objects.requireNonNull(maxBodySize, "maxBodySize is required");
+			if (ttl.isNegative()) {
+				throw new IllegalArgumentException("ttl must not be negative");
+			}
+			if (staleTtl.isNegative()) {
+				throw new IllegalArgumentException("staleTtl must not be negative");
+			}
+			if (maxEntries < 1) {
+				throw new IllegalArgumentException("maxEntries must be at least 1");
+			}
+			if (maxBodySize.toBytes() < 1) {
+				throw new IllegalArgumentException("maxBodySize must be positive");
 			}
 		}
 	}

@@ -19,6 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
@@ -217,6 +219,20 @@ class ArtifactControllerTest {
 			.perform(get("/artifacts/test-central/org/example/conditional-1.0.zip")
 				.header(HttpHeaders.IF_MODIFIED_SINCE, future))
 			.andExpect(status().isNotModified());
+	}
+
+	@Test
+	void getMutableIndex_shouldBeCachedOutsideStorageAndStayOutOfTheBrowseListing() throws Exception {
+		this.mockMvc.perform(get("/artifacts/test-central/junit/junit/maven-metadata.xml"))
+			.andExpect(status().isOk())
+			.andExpect(content().contentType("application/xml"))
+			.andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-cache, public"));
+
+		// The index is held in the metadata cache, not in the artifact storage
+		assertThat(tempDir.resolve("test-central/junit/junit/maven-metadata.xml")).doesNotExist();
+		this.mockMvc.perform(get("/browse/test-central/junit/junit"))
+			.andExpect(status().isOk())
+			.andExpect(content().string(not(containsString("maven-metadata.xml"))));
 	}
 
 	@Test

@@ -204,6 +204,28 @@ Notes:
 - The storage type is a bean condition, so a GraalVM native image is bound to the type it was
   built with. Set `kagami.storage.type=s3` at build time to build a native image for S3.
 
+### Mutable Index Cache
+
+Maven `maven-metadata.xml` changes upstream after it has been fetched once. Kagami keeps mutable
+indexes in an in-memory cache instead of artifact storage, so they are revalidated rather than
+served stale forever, keep their upstream Content-Type, and do not appear in the browse listing.
+
+```properties
+# Serve a cached index without revalidating for this long (default 5m)
+kagami.metadata-cache.ttl=5m
+# Serve stale content while the upstream fails, beyond the TTL (default 1h)
+kagami.metadata-cache.stale-ttl=1h
+# Maximum number of cached indexes (default 256)
+kagami.metadata-cache.max-entries=256
+# Maximum size of an upstream index body (default 10MB)
+kagami.metadata-cache.max-body-size=10MB
+```
+
+After the TTL, a request triggers a conditional refetch (`If-None-Match` / `If-Modified-Since`)
+and a `304` keeps the stored body. While the upstream fails, the last body is served for up to
+`stale-ttl` beyond the TTL; after that the request returns `502`. The cache is per instance and
+in memory: replicas do not share it, and every instance revalidates after its own TTL.
+
 ### Repository with Authentication
 
 ```properties

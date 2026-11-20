@@ -47,8 +47,10 @@ final class ArtifactResponses {
 		HttpHeaders headers = new HttpHeaders();
 		headers.putAll(response.getHeaders());
 		headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
-		String etag = null;
-		if (length >= 0) {
+		// A handler that already knows the upstream validator (the metadata cache keeps
+		// the upstream ETag) wins over the one derived from the stored object
+		String etag = headers.getETag();
+		if (etag == null && length >= 0) {
 			etag = "\"%x-%x\"".formatted(length, Math.max(lastModified, 0));
 			headers.setETag(etag);
 		}
