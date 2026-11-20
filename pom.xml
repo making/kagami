@@ -249,6 +249,7 @@
             <env>
               <BP_OCI_SOURCE>https://github.com/${env.GITHUB_REPOSITORY}</BP_OCI_SOURCE>
               <BP_OCI_REVISION>${env.GITHUB_SHA}</BP_OCI_REVISION>
+              <BP_SPRING_CLOUD_BINDINGS_DISABLED>true</BP_SPRING_CLOUD_BINDINGS_DISABLED>
             </env>
           </image>
           <additionalProperties>
