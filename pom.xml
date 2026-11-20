@@ -396,6 +396,24 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>tanzu</id>
+      <activation>
+          <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.vmware.tanzu.spring</groupId>
+            <artifactId>tanzu-spring-maven-plugin</artifactId>
+            <version>1.0.0</version>
+            <configuration>
+                <advisorVersion>1.7.2</advisorVersion>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 
 </project>
