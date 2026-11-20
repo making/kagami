@@ -64,7 +64,7 @@ class RemoteRepositoryServiceTest {
 			.jwt(new KagamiProperties.Jwt(null, null))
 			.authentication(new KagamiProperties.Authentication(KagamiProperties.AuthenticationType.SIMPLE, List.of()))
 			.upstream(new KagamiProperties.UpstreamConfig(Duration.ofSeconds(1), Duration.ofSeconds(10), 2,
-					Duration.ofSeconds(30)))
+					Duration.ofSeconds(30), List.of()))
 			.build();
 	}
 
@@ -230,7 +230,7 @@ class RemoteRepositoryServiceTest {
 				.authentication(
 						new KagamiProperties.Authentication(KagamiProperties.AuthenticationType.SIMPLE, List.of()))
 				.upstream(new KagamiProperties.UpstreamConfig(Duration.ofSeconds(1), Duration.ofSeconds(2), 2,
-						Duration.ofSeconds(30)))
+						Duration.ofSeconds(30), List.of()))
 				.build();
 			RemoteRepositoryService service = service(properties);
 
