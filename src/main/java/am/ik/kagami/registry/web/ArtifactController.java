@@ -19,6 +19,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,7 +51,8 @@ public class ArtifactController {
 	}
 
 	@GetMapping("/{repositoryId}/**")
-	public ResponseEntity<Resource> getArtifact(@PathVariable String repositoryId, HttpServletRequest request) {
+	public ResponseEntity<Resource> getArtifact(@PathVariable String repositoryId, HttpServletRequest request,
+			UriComponentsBuilder uriBuilder) {
 		Repository repository = configuredRepository(repositoryId);
 		if (repository == null) {
 			return ResponseEntity.notFound().build();
@@ -64,6 +66,7 @@ public class ArtifactController {
 			.repository(repository)
 			.artifactPath(extractArtifactPath(request, repositoryId))
 			.headers(copyHeaders(request))
+			.baseUrl(uriBuilder.path("").build().toUriString())
 			.build();
 		try {
 			ResponseEntity<Resource> response = handler.handle(mirrorRequest);
