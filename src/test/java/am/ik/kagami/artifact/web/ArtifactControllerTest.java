@@ -3,6 +3,9 @@ package am.ik.kagami.artifact.web;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,12 +16,14 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -161,6 +166,59 @@ class ArtifactControllerTest {
 	@Test
 	void getArtifact_withInvalidPath_shouldReturn400() throws Exception {
 		this.mockMvc.perform(get("/artifacts/test-npm/~unexpected/name")).andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void headRequest_whenArtifactStored_shouldReturnHeadersWithoutBody() throws Exception {
+		Path artifact = tempDir.resolve("test-central/org/example/head-1.0.tar.gz");
+		Files.createDirectories(artifact.getParent());
+		Files.writeString(artifact, "0123456789");
+
+		this.mockMvc.perform(head("/artifacts/test-central/org/example/head-1.0.tar.gz"))
+			.andExpect(status().isOk())
+			.andExpect(header().string(HttpHeaders.CONTENT_LENGTH, "10"))
+			.andExpect(header().string(HttpHeaders.ACCEPT_RANGES, "bytes"))
+			.andExpect(header().string(HttpHeaders.CONTENT_TYPE, "application/gzip"))
+			.andExpect(content().string(""));
+	}
+
+	@Test
+	void rangeRequest_whenArtifactStored_shouldReturnTheRequestedBytes() throws Exception {
+		Path artifact = tempDir.resolve("test-central/org/example/range-1.0.whl");
+		Files.createDirectories(artifact.getParent());
+		Files.writeString(artifact, "0123456789");
+
+		this.mockMvc
+			.perform(get("/artifacts/test-central/org/example/range-1.0.whl").header(HttpHeaders.RANGE, "bytes=0-3"))
+			.andExpect(status().isPartialContent())
+			.andExpect(header().string(HttpHeaders.CONTENT_RANGE, "bytes 0-3/10"))
+			.andExpect(header().string(HttpHeaders.CONTENT_LENGTH, "4"))
+			.andExpect(header().string(HttpHeaders.ACCEPT_RANGES, "bytes"))
+			.andExpect(content().string("0123"));
+	}
+
+	@Test
+	void conditionalRequest_whenArtifactUnchanged_shouldReturn304() throws Exception {
+		Path artifact = tempDir.resolve("test-central/org/example/conditional-1.0.zip");
+		Files.createDirectories(artifact.getParent());
+		Files.writeString(artifact, "0123456789");
+
+		MvcResult first = this.mockMvc.perform(get("/artifacts/test-central/org/example/conditional-1.0.zip"))
+			.andExpect(status().isOk())
+			.andReturn();
+		String etag = java.util.Objects.requireNonNull(first.getResponse().getHeader(HttpHeaders.ETAG));
+		assertThat(etag).isNotBlank();
+
+		this.mockMvc
+			.perform(get("/artifacts/test-central/org/example/conditional-1.0.zip").header(HttpHeaders.IF_NONE_MATCH,
+					etag))
+			.andExpect(status().isNotModified());
+
+		String future = DateTimeFormatter.RFC_1123_DATE_TIME.format(ZonedDateTime.now(ZoneOffset.UTC).plusHours(1));
+		this.mockMvc
+			.perform(get("/artifacts/test-central/org/example/conditional-1.0.zip")
+				.header(HttpHeaders.IF_MODIFIED_SINCE, future))
+			.andExpect(status().isNotModified());
 	}
 
 	@Test

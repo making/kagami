@@ -36,7 +36,7 @@ public abstract class StoredArtifactMirrorHandler implements MirrorHandler {
 		}
 		Resource resource = stored.get();
 		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.parseMediaType(ArtifactContentType.of(request.artifactPath())));
+		headers.setContentType(MediaType.parseMediaType(ArtifactContentType.of(request.artifactPath(), resource)));
 		headers.setContentLength(resource.contentLength());
 		headers.set(HttpHeaders.CONTENT_DISPOSITION, "inline;filename=" + location.name());
 		return new ResponseEntity<>(resource, headers, HttpStatus.OK);

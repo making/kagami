@@ -66,7 +66,9 @@ public class ArtifactController {
 			.headers(copyHeaders(request))
 			.build();
 		try {
-			return handler.handle(mirrorRequest);
+			ResponseEntity<Resource> response = handler.handle(mirrorRequest);
+			return ArtifactResponses.enhance(response, mirrorRequest.headers(),
+					"HEAD".equalsIgnoreCase(request.getMethod()));
 		}
 		catch (IllegalArgumentException e) {
 			// Rejected by the common ArtifactLocation path validation
