@@ -25,6 +25,7 @@
           <th class="registry-label text-left">Repository</th>
           <th class="registry-label">Format</th>
           <th class="registry-label">Format Settings</th>
+          <th class="registry-label">Retention</th>
         </tr>
       </thead>
       <tbody>
@@ -36,6 +37,7 @@
           </td>
           <td><span class="registry-label badge-format">{{formatLabel}}</span></td>
           <td><span class="row-value">{{formatSetting}}</span></td>
+          <td><span class="row-value">{{retentionSetting}}</span></td>
         </tr>
         {{/repositories}}
       </tbody>
@@ -84,6 +86,40 @@
     </form>
     <div id="gc-result" class="gc-result">
       {{>fragments/admin-gc-result}}
+    </div>
+  </div>
+
+  <div class="panel" id="retention-panel">
+    <div class="panel-head">
+      <h2 class="registry-label panel-head-label">Artifact Retention</h2>
+      <span class="registry-label panel-head-meta">scheduled sweep</span>
+    </div>
+    <div class="section-head">
+      <p>Artifacts are evicted together with their checksums and sigstore bundles, oldest first, when they exceed the repository's <code>retention.max-age</code> or <code>retention.max-size</code> limit. A repository without a limit is kept as it is. The scheduled sweep runs in the background; use the button to apply the policy now.</p>
+    </div>
+    <form id="retention-form" action="/app/admin/retention" method="post" hx-post="/app/admin/retention" hx-indicator="#retention-run-button" hx-target="#retention-result" hx-swap="innerHTML">
+      {{#_csrf}}<input type="hidden" name="_csrf" value="{{_csrf.token}}"/>{{/_csrf}}
+      <div class="gc-form">
+        <div class="gc-form-fields">
+          <div class="form-group">
+            <label class="form-label" for="retention-repository">Repository</label>
+            <select class="form-input" id="retention-repository" name="repositoryId" required>
+              {{#repositories}}<option value="{{id}}">{{id}}{{#isPrivate}} (private){{/isPrivate}}{{^retentionEnabled}} - keep forever{{/retentionEnabled}}</option>{{/repositories}}
+            </select>
+          </div>
+        </div>
+        {{^hasRepositories}}
+        <div class="alert" role="alert">No repositories are configured.</div>
+        {{/hasRepositories}}
+        <div class="page-actions gc-actions">
+          <button type="submit" id="retention-run-button" class="button button-primary button-loading"
+                  hx-confirm="Apply the retention policy now? Evicted artifacts are refetched from the upstream on the next request."
+                  {{^hasRepositories}}disabled{{/hasRepositories}}>Apply Retention Policy</button>
+        </div>
+      </div>
+    </form>
+    <div id="retention-result" class="gc-result">
+      {{>fragments/admin-retention-result}}
     </div>
   </div>
 

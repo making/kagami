@@ -5,14 +5,19 @@ import am.ik.kagami.repository.RepositoryGarbageCollector;
 import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageCollectionFailure;
 import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageCollectionResult;
 import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageDirectory;
+import am.ik.kagami.repository.RepositoryRetentionService;
+import am.ik.kagami.repository.RepositoryRetentionService.RetentionFailure;
+import am.ik.kagami.repository.RepositoryRetentionService.RetentionResult;
 import am.ik.kagami.repository.RepositoryService;
 import am.ik.kagami.repository.RepositoryService.RepositorySummary;
 import am.ik.kagami.support.Durations;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -36,9 +41,13 @@ public class RepositoryAdminController {
 
 	private final RepositoryGarbageCollector garbageCollector;
 
-	public RepositoryAdminController(RepositoryService repositoryService, RepositoryGarbageCollector garbageCollector) {
+	private final RepositoryRetentionService retentionService;
+
+	public RepositoryAdminController(RepositoryService repositoryService, RepositoryGarbageCollector garbageCollector,
+			RepositoryRetentionService retentionService) {
 		this.repositoryService = repositoryService;
 		this.garbageCollector = garbageCollector;
+		this.retentionService = retentionService;
 	}
 
 	/**
@@ -124,6 +133,35 @@ public class RepositoryAdminController {
 		}
 	}
 
+	/**
+	 * Apply the configured retention policy of the selected repository now.
+	 */
+	@PostMapping("/app/admin/retention")
+	public Object applyRetention(@RequestParam String repositoryId, HttpServletRequest request, Model model) {
+		if (!this.repositoryService.findRepository(repositoryId).isPresent()) {
+			return error(request, model, HttpStatus.NOT_FOUND, "Repository not found.");
+		}
+		try {
+			RetentionResult result = this.retentionService.apply(repositoryId);
+			List<FailureRow> failures = result.failures()
+				.stream()
+				.<FailureRow>map(RepositoryAdminController::failureRow)
+				.toList();
+			model.addAttribute("retentionCompleted", true);
+			model.addAttribute("retentionRepositoryId", repositoryId);
+			model.addAttribute("retentionEnabled", this.retentionService.isEnabled(repositoryId));
+			model.addAttribute("evictedPaths", result.evictedPaths());
+			model.addAttribute("hasEvicted", !result.evictedPaths().isEmpty());
+			model.addAttribute("remainingSize", Formats.fileSize(result.remainingSize()));
+			model.addAttribute("failures", failures);
+			model.addAttribute("hasFailures", !failures.isEmpty());
+			return retentionView(request, model, HttpStatus.OK);
+		}
+		catch (IOException e) {
+			return error(request, model, HttpStatus.INTERNAL_SERVER_ERROR, "Failed to apply the retention policy.");
+		}
+	}
+
 	private Object error(HttpServletRequest request, Model model, HttpStatus status, String message) {
 		model.addAttribute("hasError", true);
 		model.addAttribute("error", message);
@@ -137,10 +175,17 @@ public class RepositoryAdminController {
 		return view;
 	}
 
+	private Object retentionView(HttpServletRequest request, Model model, HttpStatus status) {
+		addPageModel(model);
+		ModelAndView view = new ModelAndView(isPartial(request) ? "fragments/admin-retention-result" : "pages/admin");
+		view.setStatus(status);
+		return view;
+	}
+
 	private void addPageModel(Model model) {
 		List<RepositoryOption> repositories = this.repositoryService.getRepositories()
 			.stream()
-			.<RepositoryOption>map(RepositoryAdminController::repositoryOption)
+			.<RepositoryOption>map(this::repositoryOption)
 			.toList();
 		model.addAttribute("title", "Cache Administration");
 		model.addAttribute("repositories", repositories);
@@ -148,9 +193,39 @@ public class RepositoryAdminController {
 		model.addAttribute("defaultOlderThanHours", DEFAULT_OLDER_THAN_HOURS);
 	}
 
-	private static RepositoryOption repositoryOption(RepositorySummary repository) {
+	private RepositoryOption repositoryOption(RepositorySummary repository) {
 		return new RepositoryOption(repository.id(), repository.url(), repository.isPrivate(),
-				ConfigExampleCatalog.formatLabel(repository.format()), formatSetting(repository));
+				ConfigExampleCatalog.formatLabel(repository.format()), formatSetting(repository),
+				retentionSetting(repository.id()), this.retentionService.isEnabled(repository.id()));
+	}
+
+	/**
+	 * The retention policy summarized on the administration page.
+	 */
+	private String retentionSetting(String repositoryId) {
+		return this.retentionService.retention(repositoryId).map(retention -> {
+			List<String> limits = new ArrayList<>();
+			if (retention.maxSize() != null) {
+				limits.add("max size " + Formats.fileSize(retention.maxSize().toBytes()));
+			}
+			if (retention.maxAge() != null) {
+				limits.add("max age " + durationLabel(retention.maxAge()));
+			}
+			return String.join(", ", limits);
+		}).orElse("Keep forever");
+	}
+
+	private static String durationLabel(Duration duration) {
+		if (duration.toDays() > 0 && duration.toHours() % 24 == 0) {
+			return duration.toDays() + "d";
+		}
+		if (duration.toHours() > 0 && duration.toMinutes() % 60 == 0) {
+			return duration.toHours() + "h";
+		}
+		if (duration.toMinutes() > 0 && duration.getSeconds() % 60 == 0) {
+			return duration.toMinutes() + "m";
+		}
+		return duration.getSeconds() + "s";
 	}
 
 	/**
@@ -172,6 +247,10 @@ public class RepositoryAdminController {
 		return new FailureRow(failure.path(), failure.message());
 	}
 
+	private static FailureRow failureRow(RetentionFailure failure) {
+		return new FailureRow(failure.path(), failure.message());
+	}
+
 	private static Duration olderThan(long olderThanHours) {
 		return Durations.hours(olderThanHours, MAX_OLDER_THAN_HOURS, "Older than");
 	}
@@ -182,8 +261,12 @@ public class RepositoryAdminController {
 
 	/**
 	 * A configured repository shown in the administration forms.
+	 *
+	 * @param retentionSetting the configured retention limits, or "Keep forever"
+	 * @param retentionEnabled whether a retention limit is configured
 	 */
-	record RepositoryOption(String id, String url, boolean isPrivate, String formatLabel, String formatSetting) {
+	record RepositoryOption(String id, String url, boolean isPrivate, String formatLabel, String formatSetting,
+			String retentionSetting, boolean retentionEnabled) {
 	}
 
 	/**

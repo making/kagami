@@ -176,8 +176,9 @@ registry (query string and request body included) and their status is propagated
 is stored. `PUT` and `PATCH` are not mapped, so `npm publish` and `npm dist-tag` return
 `405`.
 
-The path `/artifacts/{repositoryId}/gc` is reserved for [cache garbage
-collection](#cache-garbage-collection) and takes precedence over a package named `gc`.
+The paths `/artifacts/{repositoryId}/gc` and `/artifacts/{repositoryId}/retention` are
+reserved for [cache garbage collection](#cache-garbage-collection) and [artifact
+retention](#artifact-retention) and take precedence over a package of the same name.
 
 **Status Codes:**
 - `200 OK`: Metadata or tarball returned
@@ -331,6 +332,50 @@ Authorization: Bearer <jwt>
 - `403 Forbidden`: Principal lacks `artifacts:admin`
 - `404 Not Found`: Repository is not configured
 - `500 Internal Server Error`: Storage error while listing or deleting
+
+---
+
+### Artifact Retention
+
+A repository with `kagami.repositories.<id>.retention.max-age` or
+`retention.max-size` configured is swept in the background (default every hour, see
+`kagami.retention.sweep-interval`). The sweep evicts an artifact together with its checksums,
+signature files and sigstore bundles, oldest modification time first. A repository without a
+limit keeps every artifact. The policy is also shown on the administration page.
+
+`POST /artifacts/{repositoryId}/retention` applies the policy of one repository immediately.
+
+**Parameters:**
+- `repositoryId` (path, required): Repository identifier
+
+**Example Request:**
+```
+POST /artifacts/central/retention
+Authorization: Bearer <jwt>
+```
+
+**Response:**
+```json
+{
+  "repositoryId": "central",
+  "evictedPaths": ["org/example/lib/1.0/lib-1.0.jar"],
+  "failures": [],
+  "remainingSize": 1048576
+}
+```
+
+A repository without a retention policy returns an empty `evictedPaths` list and leaves
+storage unchanged. `evictedPaths` lists the artifact path, not each sidecar; the sidecars were
+removed with it. An evicted artifact is fetched from the upstream again on the next request.
+
+**Status Codes:**
+- `200 OK`: The policy was applied
+- `401 Unauthorized`: Authentication required
+- `403 Forbidden`: Principal lacks `artifacts:admin`
+- `404 Not Found`: Repository is not configured
+- `500 Internal Server Error`: Storage error while scanning or deleting
+
+The metrics and the full configuration reference are described in the README.
 
 ---
 

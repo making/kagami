@@ -268,6 +268,55 @@ and a `304` keeps the stored body. While the upstream fails, the last body is se
 `stale-ttl` beyond the TTL; after that the request returns `502`. The cache is per instance and
 in memory: replicas do not share it, and every instance revalidates after its own TTL.
 
+### Artifact Retention
+
+By default a mirrored artifact is stored forever. A repository can instead limit the age or
+the total size of its artifact storage:
+
+```properties
+# Evict artifacts whose newest file is older than 30 days
+kagami.repositories.central.retention.max-age=30d
+# Evict the oldest artifacts until the repository is at most 20 GB
+kagami.repositories.central.retention.max-size=20GB
+```
+
+Both limits are optional and independent; when neither is set, nothing is evicted. The policy
+is applied by a background sweep every hour, and can be applied at once from the administration
+page or the API. The sweep interval and its first delay are configurable:
+
+```properties
+kagami.retention.sweep-interval=1h
+kagami.retention.initial-delay=1m
+```
+
+The eviction unit is an artifact together with its sidecar files: checksums (`.sha1`,
+`.sha256`, `.sha512`, `.md5`), signature files (`.asc`) and sigstore bundles. A sidecar is
+never removed without its artifact, and an artifact is never removed without its sidecars.
+Eviction order is oldest modification time first; access time is not tracked, so a frequently
+downloaded artifact is not protected by its downloads. When `max-size` is set, a single
+artifact larger than the limit is still evicted because the limit is a hard cap.
+
+The policy applies to artifact storage only. Mutable indexes (`maven-metadata.xml`, npm
+packuments, PyPI simple indexes) live in the index cache described above and are not touched.
+An evicted artifact is downloaded from the upstream again on the next request. The sweep
+re-checks each file before deleting it, so an artifact stored by a concurrent request is
+preserved; a download that is already streaming keeps its opened object.
+
+Replicas do not share the eviction bookkeeping: every instance runs its own sweep against the
+storage it can see. With local storage each replica therefore has an independent cache. With
+shared object storage every replica sees the same repository and each sweep scans it again, so
+either run the sweep on one replica only (set `kagami.retention.sweep-interval` high on the
+others) or accept the repeated scans. The metrics are per instance as well.
+
+The sweep publishes these metrics:
+
+- `kagami.retention.evicted` (counter, tag `repository`): artifacts removed
+- `kagami.retention.evicted.bytes` (counter, tag `repository`): bytes removed
+- `kagami.retention.size` (gauge, tag `repository`): repository size in bytes after the last
+  sweep
+
+The administrative API is described in [docs/api.md](docs/api.md#artifact-retention).
+
 ### Repository with Authentication
 
 ```properties
