@@ -106,13 +106,33 @@ public class MockServer implements AutoCloseable {
 		server.stop(0);
 	}
 
-	public record Request(HttpMethod method, String path, Map<String, String> queryParams) {
+	public record Request(HttpMethod method, String path, Map<String, String> queryParams,
+			Map<String, String> headers) {
 		public static Request from(HttpExchange exchange) {
 			HttpMethod method = HttpMethod.valueOf(exchange.getRequestMethod());
 			URI uri = exchange.getRequestURI();
 			String path = uri.getPath();
 			Map<String, String> queryParams = parseQueryString(uri.getQuery());
-			return new Request(method, path, queryParams);
+			Map<String, String> headers = new HashMap<>();
+			exchange.getRequestHeaders().forEach((name, values) -> {
+				if (!values.isEmpty()) {
+					headers.put(name, values.getFirst());
+				}
+			});
+			return new Request(method, path, queryParams, Map.copyOf(headers));
+		}
+
+		/**
+		 * The first value of a request header, or {@code null} if the client did not send
+		 * it.
+		 */
+		public @Nullable String header(String name) {
+			return this.headers.entrySet()
+				.stream()
+				.filter(entry -> entry.getKey().equalsIgnoreCase(name))
+				.map(Map.Entry::getValue)
+				.findFirst()
+				.orElse(null);
 		}
 
 		private static Map<String, String> parseQueryString(String query) {
