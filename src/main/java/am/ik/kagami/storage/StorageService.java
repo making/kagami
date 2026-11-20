@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 import org.springframework.core.io.Resource;
 
 /**
@@ -22,6 +23,21 @@ public interface StorageService {
 	 * @throws IOException if an I/O error occurs
 	 */
 	void store(ArtifactLocation location, InputStream inputStream) throws IOException;
+
+	/**
+	 * Store an artifact from an input stream together with the content type it should be
+	 * served with, typically the Content-Type reported by the upstream. A backend that
+	 * keeps object metadata persists it; the default implementation ignores it because
+	 * the backend can only derive the content type from the extension.
+	 * @param location the location of the artifact; must not be the repository root
+	 * @param inputStream the input stream to read from
+	 * @param contentType the content type to record, or {@code null} to derive it
+	 * @throws IOException if an I/O error occurs
+	 */
+	default void store(ArtifactLocation location, InputStream inputStream, @Nullable String contentType)
+			throws IOException {
+		store(location, inputStream);
+	}
 
 	/**
 	 * Retrieve an artifact as a Resource

@@ -16,7 +16,7 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
  * {@link #contentLength()} and {@link #lastModified()} answer from the metadata without
  * another request; only {@link #getInputStream()} talks to S3.
  */
-final class S3ObjectResource extends AbstractResource {
+final class S3ObjectResource extends AbstractResource implements ContentTypeAware {
 
 	private final S3Client s3Client;
 
@@ -28,6 +28,8 @@ final class S3ObjectResource extends AbstractResource {
 
 	private final long contentLength;
 
+	private final @Nullable String contentType;
+
 	private final Instant lastModified;
 
 	private S3ObjectResource(Builder builder) {
@@ -36,6 +38,7 @@ final class S3ObjectResource extends AbstractResource {
 		this.key = Objects.requireNonNull(builder.key, "key is required");
 		this.filename = Objects.requireNonNull(builder.filename, "filename is required");
 		this.contentLength = Objects.requireNonNull(builder.contentLength, "contentLength is required");
+		this.contentType = builder.contentType;
 		this.lastModified = Objects.requireNonNull(builder.lastModified, "lastModified is required");
 	}
 
@@ -79,6 +82,11 @@ final class S3ObjectResource extends AbstractResource {
 	}
 
 	@Override
+	public @Nullable String getContentType() {
+		return this.contentType;
+	}
+
+	@Override
 	public String getDescription() {
 		return "S3 object [s3://%s/%s]".formatted(this.bucket, this.key);
 	}
@@ -94,6 +102,8 @@ final class S3ObjectResource extends AbstractResource {
 		@Nullable private String filename;
 
 		@Nullable private Long contentLength;
+
+		@Nullable private String contentType;
 
 		@Nullable private Instant lastModified;
 
@@ -122,6 +132,11 @@ final class S3ObjectResource extends AbstractResource {
 
 		Builder contentLength(Long contentLength) {
 			this.contentLength = contentLength;
+			return this;
+		}
+
+		Builder contentType(@Nullable String contentType) {
+			this.contentType = contentType;
 			return this;
 		}
 

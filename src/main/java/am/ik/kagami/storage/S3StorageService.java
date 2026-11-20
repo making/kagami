@@ -72,8 +72,16 @@ public class S3StorageService implements StorageService {
 
 	@Override
 	public void store(ArtifactLocation location, InputStream inputStream) throws IOException {
+		store(location, inputStream, null);
+	}
+
+	@Override
+	public void store(ArtifactLocation location, InputStream inputStream, @Nullable String contentType)
+			throws IOException {
 		String key = key(location.requireArtifactPath());
-		ObjectMetadata metadata = ObjectMetadata.builder().contentType(ArtifactContentType.of(location.name())).build();
+		String storedContentType = contentType != null && !contentType.isBlank() ? contentType
+				: ArtifactContentType.of(location.name());
+		ObjectMetadata metadata = ObjectMetadata.builder().contentType(storedContentType).build();
 		try {
 			S3OutputStream outputStream = this.outputStreamProvider.create(this.bucket, key, metadata);
 			try {
@@ -103,6 +111,7 @@ public class S3StorageService implements StorageService {
 			.key(key)
 			.filename(location.name())
 			.contentLength(head.contentLength())
+			.contentType(head.contentType())
 			.lastModified(lastModified(head.lastModified()))
 			.build());
 	}

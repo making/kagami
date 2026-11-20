@@ -66,7 +66,7 @@ public class MavenMirrorHandler implements MirrorHandler {
 
 		if (retrieved.isPresent() && retrieved.get().exists()) {
 			Resource resource = retrieved.get();
-			MediaType contentType = MediaType.parseMediaType(ArtifactContentType.of(request.artifactPath()));
+			MediaType contentType = MediaType.parseMediaType(ArtifactContentType.of(request.artifactPath(), resource));
 			String disposition = INLINE_MEDIA_TYPES.contains(contentType) ? "inline" : "attachment";
 			CacheControl cacheControl = CacheControl.maxAge(Duration.ofSeconds(31536000));
 			HttpHeaders headers = new HttpHeaders();
