@@ -25,6 +25,16 @@ public interface MirrorHandler {
 	Format format();
 
 	/**
+	 * The revalidation policy for an artifact path. Formats that mix immutable artifacts
+	 * with mutable index documents override this.
+	 * @param artifactPath the decoded path relative to the repository root
+	 * @return the policy; immutable unless the handler knows better
+	 */
+	default RevalidationPolicy revalidationPolicy(String artifactPath) {
+		return RevalidationPolicy.IMMUTABLE;
+	}
+
+	/**
 	 * Serve a mirrored request.
 	 * @param request the decoded and routed request
 	 * @return the response, including status, headers and body
