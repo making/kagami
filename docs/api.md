@@ -1,10 +1,15 @@
 # Kagami API Documentation
 
-Kagami is a mirror server for Maven repositories. This document describes the API endpoints available for retrieving and managing artifacts, and the server-rendered web UI.
+Kagami is a mirror server for Maven, npm and PyPI repositories. This document describes the API endpoints available for retrieving and managing artifacts, the format-specific registry endpoints, and the server-rendered web UI.
 
 ## Base URL
 
-Artifact operations are available at `/artifacts`. The web UI (home, repository browse and token generation pages) is server-rendered from `/`, `/browse/**` and `/token`.
+Artifact operations are available at `/artifacts`. A repository serves the format set by
+`kagami.repositories.<id>.format` (`maven`, `npm` or `pypi`), and the path below
+`/artifacts/{repositoryId}/` is interpreted by that format. The repository id, the token
+scope, the private/public rules, deletion and garbage collection are the same for every
+format. The web UI (home, repository browse and token generation pages) is server-rendered
+from `/`, `/browse/**` and `/token`.
 
 ## Authentication
 
@@ -39,6 +44,12 @@ The web interface features:
 - GET requires the `artifacts:read` scope, DELETE requires the `artifacts:delete`
   scope, and the cache garbage collection endpoints require `artifacts:admin`
   (authenticated web UI sessions with USER role are also accepted).
+
+Registry clients use these same schemes:
+
+- npm sends the token from its `_authToken` setting as `Authorization: Bearer <jwt>`.
+- pip sends Basic credentials, so the token is the password part and the username is
+  ignored.
 
 JWT tokens must be generated through the authenticated web UI. See the [Token Management](#token-management) section for details.
 
@@ -117,6 +128,130 @@ DELETE /artifacts/central/org/springframework/spring-core/5.3.21/spring-core-5.3
 - `403 Forbidden`: Token lacks required scope
 - `404 Not Found`: Repository or file not found
 - `500 Internal Server Error`: Server error
+
+---
+
+### npm Registry Endpoints
+
+These endpoints are served by a repository with `kagami.repositories.<id>.format=npm`.
+The registry root is `/artifacts/{repositoryId}/`; configure npm with
+`registry=http://<host>/artifacts/{repositoryId}/`.
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| GET | `/artifacts/{repositoryId}/{package}` | Packument (all versions), rewritten |
+| GET | `/artifacts/{repositoryId}/{package}/{version}` | Single version manifest, rewritten |
+| GET | `/artifacts/{repositoryId}/{package}/-/{file}` | Tarball |
+| GET | `/artifacts/{repositoryId}/-/ping` | Liveness check, answered locally |
+| GET | `/artifacts/{repositoryId}/-/v1/search` | Search, proxied |
+| POST | `/artifacts/{repositoryId}/-/npm/v1/security/audits/quick` | Audit, proxied |
+
+A scoped package is addressed as `@scope%2Fname` or `@scope/name`; both reach the same
+packument and tarballs.
+
+**Response rewriting.** The packument and version manifest are returned with every
+`dist.tarball` value replaced by
+`{base}/artifacts/{repositoryId}/{package}/-/{file}`, so npm downloads the tarball from
+Kagami. An abridged `Accept:
+application/vnd.npm.install-v1+json` request is rewritten the same way and cached as a
+separate representation. `dist.shasum`, `dist.integrity` and every other field are
+returned unchanged.
+
+**Caching.** Packuments and version manifests are mutable indexes served through the
+metadata cache (`kagami.metadata-cache.*`): they are revalidated after the TTL and
+returned with `Cache-Control: no-cache`. A tarball is immutable: it is fetched once,
+stored, and served with `Cache-Control: max-age=31536000`. `private` is appended for a
+private repository; `public` otherwise.
+
+**Tarball resolution.** A tarball request that misses the storage is resolved from the
+`dist.tarball` URL of the package's packument, which is the single source of truth. The
+host of that URL must be the repository host, an entry of
+`kagami.repositories.<id>.allowed-hosts`, or an entry of `kagami.upstream.tarball-hosts`;
+otherwise the tarball is not fetched and the request returns `502`. The stored file is
+placed under the requested `{package}/-/{file}` path.
+
+**Registry-level endpoints.** `/-/ping` returns `{}` without contacting the upstream.
+`GET /-/v1/search` and `POST /-/npm/v1/security/audits/quick` are forwarded to the upstream
+registry (query string and request body included) and their status is propagated; neither
+is stored. `PUT` and `PATCH` are not mapped, so `npm publish` and `npm dist-tag` return
+`405`.
+
+The path `/artifacts/{repositoryId}/gc` is reserved for [cache garbage
+collection](#cache-garbage-collection) and takes precedence over a package named `gc`.
+
+**Status Codes:**
+- `200 OK`: Metadata or tarball returned
+- `400 Bad Request`: The path is not a valid npm registry path
+- `404 Not Found`: The package or tarball does not exist upstream
+- `502 Bad Gateway`: The upstream failed, or a tarball URL points at a host outside the
+  allowlist
+- `405 Method Not Allowed`: A request other than GET, HEAD, POST or DELETE, such as a
+  publish
+
+---
+
+### PyPI Endpoints
+
+These endpoints are served by a repository with `kagami.repositories.<id>.format=pypi`.
+The simple index root is `/artifacts/{repositoryId}/simple/`; configure pip with
+`index-url=http://<host>/artifacts/{repositoryId}/simple/`.
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| GET | `/artifacts/{repositoryId}/simple/` | Root index of projects, rewritten |
+| GET | `/artifacts/{repositoryId}/simple/{project}/` | Project index, rewritten |
+| GET | `/artifacts/{repositoryId}/files/{project}/{filename}` | Wheel, sdist or attached file |
+
+The trailing slash of a project index is optional. Project names are normalized as PEP 503
+describes (lowercase, with runs of `-`, `_` and `.` collapsed to `-`), so
+`/simple/Zope.Interface/` and `/simple/zope-interface/` address the same project.
+
+**Response rewriting.** Links in the project index are rewritten to this mirror:
+`<a href>` in the PEP 503 HTML representation and `files[*].url` in the PEP 691 JSON
+representation. File links become
+`{base}/artifacts/{repositoryId}/files/{project}/{filename}` and keep their `#sha256=`
+fragment and every other attribute. The root index links become
+`{base}/artifacts/{repositoryId}/simple/{project}/`. A requested PEP 658
+`<file>.metadata` or PEP 714 `<file>.provenance` that the index does not list is derived
+from the link of the file it belongs to.
+
+The representation follows `Accept` and the upstream response: when the upstream answers
+PEP 691 JSON, the JSON body is returned and rewritten; otherwise HTML stays HTML.
+
+**Caching.** Simple indexes are mutable and served through the metadata cache
+(`kagami.metadata-cache.*`) with `Cache-Control: no-cache`. Index representations that
+differ by `Accept` are cached separately. A wheel, sdist or attached file is immutable: it
+is stored on first download and served with `Cache-Control: max-age=31536000`.
+
+**File resolution.** A file request that misses the storage resolves the requested file
+name against the upstream project index. The link host must be the repository host or an
+entry of `kagami.repositories.<id>.allowed-hosts`; when `allowed-hosts` is empty,
+`pypi.org` and `files.pythonhosted.org` are allowed as well. A link to any other host is
+not fetched and the request returns `502`. When the index advertises a SHA-256 for the
+file, the downloaded content is verified against it; a mismatch is not stored and the
+request returns `502`.
+
+pip only reads through the mirror; Kagami does not serve the PyPI upload API. A `POST` to a
+path other than the simple index or files (`twine upload` pointed at the repository root)
+returns `404`, and `PUT` and `PATCH` are not mapped and return `405`.
+
+**Status Codes:**
+- `200 OK`: Index or file returned
+- `400 Bad Request`: The path is not a valid PyPI path or the project name is invalid
+- `404 Not Found`: The project or file is not listed by the upstream index
+- `502 Bad Gateway`: The upstream failed, a link host is outside the allowlist, or the
+  downloaded file does not match the advertised SHA-256
+- `405 Method Not Allowed`: A `PUT` or `PATCH` request
+
+---
+
+### Read-Only Mirrors
+
+npm and PyPI repositories only mirror downloads. An upload is never stored: `npm publish`
+sends `PUT` and gets `405`, and the PyPI upload API is not served (a `POST` to a path other
+than the simple index or files returns `404`). Deleting an artifact with
+`DELETE /artifacts/{repositoryId}/{artifactPath}` removes it from the local cache; the next
+GET downloads it from the upstream again.
 
 ---
 
