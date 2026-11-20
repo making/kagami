@@ -21,8 +21,10 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /**
  * Routes mirror requests to the {@link MirrorHandler} of the repository format.
@@ -59,12 +61,7 @@ public class ArtifactController {
 		if (handler == null) {
 			return ResponseEntity.notFound().build();
 		}
-		MirrorRequest mirrorRequest = MirrorRequest.builder()
-			.repositoryId(repositoryId)
-			.repository(repository)
-			.artifactPath(extractArtifactPath(request, repositoryId))
-			.headers(copyHeaders(request))
-			.build();
+		MirrorRequest mirrorRequest = mirrorRequest(repositoryId, repository, request, new byte[0]);
 		try {
 			ResponseEntity<Resource> response = handler.handle(mirrorRequest);
 			return ArtifactResponses.enhance(response, mirrorRequest.headers(),
@@ -77,6 +74,44 @@ public class ArtifactController {
 		catch (IOException e) {
 			return ResponseEntity.internalServerError().build();
 		}
+	}
+
+	/**
+	 * Serve a request with a body, such as an npm audit. The body is passed to the format
+	 * handler unchanged; the mirror itself never stores it.
+	 */
+	@PostMapping("/{repositoryId}/**")
+	public ResponseEntity<Resource> postArtifact(@PathVariable String repositoryId, HttpServletRequest request)
+			throws IOException {
+		Repository repository = configuredRepository(repositoryId);
+		if (repository == null) {
+			return ResponseEntity.notFound().build();
+		}
+		MirrorHandler handler = this.mirrorHandlers.find(repositoryId).orElse(null);
+		if (handler == null) {
+			return ResponseEntity.notFound().build();
+		}
+		MirrorRequest mirrorRequest = mirrorRequest(repositoryId, repository, request,
+				request.getInputStream().readAllBytes());
+		try {
+			return handler.handle(mirrorRequest);
+		}
+		catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().build();
+		}
+	}
+
+	private static MirrorRequest mirrorRequest(String repositoryId, Repository repository, HttpServletRequest request,
+			byte[] body) {
+		return MirrorRequest.builder()
+			.repositoryId(repositoryId)
+			.repository(repository)
+			.artifactPath(extractArtifactPath(request, repositoryId))
+			.headers(copyHeaders(request))
+			.baseUrl(ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString())
+			.queryString(request.getQueryString())
+			.body(body)
+			.build();
 	}
 
 	@DeleteMapping("/{repositoryId}/**")

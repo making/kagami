@@ -43,6 +43,7 @@ import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.HEAD;
 import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpMethod.PUT;
 import static org.springframework.security.authorization.AuthorityAuthorizationManager.hasAuthority;
 import static org.springframework.security.authorization.AuthorizationManagers.anyOf;
 import static org.springframework.security.oauth2.core.authorization.OAuth2AuthorizationManagers.hasScope;
@@ -51,14 +52,17 @@ import static org.springframework.security.oauth2.core.authorization.OAuth2Autho
 class SecurityConfig {
 
 	/**
-	 * Allow a percent-encoded slash ({@code %2F}) in the request path. The npm registry
-	 * addresses a scoped package as {@code @scope%2Fname}; without this the firewall
-	 * rejects the request with a 400 before routing reaches the format handler.
+	 * Allow percent-encoded characters in the request path, in particular the encoded
+	 * slash of a scoped npm package ({@code @scope%2Fname}). Without both switches the
+	 * firewall rejects the request with a 400 for containing a percent-encoded value
+	 * before routing reaches the format handler. The path is decoded and validated again
+	 * by the artifact router.
 	 */
 	@Bean
 	WebSecurityCustomizer encodedSlashWebSecurityCustomizer() {
 		StrictHttpFirewall firewall = new StrictHttpFirewall();
 		firewall.setAllowUrlEncodedSlash(true);
+		firewall.setAllowUrlEncodedPercent(true);
 		return web -> web.httpFirewall(firewall);
 	}
 
@@ -93,6 +97,16 @@ class SecurityConfig {
 						authz.requestMatchers(HEAD, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
 					}
 					authz.requestMatchers(DELETE, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope(RbacBuiltins.DELETE_AUTHORITY), hasAuthority(RbacBuiltins.DELETE_AUTHORITY)));
+					// Read-only formats accept POST (npm audit) and reject PUT (npm
+					// publish) from the format layer itself, so both reach the handler
+					if (repository.isPrivate()) {
+						authz.requestMatchers(POST, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope(RbacBuiltins.READ_AUTHORITY), hasAuthority(RbacBuiltins.READ_AUTHORITY)));
+						authz.requestMatchers(PUT, "/artifacts/%s/**".formatted(repositoryId)).access(anyOf(hasScope(RbacBuiltins.READ_AUTHORITY), hasAuthority(RbacBuiltins.READ_AUTHORITY)));
+					}
+					else {
+						authz.requestMatchers(POST, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
+						authz.requestMatchers(PUT, "/artifacts/%s/**".formatted(repositoryId)).permitAll();
+					}
 				});
 				authz.requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
 					.requestMatchers("/login", "/logout", "/css/**", "/js/**", "/fonts/**", "/favicon.svg", "/error", "/.well-known/**", "/openid/v1/jwks").permitAll()

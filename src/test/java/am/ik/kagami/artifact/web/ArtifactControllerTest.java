@@ -151,21 +151,21 @@ class ArtifactControllerTest {
 	void getArtifact_withEncodedSlashInScopedPackage_shouldReachTheNpmHandler() throws Exception {
 		// The npm registry addresses a scoped package with an encoded slash. The router
 		// must pass the firewall, decode the path and dispatch to the npm handler, which
-		// serves the stored metadata.
-		Path metadata = tempDir.resolve("test-npm/@scope/name");
-		Files.createDirectories(metadata.getParent());
-		Files.writeString(metadata, "{\"name\":\"@scope/name\"}");
+		// serves a stored tarball without asking the upstream.
+		Path tarball = tempDir.resolve("test-npm/@scope/name/-/name-1.0.0.tgz");
+		Files.createDirectories(tarball.getParent());
+		Files.writeString(tarball, "tarball");
 
 		// A URI instance keeps the single "%2F" encoding, while a URL template would
 		// double-encode the percent sign
-		this.mockMvc.perform(get(URI.create("/artifacts/test-npm/@scope%2Fname")))
+		this.mockMvc.perform(get(URI.create("/artifacts/test-npm/@scope%2Fname/-/name-1.0.0.tgz")))
 			.andExpect(status().isOk())
-			.andExpect(content().string("{\"name\":\"@scope/name\"}"));
+			.andExpect(content().string("tarball"));
 	}
 
 	@Test
 	void getArtifact_withInvalidPath_shouldReturn400() throws Exception {
-		this.mockMvc.perform(get("/artifacts/test-npm/~unexpected/name")).andExpect(status().isBadRequest());
+		this.mockMvc.perform(get("/artifacts/test-npm/too/deep/path")).andExpect(status().isBadRequest());
 	}
 
 	@Test

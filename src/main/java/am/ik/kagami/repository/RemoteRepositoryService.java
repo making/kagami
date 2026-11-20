@@ -220,6 +220,32 @@ public class RemoteRepositoryService {
 	}
 
 	/**
+	 * Fetch an absolute upstream URL and stream the response body into storage at the
+	 * given location.
+	 * <p>
+	 * The format handlers use it for content whose URL is not derived from the repository
+	 * base URL, such as an npm tarball referenced by a packument. Host validation is the
+	 * caller's responsibility; the circuit breaker of the repository applies.
+	 * @param upstreamUrl the absolute upstream URL to fetch
+	 * @param location the storage location the body is stored at
+	 * @return the outcome of the fetch
+	 */
+	public FetchOutcome fetchFromUpstream(URI upstreamUrl, ArtifactLocation location) {
+		String repositoryId = location.repositoryId();
+		if (!this.circuitBreaker.allowsRequest(repositoryId)) {
+			logger.debug("Skipping upstream fetch of {}: the circuit for repository {} is open", upstreamUrl,
+					repositoryId);
+			return FetchOutcome.FAILED;
+		}
+		FetchOutcome outcome = fetchIntoStorage(upstreamUrl, location);
+		switch (outcome) {
+			case STORED, NOT_FOUND -> this.circuitBreaker.recordSuccess(repositoryId);
+			case FAILED -> this.circuitBreaker.recordFailure(repositoryId);
+		}
+		return outcome;
+	}
+
+	/**
 	 * Download {@code location} from the upstream and stream the response body into
 	 * storage.
 	 * <p>
@@ -229,16 +255,17 @@ public class RemoteRepositoryService {
 	 * with the object.
 	 */
 	private FetchOutcome fetchIntoStorage(ArtifactLocation location, RemoteRepository repository) {
+		// The artifact path is already encoded and must be sent as is, its path
+		// separators must not be encoded into "%2F"
+		return fetchIntoStorage(URI.create(repository.getUrl() + "/" + location.artifactPath()), location);
+	}
+
+	private FetchOutcome fetchIntoStorage(URI upstreamUrl, ArtifactLocation location) {
 		String artifactPath = location.artifactPath();
 		KagamiProperties.Repository repoConfig = this.kagamiProperties.repositories().get(location.repositoryId());
 		try {
-			// The artifact path is already encoded and must be sent as is, its path
-			// separators must not be encoded into "%2F"
-			return this.restClient.get().uri(URI.create(repository.getUrl() + "/" + artifactPath)).headers(headers -> {
-				if (repoConfig != null && StringUtils.hasText(repoConfig.username())
-						&& StringUtils.hasText(repoConfig.password())) {
-					headers.setBasicAuth(repoConfig.username(), repoConfig.password());
-				}
+			return this.restClient.get().uri(upstreamUrl).headers(headers -> {
+				UpstreamAuthentication.apply(headers, repoConfig);
 				headers.set(HttpHeaders.ACCEPT_ENCODING, "identity");
 			}).exchange((request, response) -> {
 				int status = response.getStatusCode().value();
@@ -302,9 +329,19 @@ public class RemoteRepositoryService {
 		return pushback;
 	}
 
-	private enum FetchOutcome {
+	/**
+	 * The result of fetching a non-Maven artifact from the upstream.
+	 */
+	public enum FetchOutcome {
 
-		STORED, NOT_FOUND, FAILED
+		/** The body was stored at the requested location. */
+		STORED,
+
+		/** The upstream answered with a 4xx, so the artifact does not exist there. */
+		NOT_FOUND,
+
+		/** The upstream failed or the circuit is open. */
+		FAILED
 
 	}
 

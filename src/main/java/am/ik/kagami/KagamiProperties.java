@@ -204,10 +204,13 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * @param sigstore the sigstore attestation bundle settings
 	 * @param format the repository format, one of {@code maven}, {@code npm} or
 	 * {@code pypi}; defaults to {@code maven}
+	 * @param token optional bearer token sent to the remote repository instead of Basic
+	 * authentication; used by registries such as Artifactory and GitHub Packages that
+	 * authenticate with a token
 	 */
 	public record Repository(String url, @Nullable String username, @Nullable String password,
 			@DefaultValue("false") boolean isPrivate, @DefaultValue("0") int priority, @DefaultValue Sigstore sigstore,
-			@DefaultValue("maven") String format) implements Comparable<Repository> {
+			@DefaultValue("maven") String format, @Nullable String token) implements Comparable<Repository> {
 
 		/**
 		 * The natural ordering sorts by priority, higher first, so that a plain
@@ -237,6 +240,8 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			@Nullable private Sigstore sigstore;
 
 			private String format = "maven";
+
+			@Nullable private String token;
 
 			private Builder() {
 			}
@@ -271,11 +276,16 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 				return this;
 			}
 
+			public Builder token(@Nullable String token) {
+				this.token = token;
+				return this;
+			}
+
 			public Repository build() {
 				return new Repository(Objects.requireNonNull(this.url, "url is required"), this.username, this.password,
 						this.isPrivate, this.priority,
 						this.sigstore == null ? Sigstore.builder().build() : this.sigstore,
-						Objects.requireNonNull(this.format, "format is required"));
+						Objects.requireNonNull(this.format, "format is required"), this.token);
 			}
 
 			public Builder sigstore(@Nullable Sigstore sigstore) {
@@ -323,13 +333,23 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 	 * @param failureThreshold how many consecutive failures open the circuit; defaults to
 	 * 5
 	 * @param openDuration how long the circuit stays open; defaults to 30 seconds
+	 * @param tarballHosts the hosts an npm tarball URL from a packument may point at,
+	 * besides the host of the repository URL. An npm packument contains absolute
+	 * {@code dist.tarball} URLs, which are fetched from the upstream; the allowlist stops
+	 * a compromised or misconfigured registry from sending Kagami to an arbitrary host.
+	 * When empty, only the host of the repository URL is allowed
 	 */
 	public record UpstreamConfig(@DefaultValue("5s") Duration connectTimeout,
 			@DefaultValue("30s") Duration requestTimeout, @DefaultValue("5") int failureThreshold,
-			@DefaultValue("30s") Duration openDuration) {
+			@DefaultValue("30s") Duration openDuration, @DefaultValue List<String> tarballHosts) {
 
 		public UpstreamConfig() {
-			this(Duration.ofSeconds(5), Duration.ofSeconds(30), 5, Duration.ofSeconds(30));
+			this(Duration.ofSeconds(5), Duration.ofSeconds(30), 5, Duration.ofSeconds(30), List.of());
+		}
+
+		public UpstreamConfig(Duration connectTimeout, Duration requestTimeout, int failureThreshold,
+				Duration openDuration) {
+			this(connectTimeout, requestTimeout, failureThreshold, openDuration, List.of());
 		}
 
 		public UpstreamConfig {
@@ -339,6 +359,7 @@ public record KagamiProperties(@DefaultValue Storage storage, @DefaultValue Map<
 			if (failureThreshold < 1) {
 				throw new IllegalArgumentException("failureThreshold must be at least 1");
 			}
+			tarballHosts = List.copyOf(tarballHosts == null ? List.of() : tarballHosts);
 		}
 	}
 
