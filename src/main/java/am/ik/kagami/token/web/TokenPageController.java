@@ -2,22 +2,18 @@ package am.ik.kagami.token.web;
 
 import am.ik.kagami.rbac.RbacBuiltins;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
 import am.ik.kagami.KagamiProperties;
+import am.ik.kagami.buildconfig.ConfigExampleCatalog;
+import am.ik.kagami.buildconfig.ConfigExampleCatalog.Catalog;
+import am.ik.kagami.buildconfig.ConfigExampleCatalog.Selection;
 import am.ik.kagami.repository.RepositoryService;
 import am.ik.kagami.repository.RepositoryService.RepositorySummary;
 import am.ik.kagami.rbac.RbacService;
 import am.ik.kagami.support.Durations;
-import am.ik.kagami.repository.web.BrowseController.ConfigItem;
-import am.ik.kagami.buildconfig.ConfigExamples;
-import am.ik.kagami.buildconfig.ConfigExamples.AuthMethod;
-import am.ik.kagami.buildconfig.ConfigExamples.BuildTool;
-import am.ik.kagami.buildconfig.ConfigExamples.Params;
 import am.ik.kagami.token.TokenIssuer;
 import am.ik.kagami.token.TokenIssuer.TokenRequest;
 import org.springframework.http.HttpStatus;
@@ -135,22 +131,25 @@ public class TokenPageController {
 			.build());
 		model.addAttribute("token", token);
 		model.addAttribute("panesId", "token-result-panes");
-		model.addAttribute("hasAuthTabs", true);
-		model.addAttribute("configs",
-				configItems(sortedRepositoryIds(repositories), token, builder.path("").build().toString()));
+		Catalog catalog = ConfigExampleCatalog.build(selectedRepositories(repositories), token,
+				builder.path("").build().toString());
+		model.addAttribute("hasAuthTabs", catalog.authTabs());
+		model.addAttribute("toolTabs", catalog.toolTabs());
+		model.addAttribute("configs", catalog.panes());
 		return "fragments/token-result";
 	}
 
 	/**
-	 * Filters the selected repository ids to the configured ones, in the priority order
-	 * of {@link RepositoryService#getRepositories()}.
+	 * Filters the selected repositories to the configured ones, in the priority order of
+	 * {@link RepositoryService#getRepositories()}.
 	 */
-	private List<String> sortedRepositoryIds(List<String> repositoryIds) {
+	private List<Selection> selectedRepositories(List<String> repositoryIds) {
 		Set<String> selected = Set.copyOf(repositoryIds);
 		return this.repositoryService.getRepositories()
 			.stream()
-			.map(RepositorySummary::id)
-			.filter(selected::contains)
+			.filter(repository -> selected.contains(repository.id()))
+			.<Selection>map(repository -> ConfigExampleCatalog.selection(repository.id(), repository.format(),
+					repository.isPrivate()))
 			.toList();
 	}
 
@@ -167,47 +166,15 @@ public class TokenPageController {
 		model.addAttribute("repositories",
 				this.repositoryService.getRepositories()
 					.stream()
-					.<RepositoryCheckbox>map(repo -> new RepositoryCheckbox(repo.id(), repo.url(), repo.isPrivate()))
+					.<RepositoryCheckbox>map(repo -> new RepositoryCheckbox(repo.id(), repo.url(), repo.isPrivate(),
+							ConfigExampleCatalog.formatLabel(repo.format())))
 					.toList());
-	}
-
-	/** The pane id prefix for a build tool, matching the tab patterns in the template. */
-	private static String paneIdPrefix(BuildTool tool) {
-		return switch (tool) {
-			case MAVEN -> "maven";
-			case GRADLE_GROOVY -> "gradlegroovy";
-			case GRADLE_KOTLIN -> "gradlekotlin";
-		};
-	}
-
-	private static List<ConfigItem> configItems(List<String> repositoryIds, String token, String baseUrl) {
-		List<ConfigItem> items = new java.util.ArrayList<>();
-		for (BuildTool tool : List.of(BuildTool.MAVEN, BuildTool.GRADLE_GROOVY, BuildTool.GRADLE_KOTLIN)) {
-			for (AuthMethod authMethod : List.of(AuthMethod.BASIC, AuthMethod.BEARER)) {
-				ConfigExamples.ConfigExample example = ConfigExamples.generate(tool,
-						Params.builder()
-							.repositoryIds(repositoryIds)
-							.token(token)
-							.baseUrl(baseUrl)
-							.isPrivate(true)
-							.authMethod(authMethod)
-							.build());
-				items.add(ConfigItem.builder()
-					.paneId(paneIdPrefix(tool) + "-" + authMethod.name().toLowerCase(Locale.ROOT))
-					.title(example.title())
-					.filename(example.filename())
-					.content(example.content())
-					.active(tool == BuildTool.MAVEN && authMethod == AuthMethod.BASIC)
-					.build());
-			}
-		}
-		return items;
 	}
 
 	/**
 	 * One repository checkbox on the token form.
 	 */
-	record RepositoryCheckbox(String id, String url, boolean isPrivate) {
+	record RepositoryCheckbox(String id, String url, boolean isPrivate, String formatLabel) {
 	}
 
 }

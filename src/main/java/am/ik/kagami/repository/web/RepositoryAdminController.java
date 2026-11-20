@@ -1,5 +1,6 @@
 package am.ik.kagami.repository.web;
 
+import am.ik.kagami.buildconfig.ConfigExampleCatalog;
 import am.ik.kagami.repository.RepositoryGarbageCollector;
 import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageCollectionFailure;
 import am.ik.kagami.repository.RepositoryGarbageCollector.GarbageCollectionResult;
@@ -148,7 +149,23 @@ public class RepositoryAdminController {
 	}
 
 	private static RepositoryOption repositoryOption(RepositorySummary repository) {
-		return new RepositoryOption(repository.id(), repository.url(), repository.isPrivate());
+		return new RepositoryOption(repository.id(), repository.url(), repository.isPrivate(),
+				ConfigExampleCatalog.formatLabel(repository.format()), formatSetting(repository));
+	}
+
+	/**
+	 * The format specific settings summarized on the administration page. Secret values
+	 * (the upstream bearer token) are only reported as configured or not.
+	 */
+	private static String formatSetting(RepositorySummary repository) {
+		return switch (repository.format()) {
+			case "npm" ->
+				repository.hasUpstreamToken() ? "Upstream bearer token configured" : "No upstream bearer token";
+			case "pypi" ->
+				repository.allowedHosts().isEmpty() ? "Allowed hosts: repository host, pypi.org, files.pythonhosted.org"
+						: "Allowed hosts: " + String.join(", ", repository.allowedHosts());
+			default -> "Maven layout";
+		};
 	}
 
 	private static FailureRow failureRow(GarbageCollectionFailure failure) {
@@ -164,9 +181,9 @@ public class RepositoryAdminController {
 	}
 
 	/**
-	 * A configured repository shown in the administration form.
+	 * A configured repository shown in the administration forms.
 	 */
-	record RepositoryOption(String id, String url, boolean isPrivate) {
+	record RepositoryOption(String id, String url, boolean isPrivate, String formatLabel, String formatSetting) {
 	}
 
 	/**

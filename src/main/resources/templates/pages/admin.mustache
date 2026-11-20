@@ -14,6 +14,37 @@
     <p class="page-head-sub">Preview and collect metadata-only cache directories</p>
   </header>
 
+  <div class="panel" id="repository-settings-panel">
+    <div class="panel-head">
+      <h2 class="registry-label panel-head-label">Repository Settings</h2>
+      <span class="registry-label panel-head-meta">format / upstream</span>
+    </div>
+    <table class="registry-table">
+      <thead>
+        <tr>
+          <th class="registry-label text-left">Repository</th>
+          <th class="registry-label">Format</th>
+          <th class="registry-label">Format Settings</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#repositories}}
+        <tr class="registry-row-hover">
+          <td>
+            <div class="row-title">{{id}}{{#isPrivate}}<span class="registry-label badge-private">Private</span>{{/isPrivate}}</div>
+            <div class="row-url">{{url}}</div>
+          </td>
+          <td><span class="registry-label badge-format">{{formatLabel}}</span></td>
+          <td><span class="row-value">{{formatSetting}}</span></td>
+        </tr>
+        {{/repositories}}
+      </tbody>
+    </table>
+    {{^hasRepositories}}
+    <div class="alert" role="alert">No repositories are configured.</div>
+    {{/hasRepositories}}
+  </div>
+
   <div class="panel" id="gc-panel">
     <div class="panel-head">
       <h2 class="registry-label panel-head-label">Repository Garbage Collection</h2>
