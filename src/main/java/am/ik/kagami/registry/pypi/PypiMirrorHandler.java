@@ -8,6 +8,7 @@ import am.ik.kagami.registry.Format;
 import am.ik.kagami.registry.MirrorHandler;
 import am.ik.kagami.registry.MirrorRequest;
 import am.ik.kagami.registry.RevalidationPolicy;
+import am.ik.kagami.repository.ExpectedDigest;
 import am.ik.kagami.repository.RemoteRepositoryService;
 import am.ik.kagami.repository.RemoteRepositoryService.LinkedFetchOutcome;
 import am.ik.kagami.storage.ArtifactContentType;
@@ -217,7 +218,7 @@ public class PypiMirrorHandler implements MirrorHandler {
 			return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
 		}
 		LinkedFetchOutcome outcome = this.remoteRepositoryService.fetchLinkedArtifact(location, upstream,
-				link.get().sha256());
+				ExpectedDigest.sha256Hex(link.get().sha256()).orElse(null));
 		return switch (outcome) {
 			case STORED ->
 				storedResponse(request.repository(), location, this.storageService.retrieve(location).orElseThrow());
