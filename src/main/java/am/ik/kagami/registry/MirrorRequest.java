@@ -4,6 +4,7 @@ import java.util.Objects;
 import am.ik.kagami.KagamiProperties.Repository;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.util.StringUtils;
 
 /**
  * A mirrored request routed to a format-specific {@link MirrorHandler}.
@@ -19,9 +20,12 @@ import org.springframework.http.HttpHeaders;
  * @param headers the incoming request headers
  * @param baseUrl the externally visible base URL of this Kagami instance, used to rewrite
  * absolute links in index documents
+ * @param queryString the raw query string of the request, or {@code null} when the
+ * request has no query
+ * @param body the request body, empty for a GET or HEAD request
  */
 public record MirrorRequest(String repositoryId, Repository repository, String artifactPath, HttpHeaders headers,
-		String baseUrl) {
+		String baseUrl, @Nullable String queryString, byte[] body) {
 
 	public MirrorRequest {
 		Objects.requireNonNull(repositoryId, "repositoryId is required");
@@ -29,6 +33,7 @@ public record MirrorRequest(String repositoryId, Repository repository, String a
 		Objects.requireNonNull(artifactPath, "artifactPath is required");
 		Objects.requireNonNull(headers, "headers is required");
 		Objects.requireNonNull(baseUrl, "baseUrl is required");
+		Objects.requireNonNull(body, "body is required");
 	}
 
 	public static Builder builder() {
@@ -47,12 +52,11 @@ public record MirrorRequest(String repositoryId, Repository repository, String a
 
 		@Nullable private String baseUrl;
 
-		private Builder() {
-		}
+		@Nullable private String queryString;
 
-		public Builder baseUrl(String baseUrl) {
-			this.baseUrl = baseUrl;
-			return this;
+		private byte[] body = new byte[0];
+
+		private Builder() {
 		}
 
 		public Builder repositoryId(String repositoryId) {
@@ -75,12 +79,28 @@ public record MirrorRequest(String repositoryId, Repository repository, String a
 			return this;
 		}
 
+		public Builder baseUrl(String baseUrl) {
+			this.baseUrl = baseUrl;
+			return this;
+		}
+
+		public Builder queryString(@Nullable String queryString) {
+			this.queryString = StringUtils.hasText(queryString) ? queryString : null;
+			return this;
+		}
+
+		public Builder body(byte[] body) {
+			this.body = body;
+			return this;
+		}
+
 		public MirrorRequest build() {
 			return new MirrorRequest(Objects.requireNonNull(this.repositoryId, "repositoryId is required"),
 					Objects.requireNonNull(this.repository, "repository is required"),
 					Objects.requireNonNull(this.artifactPath, "artifactPath is required"),
 					Objects.requireNonNull(this.headers, "headers is required"),
-					Objects.requireNonNull(this.baseUrl, "baseUrl is required"));
+					Objects.requireNonNull(this.baseUrl, "baseUrl is required"), this.queryString,
+					Objects.requireNonNull(this.body, "body is required"));
 		}
 
 	}

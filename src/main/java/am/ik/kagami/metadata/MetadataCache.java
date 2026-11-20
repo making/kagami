@@ -1,6 +1,7 @@
 package am.ik.kagami.metadata;
 
 import am.ik.kagami.KagamiProperties;
+import am.ik.kagami.repository.UpstreamAuthentication;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -253,11 +254,9 @@ public class MetadataCache {
 		return this.restClient.get().uri(uri).headers(headers -> {
 			// A compressed body would be stored as if it were the index itself
 			headers.set(HttpHeaders.ACCEPT_ENCODING, "identity");
+			UpstreamAuthentication.apply(headers, repository);
 			if (StringUtils.hasText(accept)) {
 				headers.set(HttpHeaders.ACCEPT, accept);
-			}
-			if (StringUtils.hasText(repository.username()) && StringUtils.hasText(repository.password())) {
-				headers.setBasicAuth(repository.username(), repository.password());
 			}
 			if (previous != null) {
 				String etag = previous.document().etag();
