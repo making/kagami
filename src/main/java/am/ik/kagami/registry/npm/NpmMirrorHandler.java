@@ -8,8 +8,9 @@ import am.ik.kagami.registry.Format;
 import am.ik.kagami.registry.MirrorHandler;
 import am.ik.kagami.registry.MirrorRequest;
 import am.ik.kagami.registry.RevalidationPolicy;
+import am.ik.kagami.repository.ExpectedDigest;
 import am.ik.kagami.repository.RemoteRepositoryService;
-import am.ik.kagami.repository.RemoteRepositoryService.FetchOutcome;
+import am.ik.kagami.repository.RemoteRepositoryService.LinkedFetchOutcome;
 import am.ik.kagami.repository.UpstreamAuthentication;
 import am.ik.kagami.storage.ArtifactContentType;
 import am.ik.kagami.storage.ArtifactLocation;
@@ -229,16 +230,17 @@ public class NpmMirrorHandler implements MirrorHandler {
 		if (packument.isEmpty()) {
 			return ResponseEntity.notFound().build();
 		}
-		Optional<String> tarballUrl = findTarball(packument.get().body(), tarball.fileName());
-		if (tarballUrl.isEmpty()) {
+		Optional<TarballReference> reference = findTarball(packument.get().body(), tarball.fileName());
+		if (reference.isEmpty()) {
 			return ResponseEntity.notFound().build();
 		}
-		URI url = URI.create(tarballUrl.get());
+		URI url = URI.create(reference.get().url());
 		if (!isAllowedHost(url, request.repository())) {
 			logger.debug("Refusing to fetch {} from {}: host is not in the tarball allowlist", tarball.fileName(), url);
 			return ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
 		}
-		FetchOutcome outcome = this.remoteRepositoryService.fetchFromUpstream(url, location);
+		LinkedFetchOutcome outcome = this.remoteRepositoryService.fetchLinkedArtifact(location, url,
+				reference.get().digest());
 		return switch (outcome) {
 			case STORED -> {
 				Optional<Resource> fetched = this.storageService.retrieve(location);
@@ -247,7 +249,7 @@ public class NpmMirrorHandler implements MirrorHandler {
 						: ResponseEntity.internalServerError().build();
 			}
 			case NOT_FOUND -> ResponseEntity.notFound().build();
-			case FAILED -> ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
+			case FAILED, HASH_MISMATCH -> ResponseEntity.status(HttpStatus.BAD_GATEWAY).build();
 		};
 	}
 
@@ -262,11 +264,11 @@ public class NpmMirrorHandler implements MirrorHandler {
 	}
 
 	/**
-	 * Find the tarball with the requested file name in the packument. The packument is
-	 * the source of the URL, so a tarball cannot be fetched from a package it does not
-	 * belong to.
+	 * Find the tarball with the requested file name in the packument, together with the
+	 * digest the packument publishes for it. The packument is the source of the URL, so a
+	 * tarball cannot be fetched from a package it does not belong to.
 	 */
-	private Optional<String> findTarball(byte[] packument, String fileName) {
+	private Optional<TarballReference> findTarball(byte[] packument, String fileName) {
 		JsonNode root;
 		try {
 			root = this.jsonMapper.readTree(packument);
@@ -287,10 +289,33 @@ public class NpmMirrorHandler implements MirrorHandler {
 			JsonNode tarball = dist.get("tarball");
 			if (tarball != null && tarball.isTextual()
 					&& fileName.equals(PackumentRewriter.tarballFileName(tarball.asText()))) {
-				return Optional.of(tarball.asText());
+				return Optional.of(new TarballReference(tarball.asText(), expectedDigest(dist)));
 			}
 		}
 		return Optional.empty();
+	}
+
+	/**
+	 * The digest published for a version: the SRI {@code integrity} when it is usable,
+	 * otherwise the legacy SHA-1 {@code shasum}. A version that publishes neither is
+	 * stored without verification, as the npm client would validate it itself.
+	 */
+	private static @Nullable ExpectedDigest expectedDigest(JsonNode dist) {
+		JsonNode integrity = dist.get("integrity");
+		if (integrity != null && integrity.isTextual()) {
+			Optional<ExpectedDigest> fromSri = ExpectedDigest.fromSri(integrity.asText());
+			if (fromSri.isPresent()) {
+				return fromSri.get();
+			}
+		}
+		JsonNode shasum = dist.get("shasum");
+		return shasum != null && shasum.isTextual() ? ExpectedDigest.fromShasum(shasum.asText()).orElse(null) : null;
+	}
+
+	/**
+	 * The upstream tarball of a package version and the digest it must match.
+	 */
+	private record TarballReference(String url, @Nullable ExpectedDigest digest) {
 	}
 
 	/**

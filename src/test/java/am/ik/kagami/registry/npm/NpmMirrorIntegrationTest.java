@@ -3,10 +3,16 @@ package am.ik.kagami.registry.npm;
 import am.ik.kagami.mockserver.MockServer;
 import am.ik.kagami.mockserver.MockServer.Response;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -69,10 +75,11 @@ class NpmMirrorIntegrationTest {
 	@Test
 	void packumentIsRewrittenAndTheRewrittenTarballIsStored() throws Exception {
 		AtomicInteger tarballHits = new AtomicInteger();
-		publishPackument("demo-pack", "1.0.0", "demo-pack-1.0.0.tgz", "sha512-content-hash");
+		String integrity = sha512Sri("tarball-bytes");
+		publishPackument("demo-pack", "1.0.0", "demo-pack-1.0.0.tgz", integrity);
 		this.upstream.GET("/demo-pack/1.0.0", request -> Response.json("""
-				{"name":"demo-pack","version":"1.0.0","dist":{"tarball":"%s","integrity":"sha512-content-hash"}}
-				""".formatted(upstreamUrl("/demo-pack/-/demo-pack-1.0.0.tgz")).replace("\n", "")));
+				{"name":"demo-pack","version":"1.0.0","dist":{"tarball":"%s","integrity":"%s"}}
+				""".formatted(upstreamUrl("/demo-pack/-/demo-pack-1.0.0.tgz"), integrity).replace("\n", "")));
 		this.upstream.GET("/demo-pack/-/demo-pack-1.0.0.tgz", request -> {
 			tarballHits.incrementAndGet();
 			return Response.builder().body("tarball-bytes").contentType("application/octet-stream").build();
@@ -90,7 +97,7 @@ class NpmMirrorIntegrationTest {
 		assertThat(dist.get("tarball").asText())
 			.isEqualTo("http://localhost:%d/artifacts/npm/demo-pack/-/demo-pack-1.0.0.tgz".formatted(this.port));
 		// Content hashes stay valid: they describe the tarball, not its URL
-		assertThat(dist.get("integrity").asText()).isEqualTo("sha512-content-hash");
+		assertThat(dist.get("integrity").asText()).isEqualTo(integrity);
 
 		// The abridged response the npm client asks for is rewritten the same way
 		ResponseEntity<String> corgi = this.client.get()
@@ -135,9 +142,48 @@ class NpmMirrorIntegrationTest {
 	}
 
 	@Test
+	void tarballIsRejectedWhenItDoesNotMatchThePublishedDigest() {
+		// The packument advertises a digest of different bytes
+		AtomicInteger tamperedHits = new AtomicInteger();
+		publishPackument("tampered-pack", "1.0.0", "tampered-pack-1.0.0.tgz", sha512Sri("expected-bytes"));
+		this.upstream.GET("/tampered-pack/-/tampered-pack-1.0.0.tgz", request -> {
+			tamperedHits.incrementAndGet();
+			return Response.ok("tampered-bytes", "application/octet-stream");
+		});
+
+		for (int attempt = 0; attempt < 2; attempt++) {
+			ResponseEntity<String> rejected = this.client.get()
+				.uri("/artifacts/npm/tampered-pack/-/tampered-pack-1.0.0.tgz")
+				.retrieve()
+				.toEntity(String.class);
+			assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+		}
+		// Nothing was stored, so every request reaches the upstream again
+		assertThat(tamperedHits).hasValue(2);
+
+		// Without an SRI value the legacy SHA-1 shasum is verified instead
+		AtomicInteger legacyHits = new AtomicInteger();
+		String legacyShasum = sha1("legacy-bytes");
+		this.upstream.GET("/legacy-pack", request -> Response.json(packumentBody("legacy-pack", "1.0.0", null,
+				legacyShasum, upstreamUrl("/legacy-pack/-/legacy-pack-1.0.0.tgz"))));
+		this.upstream.GET("/legacy-pack/-/legacy-pack-1.0.0.tgz", request -> {
+			legacyHits.incrementAndGet();
+			return Response.ok("legacy-bytes", "application/octet-stream");
+		});
+
+		ResponseEntity<String> stored = this.client.get()
+			.uri("/artifacts/npm/legacy-pack/-/legacy-pack-1.0.0.tgz")
+			.retrieve()
+			.toEntity(String.class);
+		assertThat(stored.getStatusCode()).isEqualTo(HttpStatus.OK);
+		assertThat(stored.getBody()).isEqualTo("legacy-bytes");
+		assertThat(legacyHits).hasValue(1);
+	}
+
+	@Test
 	void scopedPackagesResolveThroughBothForms() {
 		AtomicInteger tarballHits = new AtomicInteger();
-		publishPackument("@scope/scoped-pack", "2.0.0", "scoped-pack-2.0.0.tgz", "sha512-scoped");
+		publishPackument("@scope/scoped-pack", "2.0.0", "scoped-pack-2.0.0.tgz", sha512Sri("scoped-tarball"));
 		this.upstream.GET("/@scope/scoped-pack/-/scoped-pack-2.0.0.tgz", request -> {
 			tarballHits.incrementAndGet();
 			return Response.ok("scoped-tarball", "application/octet-stream");
@@ -289,11 +335,38 @@ class NpmMirrorIntegrationTest {
 	}
 
 	private static String packumentBody(String packageName, String version, String integrity, String tarballUrl) {
+		return packumentBody(packageName, version, integrity, "0123456789abcdef", tarballUrl);
+	}
+
+	private static String packumentBody(String packageName, String version, @Nullable String integrity,
+			@Nullable String shasum, String tarballUrl) {
+		String shasumField = shasum == null ? "" : ",\"shasum\":\"" + shasum + "\"";
+		String integrityField = integrity == null ? "" : ",\"integrity\":\"" + integrity + "\"";
 		return """
-				{"name":"%s","dist-tags":{"latest":"%s"},"versions":{"%s":{"name":"%s","version":"%s","dist":{"tarball":"%s","shasum":"0123456789abcdef","integrity":"%s"}}}}
+				{"name":"%s","dist-tags":{"latest":"%s"},"versions":{"%s":{"name":"%s","version":"%s","dist":{"tarball":"%s"%s%s}}}}
 				"""
-			.formatted(packageName, version, version, packageName, version, tarballUrl, integrity)
+			.formatted(packageName, version, version, packageName, version, tarballUrl, shasumField, integrityField)
 			.replace("\n", "");
+	}
+
+	private static String sha512Sri(String content) {
+		try {
+			byte[] digest = MessageDigest.getInstance("SHA-512").digest(content.getBytes(StandardCharsets.UTF_8));
+			return "sha512-" + Base64.getEncoder().encodeToString(digest);
+		}
+		catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	private static String sha1(String content) {
+		try {
+			byte[] digest = MessageDigest.getInstance("SHA-1").digest(content.getBytes(StandardCharsets.UTF_8));
+			return HexFormat.of().formatHex(digest);
+		}
+		catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException(e);
+		}
 	}
 
 	private String upstreamUrl(String path) {
