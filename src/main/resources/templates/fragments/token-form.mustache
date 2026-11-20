@@ -10,7 +10,7 @@
       <label class="check-card">
         <input type="checkbox" name="repositories" value="{{id}}"/>
         <span class="check-body">
-          <span class="check-title">{{id}}{{#isPrivate}}<span class="registry-label badge-private">Private</span>{{/isPrivate}}</span>
+          <span class="check-title">{{id}}<span class="registry-label badge-format">{{formatLabel}}</span>{{#isPrivate}}<span class="registry-label badge-private">Private</span>{{/isPrivate}}</span>
           <span class="check-code">{{url}}</span>
         </span>
       </label>

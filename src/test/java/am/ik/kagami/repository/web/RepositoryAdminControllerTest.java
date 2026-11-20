@@ -35,7 +35,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for the cache administration page and its htmx fragments.
  */
 @SpringBootTest(properties = { "kagami.repositories.test-repo.url=https://repo.maven.apache.org/maven2",
-		"spring.security.user.name=test-user", "spring.security.user.password=test-password" })
+		"kagami.repositories.npm-repo.url=https://registry.npmjs.org", "kagami.repositories.npm-repo.format=npm",
+		"kagami.repositories.npm-repo.token=secret-upstream-token",
+		"kagami.repositories.pypi-repo.url=https://pypi.org/simple", "kagami.repositories.pypi-repo.format=pypi",
+		"kagami.repositories.pypi-repo.allowed-hosts=files.example.com", "spring.security.user.name=test-user",
+		"spring.security.user.password=test-password" })
 @AutoConfigureMockMvc
 @WithMockUser(username = "test-user", authorities = "artifacts:admin")
 class RepositoryAdminControllerTest {
@@ -78,6 +82,20 @@ class RepositoryAdminControllerTest {
 			.andExpect(content().string(containsString("built-in default PEM key pair")))
 			.andExpect(content().string(containsString("maven-metadata.xml")))
 			.andExpect(content().string(containsString("resolver-status.properties")));
+	}
+
+	@Test
+	void adminPageShowsRepositoryFormatsAndFormatSettings() throws Exception {
+		this.mockMvc.perform(get("/admin"))
+			.andExpect(status().isOk())
+			.andExpect(content().string(containsString("Repository Settings")))
+			.andExpect(content().string(containsString("Maven")))
+			.andExpect(content().string(containsString("npm")))
+			.andExpect(content().string(containsString("PyPI")))
+			.andExpect(content().string(containsString("Upstream bearer token configured")))
+			.andExpect(content().string(containsString("Allowed hosts: files.example.com")))
+			// The upstream token value itself is never rendered
+			.andExpect(content().string(not(containsString("secret-upstream-token"))));
 	}
 
 	@Test

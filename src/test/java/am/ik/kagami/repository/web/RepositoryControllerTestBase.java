@@ -151,6 +151,8 @@ public abstract class RepositoryControllerTestBase {
 		String body = bodyOf("/browse/test-repo/org");
 		assertThat(body).contains("test-repo");
 		assertThat(body).contains("springframework");
+		// The repository format is shown as a badge
+		assertThat(body).contains("data-format=\"Maven\"");
 		// The parent directory row is present for a non-root path
 		assertThat(body).contains("../ Parent directory");
 	}

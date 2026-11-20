@@ -486,6 +486,14 @@ tr.group:hover .row-arrow {
   padding: 0.125rem 0.375rem;
 }
 
+.badge-format {
+  font-size: 8.5px;
+  color: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  padding: 0.125rem 0.375rem;
+  margin-left: 0.375rem;
+}
+
 /* ---- Buttons ---- */
 
 .button {

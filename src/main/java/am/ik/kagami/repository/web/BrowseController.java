@@ -9,11 +9,9 @@ import java.util.List;
 import java.util.Objects;
 
 import am.ik.kagami.KagamiProperties;
-import am.ik.kagami.buildconfig.ConfigExamples;
-import am.ik.kagami.buildconfig.ConfigExamples.AuthMethod;
-import am.ik.kagami.buildconfig.ConfigExamples.BuildTool;
-import am.ik.kagami.buildconfig.ConfigExamples.ConfigExample;
-import am.ik.kagami.buildconfig.ConfigExamples.Params;
+import am.ik.kagami.buildconfig.ConfigExampleCatalog;
+import am.ik.kagami.buildconfig.ConfigExampleCatalog.Catalog;
+import am.ik.kagami.buildconfig.ConfigExampleCatalog.Selection;
 import am.ik.kagami.repository.RepositoryService;
 import am.ik.kagami.repository.RepositoryService.BrowseResult;
 import am.ik.kagami.repository.RepositoryService.FileInfo;
@@ -47,11 +45,6 @@ import jakarta.servlet.http.HttpServletRequest;
 @Controller
 public class BrowseController {
 
-	private static final List<BuildTool> BUILD_TOOLS = List.of(BuildTool.MAVEN, BuildTool.GRADLE_GROOVY,
-			BuildTool.GRADLE_KOTLIN);
-
-	private static final List<AuthMethod> AUTH_METHODS = List.of(AuthMethod.BASIC, AuthMethod.BEARER);
-
 	private final RepositoryService repositoryService;
 
 	private final CosignVerifier cosignVerifier;
@@ -75,6 +68,9 @@ public class BrowseController {
 		model.addAttribute("title", "Browse - " + repositoryId);
 		model.addAttribute("userName", authentication.getName());
 		model.addAttribute("repositoryId", repositoryId);
+		this.repositoryService.findRepository(repositoryId)
+			.ifPresent(repository -> model.addAttribute("formatLabel",
+					ConfigExampleCatalog.formatLabel(repository.format())));
 		model.addAttribute("breadcrumbs", breadcrumbs(repositoryId, path));
 		addEntryListModel(model, repositoryId, path, authentication);
 		return "pages/browse";
@@ -201,11 +197,14 @@ public class BrowseController {
 		model.addAttribute("artifactUrl", baseUrl + "/artifacts/" + repositoryId);
 		model.addAttribute("originUrl", repository.url());
 		model.addAttribute("isPrivate", repository.isPrivate());
-		model.addAttribute("hasAuthTabs", repository.isPrivate());
+		model.addAttribute("formatLabel", ConfigExampleCatalog.formatLabel(repository.format()));
+		Catalog catalog = ConfigExampleCatalog.build(
+				List.of(ConfigExampleCatalog.selection(repositoryId, repository.format(), repository.isPrivate())),
+				repository.isPrivate() ? "YOUR_JWT_TOKEN_HERE" : "", baseUrl);
+		model.addAttribute("hasAuthTabs", catalog.authTabs());
 		model.addAttribute("panesId", "config-dialog-panes");
-		model.addAttribute("configs",
-				configItems(List.of(repositoryId), repository.isPrivate() ? "YOUR_JWT_TOKEN_HERE" : "", baseUrl,
-						repository.isPrivate(), repository.isPrivate()));
+		model.addAttribute("toolTabs", catalog.toolTabs());
+		model.addAttribute("configs", catalog.panes());
 		return "fragments/config-dialog";
 	}
 
@@ -216,15 +215,6 @@ public class BrowseController {
 		}
 		String remainder = fullPath.substring(("/browse/" + repositoryId).length());
 		return remainder.startsWith("/") ? remainder.substring(1) : remainder;
-	}
-
-	/** The pane id prefix for a build tool, matching the tab patterns in the template. */
-	private static String paneIdPrefix(BuildTool tool) {
-		return switch (tool) {
-			case MAVEN -> "maven";
-			case GRADLE_GROOVY -> "gradlegroovy";
-			case GRADLE_KOTLIN -> "gradlekotlin";
-		};
 	}
 
 	private static String artifactPath(String repositoryId, String path) {
@@ -350,32 +340,6 @@ public class BrowseController {
 			pathToHere.append(parts.get(i));
 			items.add(new Breadcrumb(parts.get(i), "/browse/" + repositoryId + "/" + pathToHere, i == parts.size() - 1,
 					false));
-		}
-		return items;
-	}
-
-	private static List<ConfigItem> configItems(List<String> repositoryIds, String token, String baseUrl,
-			boolean isPrivate, boolean withAuthMethods) {
-		List<AuthMethod> authMethods = withAuthMethods ? AUTH_METHODS : List.of(AuthMethod.BASIC);
-		List<ConfigItem> items = new ArrayList<>();
-		for (BuildTool tool : BUILD_TOOLS) {
-			for (AuthMethod authMethod : authMethods) {
-				ConfigExample example = ConfigExamples.generate(tool,
-						Params.builder()
-							.repositoryIds(repositoryIds)
-							.token(token)
-							.baseUrl(baseUrl)
-							.isPrivate(isPrivate)
-							.authMethod(authMethod)
-							.build());
-				items.add(ConfigItem.builder()
-					.paneId(paneIdPrefix(tool) + "-" + authMethod.name().toLowerCase())
-					.title(example.title())
-					.filename(example.filename())
-					.content(example.content())
-					.active(tool == BuildTool.MAVEN && authMethod == AuthMethod.BASIC)
-					.build());
-			}
 		}
 		return items;
 	}
@@ -579,66 +543,6 @@ public class BrowseController {
 						this.hasSize, this.updated, this.hasUpdated, this.downloadPath, this.infoPath,
 						Objects.requireNonNull(this.deletePath, "deletePath is required"),
 						Objects.requireNonNull(this.confirmMessage, "confirmMessage is required"));
-			}
-
-		}
-
-	}
-
-	/**
-	 * One configuration pane in the config dialog / token result, paired with its tab.
-	 */
-	public record ConfigItem(String paneId, String title, String filename, String content, boolean active) {
-
-		public static Builder builder() {
-			return new Builder();
-		}
-
-		public static final class Builder {
-
-			@Nullable private String paneId;
-
-			@Nullable private String title;
-
-			@Nullable private String filename;
-
-			@Nullable private String content;
-
-			private boolean active;
-
-			private Builder() {
-			}
-
-			public Builder paneId(String paneId) {
-				this.paneId = paneId;
-				return this;
-			}
-
-			public Builder title(String title) {
-				this.title = title;
-				return this;
-			}
-
-			public Builder filename(String filename) {
-				this.filename = filename;
-				return this;
-			}
-
-			public Builder content(String content) {
-				this.content = content;
-				return this;
-			}
-
-			public Builder active(boolean active) {
-				this.active = active;
-				return this;
-			}
-
-			public ConfigItem build() {
-				return new ConfigItem(Objects.requireNonNull(this.paneId, "paneId is required"),
-						Objects.requireNonNull(this.title, "title is required"),
-						Objects.requireNonNull(this.filename, "filename is required"),
-						Objects.requireNonNull(this.content, "content is required"), this.active);
 			}
 
 		}

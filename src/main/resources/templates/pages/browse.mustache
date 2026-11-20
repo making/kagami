@@ -10,6 +10,7 @@
       <span>&gt;</span>
       {{#breadcrumbs}}{{^first}}<span class="breadcrumb-separator">/</span>{{/first}}{{#current}}<span class="breadcrumb-current">{{name}}</span>{{/current}}{{^current}}<a href="{{href}}">{{name}}</a>{{/current}}{{/breadcrumbs}}
     </nav>
+    {{#formatLabel}}<span class="registry-label badge-format" data-format="{{formatLabel}}">{{formatLabel}}</span>{{/formatLabel}}
   </div>
 
   {{>fragments/entry-list}}

@@ -1,6 +1,8 @@
 package am.ik.kagami.buildconfig;
 
+import java.net.URI;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -24,11 +26,59 @@ public final class ConfigExamples {
 	}
 
 	/**
-	 * The build tools for which configuration examples are generated.
+	 * The build tools for which configuration examples are generated. Each tool belongs
+	 * to the repository format it consumes and names the tab pane it is rendered in.
 	 */
 	public enum BuildTool {
 
-		MAVEN, GRADLE_GROOVY, GRADLE_KOTLIN
+		MAVEN("maven", "Maven", "maven"), GRADLE_GROOVY("gradlegroovy", "Gradle (Groovy)", "maven"),
+		GRADLE_KOTLIN("gradlekotlin", "Gradle (Kotlin)", "maven"), NPM("npm", "npm", "npm"), PIP("pip", "pip", "pypi"),
+		PIP_KEYRING("pipkeyring", "pip (keyring)", "pypi"), UV_ENV("uvenv", "uv (environment)", "pypi"),
+		UV_PYPROJECT("uvpyproject", "uv (pyproject.toml)", "pypi");
+
+		private final String paneId;
+
+		private final String label;
+
+		private final String format;
+
+		BuildTool(String paneId, String label, String format) {
+			this.paneId = paneId;
+			this.label = label;
+			this.format = format;
+		}
+
+		/**
+		 * The prefix of the tab pane this tool is rendered in.
+		 * @return the pane id prefix used by the template
+		 */
+		public String paneId() {
+			return this.paneId;
+		}
+
+		/**
+		 * The label of the tool tab.
+		 * @return the human readable tool name
+		 */
+		public String label() {
+			return this.label;
+		}
+
+		/**
+		 * The repository format this tool consumes.
+		 * @return the configured format value this tool consumes
+		 */
+		public String format() {
+			return this.format;
+		}
+
+		/**
+		 * Whether the tool has one pane per authentication method.
+		 * @return {@code true} for the Maven based tools
+		 */
+		public boolean authVariants() {
+			return "maven".equals(this.format);
+		}
 
 	}
 
@@ -154,7 +204,208 @@ public final class ConfigExamples {
 			case MAVEN -> mavenConfig(params);
 			case GRADLE_GROOVY -> gradleGroovyConfig(params);
 			case GRADLE_KOTLIN -> gradleKotlinConfig(params);
+			case NPM -> npmConfig(params);
+			case PIP -> pipConfig(params);
+			case PIP_KEYRING -> pipKeyringConfig(params);
+			case UV_ENV -> uvEnvConfig(params);
+			case UV_PYPROJECT -> uvPyprojectConfig(params);
 		};
+	}
+
+	/**
+	 * The URL a client uses as the npm registry of a repository.
+	 */
+	private static String npmRegistryUrl(String baseUrl, String repositoryId) {
+		return baseUrl + "/artifacts/" + repositoryId + "/";
+	}
+
+	/**
+	 * The registry URL without the scheme, the key prefix of an npm authentication line.
+	 */
+	private static String npmRegistryKey(String baseUrl, String repositoryId) {
+		URI uri = URI.create(baseUrl);
+		String path = Objects.requireNonNullElse(uri.getRawPath(), "");
+		if (path.endsWith("/")) {
+			path = path.substring(0, path.length() - 1);
+		}
+		return uri.getRawAuthority() + path + "/artifacts/" + repositoryId + "/";
+	}
+
+	/**
+	 * The URL a client uses as the PyPI simple index of a repository.
+	 */
+	private static String pypiIndexUrl(String baseUrl, String repositoryId) {
+		return baseUrl + "/artifacts/" + repositoryId + "/simple/";
+	}
+
+	/**
+	 * Embed Basic credentials into a URL. The username is arbitrary, the password is the
+	 * JWT token.
+	 */
+	private static String embedCredentials(String url, String token) {
+		URI uri = URI.create(url);
+		return uri.getScheme() + "://kagami:" + token + "@" + uri.getRawAuthority() + uri.getRawPath();
+	}
+
+	/**
+	 * The host (with port) of a URL, used for the trusted-host and keyring settings.
+	 */
+	private static String hostOf(String url) {
+		return URI.create(url).getRawAuthority();
+	}
+
+	private static boolean isHttp(String baseUrl) {
+		return baseUrl.startsWith("http://");
+	}
+
+	/**
+	 * The hosts that need an insecure-transport allowance, one per repository, only for
+	 * plain HTTP mirrors.
+	 */
+	private static List<String> insecureHosts(String baseUrl, List<String> repositoryIds) {
+		if (!isHttp(baseUrl)) {
+			return List.of();
+		}
+		return repositoryIds.stream()
+			.map(repositoryId -> hostOf(pypiIndexUrl(baseUrl, repositoryId)))
+			.distinct()
+			.toList();
+	}
+
+	private static ConfigExample npmConfig(Params params) {
+		List<String> repositoryIds = params.repositoryIds();
+		String baseUrl = params.baseUrl();
+		String primaryRepo = repositoryIds.get(0);
+		StringBuilder content = new StringBuilder("# $HOME/.npmrc\n");
+		content.append("registry=").append(npmRegistryUrl(baseUrl, primaryRepo)).append('\n');
+		if (params.isPrivate()) {
+			for (String repositoryId : repositoryIds) {
+				content.append("//")
+					.append(npmRegistryKey(baseUrl, repositoryId))
+					.append(":_authToken=")
+					.append(params.token())
+					.append('\n');
+			}
+		}
+		for (String repositoryId : repositoryIds) {
+			if (repositoryId.startsWith("@")) {
+				String scope = repositoryId.split("/")[0];
+				content.append(scope).append(":registry=").append(npmRegistryUrl(baseUrl, repositoryId)).append('\n');
+			}
+		}
+		return new ConfigExample("npm Configuration", "$HOME/.npmrc", content.toString());
+	}
+
+	/** How a pip index URL carries credentials. */
+	private enum PipCredential {
+
+		NONE, URL, USERNAME
+
+	}
+
+	private static String pipIndexSection(Params params, PipCredential credential) {
+		List<String> repositoryIds = params.repositoryIds();
+		StringBuilder content = new StringBuilder("[global]\n");
+		for (int i = 0; i < repositoryIds.size(); i++) {
+			String url = pypiIndexUrl(params.baseUrl(), repositoryIds.get(i));
+			if (params.isPrivate()) {
+				url = switch (credential) {
+					case NONE -> url;
+					case URL -> embedCredentials(url, params.token());
+					case USERNAME -> url.replaceFirst("://", "://kagami@");
+				};
+			}
+			content.append(i == 0 ? "index-url = " : "extra-index-url = ").append(url).append('\n');
+		}
+		for (String host : insecureHosts(params.baseUrl(), repositoryIds)) {
+			content.append("trusted-host = ").append(host).append('\n');
+		}
+		return content.toString();
+	}
+
+	private static ConfigExample pipConfig(Params params) {
+		return new ConfigExample("pip Configuration", "$HOME/.config/pip/pip.conf",
+				pipIndexSection(params, PipCredential.URL));
+	}
+
+	private static ConfigExample pipKeyringConfig(Params params) {
+		StringBuilder content = new StringBuilder(pipIndexSection(params, PipCredential.USERNAME));
+		content.append('\n')
+			.append("# pip reads the password from the system keyring instead of this file:\n")
+			.append("#   pip install keyring\n");
+		for (String repositoryId : params.repositoryIds()) {
+			content.append("#   keyring set ")
+				.append(hostOf(pypiIndexUrl(params.baseUrl(), repositoryId)))
+				.append(" kagami\n");
+		}
+		content.append("# Enter the JWT token when prompted.\n");
+		return new ConfigExample("pip Configuration (keyring)", "$HOME/.config/pip/pip.conf", content.toString());
+	}
+
+	private static ConfigExample uvEnvConfig(Params params) {
+		List<String> repositoryIds = params.repositoryIds();
+		StringBuilder content = new StringBuilder("# Set these environment variables before running uv\n");
+		if (params.isPrivate()) {
+			content.append("# The user name is arbitrary, the password is the JWT token.\n");
+		}
+		for (int i = 0; i < repositoryIds.size(); i++) {
+			String url = pypiIndexUrl(params.baseUrl(), repositoryIds.get(i));
+			if (params.isPrivate()) {
+				url = embedCredentials(url, params.token());
+			}
+			content.append("export ")
+				.append(i == 0 ? "UV_INDEX_URL" : "UV_EXTRA_INDEX_URL")
+				.append("=\"")
+				.append(url)
+				.append("\"\n");
+		}
+		for (String host : insecureHosts(params.baseUrl(), repositoryIds)) {
+			content.append("export UV_INSECURE_HOST=\"").append(host).append("\"\n");
+		}
+		return new ConfigExample("uv Configuration (environment)", "environment variables", content.toString());
+	}
+
+	private static ConfigExample uvPyprojectConfig(Params params) {
+		List<String> repositoryIds = params.repositoryIds();
+		StringBuilder content = new StringBuilder();
+		if (params.isPrivate()) {
+			content.append("# Provide credentials through the environment:\n");
+			for (String repositoryId : repositoryIds) {
+				String name = uvIndexName(repositoryId);
+				content.append("#   export UV_INDEX_")
+					.append(name.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9_]", "_"))
+					.append("_USERNAME=kagami\n");
+				content.append("#   export UV_INDEX_")
+					.append(name.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9_]", "_"))
+					.append("_PASSWORD=<JWT token>\n");
+			}
+			content.append('\n');
+		}
+		for (int i = 0; i < repositoryIds.size(); i++) {
+			content.append("[[tool.uv.index]]\n")
+				.append("name = \"")
+				.append(uvIndexName(repositoryIds.get(i)))
+				.append("\"\n")
+				.append("url = \"")
+				.append(pypiIndexUrl(params.baseUrl(), repositoryIds.get(i)))
+				.append("\"\n");
+			if (i == 0) {
+				content.append("default = true\n");
+			}
+			content.append('\n');
+		}
+		List<String> hosts = insecureHosts(params.baseUrl(), repositoryIds);
+		if (!hosts.isEmpty()) {
+			content.append("[tool.uv]\nallow-insecure-host = [")
+				.append(hosts.stream().map(host -> "\"" + host + "\"").collect(Collectors.joining(", ")))
+				.append("]\n");
+		}
+		return new ConfigExample("uv Configuration (pyproject.toml)", "pyproject.toml", content.toString());
+	}
+
+	private static String uvIndexName(String repositoryId) {
+		String sanitized = repositoryId.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9-]", "-");
+		return "kagami-" + (sanitized.isEmpty() ? "index" : sanitized);
 	}
 
 	private static String mavenServer(String repo, String token, AuthMethod authMethod) {

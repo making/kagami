@@ -62,6 +62,9 @@ public class RepositoryService {
 				.url(entry.getValue().url())
 				.isPrivate(entry.getValue().isPrivate())
 				.priority(entry.getValue().priority())
+				.format(Objects.requireNonNullElse(entry.getValue().format(), "maven"))
+				.hasUpstreamToken(entry.getValue().token() != null)
+				.allowedHosts(entry.getValue().allowedHosts())
 				.build())
 			.toList();
 	}
@@ -78,6 +81,9 @@ public class RepositoryService {
 				.url(repository.url())
 				.isPrivate(repository.isPrivate())
 				.priority(repository.priority())
+				.format(Objects.requireNonNullElse(repository.format(), "maven"))
+				.hasUpstreamToken(repository.token() != null)
+				.allowedHosts(repository.allowedHosts())
 				.build());
 	}
 
@@ -239,9 +245,14 @@ public class RepositoryService {
 
 	/**
 	 * A configured repository, known without touching the storage.
+	 *
+	 * @param format the configured repository format ({@code maven}, {@code npm} or
+	 * {@code pypi})
+	 * @param hasUpstreamToken whether a bearer token is configured for the upstream
+	 * @param allowedHosts the hosts a PyPI index or npm tarball may link to
 	 */
-	public record RepositorySummary(String id, String url, boolean isPrivate,
-			int priority) implements Comparable<RepositorySummary> {
+	public record RepositorySummary(String id, String url, boolean isPrivate, int priority, String format,
+			boolean hasUpstreamToken, List<String> allowedHosts) implements Comparable<RepositorySummary> {
 
 		/**
 		 * The natural ordering matches {@link KagamiProperties.Repository}: sorts by
@@ -266,6 +277,12 @@ public class RepositoryService {
 
 			private int priority;
 
+			@Nullable private String format;
+
+			private boolean hasUpstreamToken;
+
+			@Nullable private List<String> allowedHosts;
+
 			private Builder() {
 			}
 
@@ -289,9 +306,26 @@ public class RepositoryService {
 				return this;
 			}
 
+			public Builder format(String format) {
+				this.format = format;
+				return this;
+			}
+
+			public Builder hasUpstreamToken(boolean hasUpstreamToken) {
+				this.hasUpstreamToken = hasUpstreamToken;
+				return this;
+			}
+
+			public Builder allowedHosts(@Nullable List<String> allowedHosts) {
+				this.allowedHosts = allowedHosts;
+				return this;
+			}
+
 			public RepositorySummary build() {
 				return new RepositorySummary(Objects.requireNonNull(this.id, "id is required"),
-						Objects.requireNonNull(this.url, "url is required"), this.isPrivate, this.priority);
+						Objects.requireNonNull(this.url, "url is required"), this.isPrivate, this.priority,
+						Objects.requireNonNullElse(this.format, "maven"), this.hasUpstreamToken,
+						Objects.requireNonNullElse(this.allowedHosts, List.of()));
 			}
 
 		}
