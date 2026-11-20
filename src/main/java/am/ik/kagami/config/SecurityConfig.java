@@ -16,6 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -31,6 +32,7 @@ import org.springframework.security.oauth2.server.resource.web.access.BearerToke
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.springframework.security.web.util.matcher.AndRequestMatcher;
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestHeaderRequestMatcher;
@@ -47,6 +49,18 @@ import static org.springframework.security.oauth2.core.authorization.OAuth2Autho
 
 @Configuration(proxyBeanMethods = false)
 class SecurityConfig {
+
+	/**
+	 * Allow a percent-encoded slash ({@code %2F}) in the request path. The npm registry
+	 * addresses a scoped package as {@code @scope%2Fname}; without this the firewall
+	 * rejects the request with a 400 before routing reaches the format handler.
+	 */
+	@Bean
+	WebSecurityCustomizer encodedSlashWebSecurityCustomizer() {
+		StrictHttpFirewall firewall = new StrictHttpFirewall();
+		firewall.setAllowUrlEncodedSlash(true);
+		return web -> web.httpFirewall(firewall);
+	}
 
 	@Bean
 	SecurityFilterChain securityFilterChain(HttpSecurity http, KagamiProperties properties, RbacService rbacService)
