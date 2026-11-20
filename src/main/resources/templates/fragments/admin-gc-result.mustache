@@ -5,7 +5,7 @@
 <div class="gc-result-section" role="status">
   <div class="section-head">
     <h3 class="registry-label font-semibold">Preview</h3>
-    <p>{{repositoryId}} / metadata older than {{olderThanHours}} hours</p>
+    <p>{{repositoryId}} / directories older than {{olderThanHours}} hours</p>
   </div>
   {{#hasCandidates}}
   <ul class="gc-result-list">
@@ -18,7 +18,7 @@
   </ul>
   {{/hasCandidates}}
   {{^hasCandidates}}
-  <div class="alert alert-info">No eligible metadata-only directories were found.</div>
+  <div class="alert alert-info">No eligible directories were found.</div>
   {{/hasCandidates}}
 </div>
 {{/preview}}
@@ -26,7 +26,7 @@
 <div class="gc-result-section" role="status">
   <div class="section-head">
     <h3 class="registry-label font-semibold">Collection complete</h3>
-    <p>{{repositoryId}} / metadata older than {{olderThanHours}} hours</p>
+    <p>{{repositoryId}} / directories older than {{olderThanHours}} hours</p>
   </div>
   {{#hasCollected}}
   <ul class="gc-result-list">
@@ -36,7 +36,7 @@
   </ul>
   {{/hasCollected}}
   {{^hasCollected}}
-  <div class="alert alert-info">No eligible metadata-only directories were collected.</div>
+  <div class="alert alert-info">No eligible directories were collected.</div>
   {{/hasCollected}}
   {{#hasFailures}}
   <ul class="gc-result-list">

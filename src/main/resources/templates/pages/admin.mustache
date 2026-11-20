@@ -11,7 +11,7 @@
       <span class="page-head-mark">GC</span>
       <h1>Cache <span class="hero-title-gradient">Administration</span></h1>
     </div>
-    <p class="page-head-sub">Preview and collect metadata-only cache directories</p>
+    <p class="page-head-sub">Preview and collect leftover cache directories</p>
   </header>
 
   <div class="panel" id="repository-settings-panel">
@@ -51,7 +51,7 @@
       <span class="registry-label panel-head-meta">artifacts:admin</span>
     </div>
     <div class="section-head">
-      <p>Only directories containing exactly maven-metadata.xml and maven-metadata.xml.sha1, or only resolver-status.properties, are eligible.</p>
+      <p>Directories whose files are all cache bookkeeping files (maven-metadata*.xml and their checksums, resolver-status.properties, _remote.repositories, *.lastUpdated), and empty directories, are eligible. The rules do not depend on the repository format.</p>
     </div>
     <form id="gc-form" action="/app/admin/gc" method="post" hx-post="/app/admin/gc" hx-indicator="#gc-run-button" hx-target="#gc-result" hx-swap="innerHTML">
       {{#_csrf}}<input type="hidden" name="_csrf" value="{{_csrf.token}}"/>{{/_csrf}}
@@ -77,7 +77,7 @@
                   hx-target="#gc-result" hx-swap="innerHTML"
                   {{^hasRepositories}}disabled{{/hasRepositories}}>Preview</button>
           <button type="submit" id="gc-run-button" class="button button-primary button-loading"
-                  hx-confirm="Collect eligible metadata-only directories? This operation cannot be undone."
+                  hx-confirm="Collect eligible leftover directories? This operation cannot be undone."
                   {{^hasRepositories}}disabled{{/hasRepositories}}>Run Garbage Collection</button>
         </div>
       </div>

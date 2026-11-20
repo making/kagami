@@ -10,24 +10,26 @@ import java.time.Instant;
 import java.time.InstantSource;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Finds and removes cache-bookkeeping-only directories left behind by failed Maven cache
- * requests.
+ * Finds and removes cache directories that hold nothing but bookkeeping files, together
+ * with empty directories left behind after a delete or a failed fetch.
  * <p>
- * A candidate is a repository directory whose direct children are exactly one of these
- * file sets: {@code maven-metadata.xml} and {@code maven-metadata.xml.sha1}, or
- * {@code resolver-status.properties}. The files must be at least the requested age old.
- * They are removed individually after a second eligibility check, so a request that adds
- * an artifact concurrently cannot make the collector remove that artifact.
+ * A candidate is a repository directory whose direct children are all cache bookkeeping
+ * files ({@code maven-metadata*.xml} and their checksums,
+ * {@code resolver-status.properties}, {@code _remote.repositories},
+ * {@code *.lastUpdated}), or an empty directory. The children, or the directory itself
+ * for an empty one, must be at least the requested age old. The rules describe what is
+ * left behind, not the repository format, so they apply to every format equally. Files
+ * are removed individually after a second eligibility check, so a request that adds an
+ * artifact concurrently cannot make the collector remove that artifact.
  */
 @Service
 public class RepositoryGarbageCollector {
@@ -36,8 +38,12 @@ public class RepositoryGarbageCollector {
 
 	private static final String RESOLVER_STATUS_FILE = "resolver-status.properties";
 
-	private static final List<Set<String>> ELIGIBLE_FILE_SETS = List
-		.of(Set.of("maven-metadata.xml", "maven-metadata.xml.sha1"), Set.of(RESOLVER_STATUS_FILE));
+	private static final String REMOTE_REPOSITORIES_FILE = "_remote.repositories";
+
+	private static final String LAST_UPDATED_SUFFIX = ".lastUpdated";
+
+	private static final Pattern MAVEN_METADATA_FILE = Pattern
+		.compile("maven-metadata[^/]*\\.xml(?:\\.(?:sha1|sha256|sha512|md5|asc))?");
 
 	private final StorageService storageService;
 
@@ -49,9 +55,10 @@ public class RepositoryGarbageCollector {
 	}
 
 	/**
-	 * Find eligible cache-bookkeeping directories without changing storage.
+	 * Find eligible directories without changing storage.
 	 * @param repositoryId the repository to inspect
-	 * @param olderThan the minimum age of all files in a candidate; must not be negative
+	 * @param olderThan the minimum age of a candidate and of every child it contains;
+	 * must not be negative
 	 * @return the matching directories, sorted by repository-relative path
 	 * @throws IOException if an I/O error occurs while listing storage
 	 */
@@ -64,9 +71,10 @@ public class RepositoryGarbageCollector {
 	}
 
 	/**
-	 * Remove eligible cache-bookkeeping directories that pass the age check.
+	 * Remove eligible directories that pass the age check.
 	 * @param repositoryId the repository to inspect
-	 * @param olderThan the minimum age of all files in a candidate; must not be negative
+	 * @param olderThan the minimum age of a candidate and of every child it contains;
+	 * must not be negative
 	 * @return the directories whose eligible files were collected and any per-directory
 	 * failures
 	 * @throws IOException if an I/O error occurs while listing storage
@@ -98,13 +106,12 @@ public class RepositoryGarbageCollector {
 					logger.warn("Failed to prune empty ancestors for {}/{}", repositoryId, candidate.path(), e);
 				}
 				collectedPaths.add(candidate.path());
-				logger.info("Collected cache-bookkeeping-only directory {}/{}", repositoryId, candidate.path());
+				logger.info("Collected garbage directory {}/{}", repositoryId, candidate.path());
 			}
 			catch (IOException e) {
 				String message = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
 				failures.add(new GarbageCollectionFailure(candidate.path(), message));
-				logger.warn("Failed to collect cache-bookkeeping-only directory {}/{}", repositoryId, candidate.path(),
-						e);
+				logger.warn("Failed to collect garbage directory {}/{}", repositoryId, candidate.path(), e);
 			}
 		}
 		return new GarbageCollectionResult(List.copyOf(collectedPaths), List.copyOf(failures));
@@ -130,34 +137,46 @@ public class RepositoryGarbageCollector {
 	private Optional<EligibleDirectory> garbageDirectory(ArtifactLocation directory, Instant cutoff)
 			throws IOException {
 		List<StorageEntry> children = this.storageService.list(directory);
-		List<String> eligibleFileNames = findEligibleFileNames(children);
-		if (eligibleFileNames.isEmpty() || children.size() != eligibleFileNames.size()) {
-			return Optional.empty();
+		if (children.isEmpty()) {
+			return emptyDirectory(directory, cutoff);
 		}
+		List<String> eligibleFileNames = new ArrayList<>(children.size());
 		List<Instant> modifiedTimes = new ArrayList<>(children.size());
 		for (StorageEntry child : children) {
 			Instant modified = child.lastModified();
-			if (!child.isFile() || !eligibleFileNames.contains(child.name()) || modified == null
-					|| modified.isAfter(cutoff)) {
+			if (!child.isFile() || !isBookkeepingFile(child.name()) || modified == null || modified.isAfter(cutoff)) {
 				return Optional.empty();
 			}
+			eligibleFileNames.add(child.name());
 			modifiedTimes.add(modified);
 		}
-		return Optional.of(new EligibleDirectory(new GarbageDirectory(directory.artifactPath(),
-				modifiedTimes.stream().max(Comparator.naturalOrder()).orElseThrow()), eligibleFileNames));
+		return Optional.of(new EligibleDirectory(
+				new GarbageDirectory(directory.artifactPath(),
+						modifiedTimes.stream().max(Comparator.naturalOrder()).orElseThrow()),
+				eligibleFileNames.stream().sorted().toList()));
 	}
 
-	private static List<String> findEligibleFileNames(List<StorageEntry> children) {
-		Set<String> names = new HashSet<>();
-		for (StorageEntry child : children) {
-			names.add(child.name());
+	/**
+	 * An empty directory is a candidate when storage keeps directory entries of its own.
+	 * Object storage has none: a prefix disappears with its last object, so it never
+	 * shows up as an empty directory in the first place.
+	 */
+	private Optional<EligibleDirectory> emptyDirectory(ArtifactLocation directory, Instant cutoff) throws IOException {
+		Optional<StorageEntry> found = this.storageService.stat(directory);
+		if (found.isEmpty()) {
+			return Optional.empty();
 		}
-		for (Set<String> eligibleFiles : ELIGIBLE_FILE_SETS) {
-			if (names.equals(eligibleFiles)) {
-				return eligibleFiles.stream().sorted().toList();
-			}
+		StorageEntry entry = found.get();
+		Instant modified = entry.lastModified();
+		if (!entry.isDirectory() || modified == null || modified.isAfter(cutoff)) {
+			return Optional.empty();
 		}
-		return List.of();
+		return Optional.of(new EligibleDirectory(new GarbageDirectory(directory.artifactPath(), modified), List.of()));
+	}
+
+	private static boolean isBookkeepingFile(String name) {
+		return MAVEN_METADATA_FILE.matcher(name).matches() || RESOLVER_STATUS_FILE.equals(name)
+				|| REMOTE_REPOSITORIES_FILE.equals(name) || name.endsWith(LAST_UPDATED_SUFFIX);
 	}
 
 	private void collectFiles(ArtifactLocation directory, List<String> fileNames) throws IOException {
@@ -208,16 +227,17 @@ public class RepositoryGarbageCollector {
 	}
 
 	/**
-	 * A directory that contains only an eligible cache-bookkeeping file set.
+	 * A directory that is eligible for collection.
 	 *
 	 * @param path the path relative to the repository root
-	 * @param lastModified the newest file modification timestamp in the directory
+	 * @param lastModified the newest modification timestamp of the directory or its
+	 * bookkeeping files
 	 */
 	public record GarbageDirectory(String path, Instant lastModified) {
 	}
 
 	/**
-	 * The result of collecting eligible cache-bookkeeping directories.
+	 * The result of collecting eligible directories.
 	 *
 	 * @param collectedPaths repository-relative paths whose eligible files were removed
 	 * @param failures paths that could not be collected and their error messages
@@ -226,7 +246,7 @@ public class RepositoryGarbageCollector {
 	}
 
 	/**
-	 * A failure to collect one eligible cache-bookkeeping directory.
+	 * A failure to collect one eligible directory.
 	 *
 	 * @param path the path relative to the repository root
 	 * @param message the storage error message

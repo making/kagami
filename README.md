@@ -471,10 +471,12 @@ token.
 
 #### Cache garbage collection API
 
-The administrator API removes directories whose only files are either `maven-metadata.xml`
-and `maven-metadata.xml.sha1`, or only `resolver-status.properties`. All files in a
-candidate directory must be at least one hour old. Preview candidates first, then run the
-collection explicitly:
+The administrator API removes directories that hold nothing but cache bookkeeping files
+(`maven-metadata*.xml` and their checksums, `resolver-status.properties`,
+`_remote.repositories`, `*.lastUpdated`), and empty directories. The rules describe the
+leftovers, not the repository format, so they apply to Maven, npm and PyPI repositories
+alike. A candidate and all of its files must be at least one hour old. Preview candidates
+first, then run the collection explicitly:
 
 ```bash
 # Dry-run; olderThan accepts ISO-8601 durations such as PT30M or PT0S
