@@ -10,7 +10,11 @@ import java.io.InputStream;
 import java.io.PushbackInputStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.InstantSource;
+import java.util.HexFormat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -190,6 +194,128 @@ public class RemoteRepositoryService {
 		}
 		finally {
 			deleteRecursively(scratchDirectory);
+		}
+	}
+
+	/**
+	 * Outcome of downloading an artifact from a URL found in an upstream index.
+	 */
+	public enum LinkedFetchOutcome {
+
+		/** The body was stored. */
+		STORED,
+
+		/** The upstream answered that the artifact does not exist. */
+		NOT_FOUND,
+
+		/** The upstream failed or the body could not be stored. */
+		FAILED,
+
+		/** The body was stored but its SHA-256 did not match the index fragment. */
+		HASH_MISMATCH
+
+	}
+
+	/**
+	 * Download an artifact from an absolute URL found in an upstream index (a PyPI file
+	 * link) and stream it into storage. The caller is responsible for validating the URL
+	 * host against the repository allowlist before calling this method.
+	 * <p>
+	 * Basic credentials are only sent when the link stays on the repository host, so a
+	 * link to a public file host never leaks the private index credentials. When
+	 * {@code sha256} is given the body is hashed while it is streamed; a mismatch removes
+	 * the stored object instead of leaving a corrupt artifact behind.
+	 * @param location the storage location of the artifact
+	 * @param url the absolute upstream URL
+	 * @param sha256 the expected SHA-256 in hex, or {@code null} to skip verification
+	 * @return the outcome
+	 */
+	public LinkedFetchOutcome fetchLinkedArtifact(ArtifactLocation location, URI url, @Nullable String sha256) {
+		String repositoryId = location.repositoryId();
+		if (!this.circuitBreaker.allowsRequest(repositoryId)) {
+			logger.debug("Skipping upstream fetch of {}: the circuit for repository {} is open", url, repositoryId);
+			return LinkedFetchOutcome.FAILED;
+		}
+		KagamiProperties.Repository repoConfig = this.kagamiProperties.repositories().get(repositoryId);
+		LinkedFetchOutcome outcome;
+		try {
+			outcome = this.restClient.get().uri(url).headers(headers -> {
+				headers.set(HttpHeaders.ACCEPT_ENCODING, "identity");
+				if (repoConfig != null && StringUtils.hasText(repoConfig.username())
+						&& StringUtils.hasText(repoConfig.password()) && sameHost(url, repoConfig.url())) {
+					headers.setBasicAuth(repoConfig.username(), repoConfig.password());
+				}
+			}).exchange((request, response) -> {
+				int status = response.getStatusCode().value();
+				if (status >= 400 && status < 500) {
+					return LinkedFetchOutcome.NOT_FOUND;
+				}
+				if (status < 200 || status >= 300) {
+					return LinkedFetchOutcome.FAILED;
+				}
+				InputStream body = response.getBody();
+				if (body == null) {
+					return LinkedFetchOutcome.NOT_FOUND;
+				}
+				MessageDigest digest = sha256 == null ? null : sha256Digest();
+				String contentType = response.getHeaders().getFirst(HttpHeaders.CONTENT_TYPE);
+				try (InputStream decoded = decodedBody(response.getHeaders(), body)) {
+					InputStream source = digest == null ? decoded : new DigestInputStream(decoded, digest);
+					this.storageService.store(location, source, contentType);
+				}
+				catch (IOException e) {
+					deleteQuietly(location);
+					return LinkedFetchOutcome.FAILED;
+				}
+				if (digest != null && !HexFormat.of().formatHex(digest.digest()).equalsIgnoreCase(sha256)) {
+					deleteQuietly(location);
+					return LinkedFetchOutcome.HASH_MISMATCH;
+				}
+				return LinkedFetchOutcome.STORED;
+			});
+		}
+		catch (RestClientException e) {
+			logger.debug("RestClient error fetching {}: {}", url, e.getMessage());
+			outcome = LinkedFetchOutcome.FAILED;
+		}
+		catch (RuntimeException e) {
+			logger.warn("Unexpected error fetching {}", url, e);
+			outcome = LinkedFetchOutcome.FAILED;
+		}
+		if (outcome == LinkedFetchOutcome.STORED || outcome == LinkedFetchOutcome.NOT_FOUND) {
+			this.circuitBreaker.recordSuccess(repositoryId);
+		}
+		else {
+			this.circuitBreaker.recordFailure(repositoryId);
+		}
+		return outcome;
+	}
+
+	private void deleteQuietly(ArtifactLocation location) {
+		try {
+			this.storageService.deleteFile(location);
+		}
+		catch (IOException e) {
+			logger.debug("Failed to remove the rejected download {}", location.artifactPath(), e);
+		}
+	}
+
+	private static MessageDigest sha256Digest() {
+		try {
+			return MessageDigest.getInstance("SHA-256");
+		}
+		catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException("SHA-256 is not available", e);
+		}
+	}
+
+	private static boolean sameHost(URI url, String repositoryUrl) {
+		String linkHost = url.getHost();
+		try {
+			return linkHost != null && linkHost.equalsIgnoreCase(URI.create(repositoryUrl).getHost());
+		}
+		catch (IllegalArgumentException e) {
+			return false;
 		}
 	}
 
